@@ -1,63 +1,69 @@
-import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
+import { ChevronLeft, ChevronRight, Calendar, X, Edit, User } from "lucide-react";
 
 const TimelyCSVImportModal = lazy(() =>
-  import('../components/TimelyCSVImportModal').then((m) => ({ default: m.TimelyCSVImportModal }))
+  import("../components/TimelyCSVImportModal").then((m) => ({ default: m.TimelyCSVImportModal })),
 );
-import { useAppStore } from '../stores/appStore';
-import { useToast } from '../context/ToastContext';
+import { useAppStore } from "../stores/appStore";
+import { useToast } from "../context/ToastContext";
 import {
-  useLeads, useSaveLead, useDeleteLead,
-  useServiceTypes, useSaveServiceType, useAppointments, useSaveAppointment, useDeleteAppointment,
-} from '../hooks/useFirebase';
-import { Lead, Rep, Appointment, AppointmentStatus, ServiceType } from '../types';
-import { LeadSidebar } from '../components/LeadSidebar';
-import { AppointmentModal } from '../components/AppointmentModal';
+  useLeads,
+  useSaveLead,
+  useDeleteLead,
+  useServiceTypes,
+  useSaveServiceType,
+  useAppointments,
+  useSaveAppointment,
+  useDeleteAppointment,
+} from "../hooks/useFirebase";
+import { Lead, Rep, Appointment, AppointmentStatus, ServiceType } from "../types";
+import { LeadSidebar } from "../components/LeadSidebar";
+import { AppointmentModal } from "../components/AppointmentModal";
 
-export const DEFAULT_SERVICE_TYPES: Omit<ServiceType, 'id'>[] = [
+export const DEFAULT_SERVICE_TYPES: Omit<ServiceType, "id">[] = [
   // General (amber #f59e0b)
-  { name: 'Contract Signing',           category: 'General',            color: '#f59e0b', defaultDuration: 20,  sortOrder: 10 },
-  { name: 'Super Referral',             category: 'General',            color: '#f59e0b', defaultDuration: 45,  sortOrder: 20 },
-  { name: 'Call to Confirm',            category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 30 },
-  { name: 'Pre-Approval',               category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 40 },
-  { name: 'Settlement Preparation',     category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 50 },
-  { name: 'Settlement',                 category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 60 },
-  { name: 'Valuation',                  category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 70 },
-  { name: 'Client Follow Up',           category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 80 },
-  { name: 'Inspection',                 category: 'General',            color: '#f59e0b', defaultDuration: 30,  sortOrder: 90 },
-  { name: 'Central Park Estate (FC/FR)',category: 'General',            color: '#f59e0b', defaultDuration: 60,  sortOrder: 100 },
+  { name: "Contract Signing", category: "General", color: "#f59e0b", defaultDuration: 20, sortOrder: 10 },
+  { name: "Super Referral", category: "General", color: "#f59e0b", defaultDuration: 45, sortOrder: 20 },
+  { name: "Call to Confirm", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 30 },
+  { name: "Pre-Approval", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 40 },
+  { name: "Settlement Preparation", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 50 },
+  { name: "Settlement", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 60 },
+  { name: "Valuation", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 70 },
+  { name: "Client Follow Up", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 80 },
+  { name: "Inspection", category: "General", color: "#f59e0b", defaultDuration: 30, sortOrder: 90 },
+  { name: "Central Park Estate (FC/FR)", category: "General", color: "#f59e0b", defaultDuration: 60, sortOrder: 100 },
   // First Consult (red #ef4444)
-  { name: 'First Consult',              category: 'First Consult',      color: '#ef4444', defaultDuration: 45,  sortOrder: 110 },
-  { name: 'First Consult (ReBook)',     category: 'First Consult',      color: '#ef4444', defaultDuration: 45,  sortOrder: 120 },
+  { name: "First Consult", category: "First Consult", color: "#ef4444", defaultDuration: 45, sortOrder: 110 },
+  { name: "First Consult (ReBook)", category: "First Consult", color: "#ef4444", defaultDuration: 45, sortOrder: 120 },
   // Finance (blue #3b82f6)
-  { name: 'Finance Run',                category: 'Finance',            color: '#3b82f6', defaultDuration: 60,  sortOrder: 130 },
-  { name: 'Finance Run - Chase Up',     category: 'Finance',            color: '#3b82f6', defaultDuration: 60,  sortOrder: 140 },
-  { name: 'Finance Run - NO Deal',      category: 'Finance',            color: '#3b82f6', defaultDuration: 60,  sortOrder: 150 },
-  { name: 'Finance Run (ReBook)',       category: 'Finance',            color: '#3b82f6', defaultDuration: 60,  sortOrder: 160 },
-  { name: 'Coffee Run',                 category: 'Finance',            color: '#3b82f6', defaultDuration: 30,  sortOrder: 170 },
-  { name: 'Referrals',                  category: 'Finance',            color: '#3b82f6', defaultDuration: 60,  sortOrder: 180 },
+  { name: "Finance Run", category: "Finance", color: "#3b82f6", defaultDuration: 60, sortOrder: 130 },
+  { name: "Finance Run - Chase Up", category: "Finance", color: "#3b82f6", defaultDuration: 60, sortOrder: 140 },
+  { name: "Finance Run - NO Deal", category: "Finance", color: "#3b82f6", defaultDuration: 60, sortOrder: 150 },
+  { name: "Finance Run (ReBook)", category: "Finance", color: "#3b82f6", defaultDuration: 60, sortOrder: 160 },
+  { name: "Coffee Run", category: "Finance", color: "#3b82f6", defaultDuration: 30, sortOrder: 170 },
+  { name: "Referrals", category: "Finance", color: "#3b82f6", defaultDuration: 60, sortOrder: 180 },
   // Property Sale (green #22c55e)
-  { name: 'Sale',                       category: 'Property Sale',      color: '#22c55e', defaultDuration: 60,  sortOrder: 190 },
-  { name: 'Sale (ReBook)',              category: 'Property Sale',      color: '#22c55e', defaultDuration: 60,  sortOrder: 200 },
+  { name: "Sale", category: "Property Sale", color: "#22c55e", defaultDuration: 60, sortOrder: 190 },
+  { name: "Sale (ReBook)", category: "Property Sale", color: "#22c55e", defaultDuration: 60, sortOrder: 200 },
   // Site/Lot Viewings (teal #14b8a6)
-  { name: 'Site/Lot Viewing',           category: 'Site/Lot Viewings',  color: '#14b8a6', defaultDuration: 60,  sortOrder: 210 },
+  { name: "Site/Lot Viewing", category: "Site/Lot Viewings", color: "#14b8a6", defaultDuration: 60, sortOrder: 210 },
   // Lead Re-Engagement (orange #f97316)
-  { name: 'Lead Re-Engagement',         category: 'Lead Re-Engagement', color: '#f97316', defaultDuration: 30,  sortOrder: 220 },
+  { name: "Lead Re-Engagement", category: "Lead Re-Engagement", color: "#f97316", defaultDuration: 30, sortOrder: 220 },
   // Zoom Meeting (purple #8b5cf6)
-  { name: 'Zoom Meeting with Nick',     category: 'Zoom Meeting',       color: '#8b5cf6', defaultDuration: 45,  sortOrder: 230 },
+  { name: "Zoom Meeting with Nick", category: "Zoom Meeting", color: "#8b5cf6", defaultDuration: 45, sortOrder: 230 },
 ];
 
 function resolveEventColor(
   repId: number | undefined,
   serviceTypeId: string,
   reps: Rep[],
-  serviceTypes: ServiceType[]
+  serviceTypes: ServiceType[],
 ): string {
   if (repId) {
-    const repColor = reps.find(r => r.id === repId)?.color;
+    const repColor = reps.find((r) => r.id === repId)?.color;
     if (repColor) return repColor;
   }
-  return serviceTypes.find(s => s.id === serviceTypeId)?.color ?? '#9ca3af';
+  return serviceTypes.find((s) => s.id === serviceTypeId)?.color ?? "#9ca3af";
 }
 
 const GRID_START_HOUR = 8;
@@ -73,79 +79,84 @@ interface CalendarColumnDef {
 }
 
 const CALENDAR_COLUMNS: CalendarColumnDef[] = [
-  { key: 'first-consult',  label: 'First Consult',  headerColor: '#ef4444' },
-  { key: 'finance-run',    label: 'Finance Run',     headerColor: '#3b82f6' },
-  { key: 'property-sale',  label: 'Property Sale',   headerColor: '#22c55e' },
-  { key: 'smsf',           label: 'SMSF',            headerColor: '#8b5cf6' },
-  { key: 'coffee-runs',    label: 'Coffee Runs',     headerColor: '#f97316' },
-  { key: 'sam-roberts',    label: 'Sam Roberts',     headerColor: '#14b8a6' },
+  { key: "first-consult", label: "First Consult", headerColor: "#ef4444" },
+  { key: "finance-run", label: "Finance Run", headerColor: "#3b82f6" },
+  { key: "property-sale", label: "Property Sale", headerColor: "#22c55e" },
+  { key: "smsf", label: "SMSF", headerColor: "#8b5cf6" },
+  { key: "coffee-runs", label: "Coffee Runs", headerColor: "#f97316" },
+  { key: "sam-roberts", label: "Sam Roberts", headerColor: "#14b8a6" },
 ];
 
 function getColumnForEvent(ev: CalendarEvent, serviceTypes: ServiceType[]): string {
   // Lead overlays: route by source type
   if (ev.isLeadOverlay) {
-    if (ev.source === 'fc-appt' || ev.source === 'booking') return 'first-consult';
-    if (ev.source === 'fr-appt') return 'finance-run';
-    if (ev.source === 'settlement') return 'property-sale';
-    return 'first-consult';
+    if (ev.source === "fc-appt" || ev.source === "booking") return "first-consult";
+    if (ev.source === "fr-appt") return "finance-run";
+    if (ev.source === "settlement") return "property-sale";
+    return "first-consult";
   }
-  const st = serviceTypes.find(s => s.id === ev.appointmentData?.serviceTypeId);
-  const name = (st?.name ?? '').toLowerCase();
-  const cat = (st?.category ?? '').toLowerCase();
-  if (cat === 'first consult' || name.includes('first consult')) return 'first-consult';
-  if (name.includes('finance run')) return 'finance-run';
-  if (cat === 'property sale' || (name.includes('sale') && !name.includes('rebook'))) return 'property-sale';
-  if (name.includes('smsf') || name.includes('super referral')) return 'smsf';
-  if (name.includes('coffee') || name.includes('referral')) return 'coffee-runs';
-  return 'sam-roberts'; // catch-all
+  const st = serviceTypes.find((s) => s.id === ev.appointmentData?.serviceTypeId);
+  const name = (st?.name ?? "").toLowerCase();
+  const cat = (st?.category ?? "").toLowerCase();
+  if (cat === "first consult" || name.includes("first consult")) return "first-consult";
+  if (name.includes("finance run")) return "finance-run";
+  if (cat === "property sale" || (name.includes("sale") && !name.includes("rebook"))) return "property-sale";
+  if (name.includes("smsf") || name.includes("super referral")) return "smsf";
+  if (name.includes("coffee") || name.includes("referral")) return "coffee-runs";
+  return "sam-roberts"; // catch-all
 }
 
 // Service type → short abbreviation shown inside booking block (e.g. "FR · Joe")
 function getServiceAbbr(serviceName: string): string {
-  const n = serviceName.toLowerCase().replace(/[()]/g, '');
-  if (n.includes('first consult')) return n.includes('rebook') ? 'FC ReBook' : 'FC';
-  if (n.includes('finance run')) {
-    if (n.includes('chase')) return 'FR Chase';
-    if (n.includes('no deal')) return 'FR No Deal';
-    if (n.includes('rebook')) return 'FR ReBook';
-    return 'FR';
+  const n = serviceName.toLowerCase().replace(/[()]/g, "");
+  if (n.includes("first consult")) return n.includes("rebook") ? "FC ReBook" : "FC";
+  if (n.includes("finance run")) {
+    if (n.includes("chase")) return "FR Chase";
+    if (n.includes("no deal")) return "FR No Deal";
+    if (n.includes("rebook")) return "FR ReBook";
+    return "FR";
   }
-  if (n.includes('coffee')) return 'CR';
-  if (n.includes('referral')) {
-    if (n.includes('joe')) return 'Ref Joe';
-    if (n.includes('sam')) return 'Ref Sam';
-    return 'Ref';
+  if (n.includes("coffee")) return "CR";
+  if (n.includes("referral")) {
+    if (n.includes("joe")) return "Ref Joe";
+    if (n.includes("sam")) return "Ref Sam";
+    return "Ref";
   }
-  if (n.includes('property sale') || (n.includes('sale') && !n.includes('rebook'))) return 'PS';
-  if (n.includes('sale') && n.includes('rebook')) return 'PS ReBook';
-  if (n.includes('smsf')) return 'SMSF';
-  if (n.includes('super referral') || n.includes('super')) return 'Super';
-  if (n.includes('settlement prep')) return 'S.Prep';
-  if (n.includes('settlement')) return 'Settle';
-  if (n.includes('zoom')) return 'Zoom';
-  if (n.includes('valuation')) return 'Val';
-  if (n.includes('inspection')) return 'Insp';
-  if (n.includes('signing')) return 'Sign';
-  if (n.includes('pre-approval') || n.includes('pre approval')) return 'Pre-Appr';
-  if (n.includes('follow up')) return 'Follow Up';
-  if (n.includes('re-engagement') || n.includes('re engagement')) return 'Re-Eng';
-  if (n.includes('central park')) return 'CP';
+  if (n.includes("property sale") || (n.includes("sale") && !n.includes("rebook"))) return "PS";
+  if (n.includes("sale") && n.includes("rebook")) return "PS ReBook";
+  if (n.includes("smsf")) return "SMSF";
+  if (n.includes("super referral") || n.includes("super")) return "Super";
+  if (n.includes("settlement prep")) return "S.Prep";
+  if (n.includes("settlement")) return "Settle";
+  if (n.includes("zoom")) return "Zoom";
+  if (n.includes("valuation")) return "Val";
+  if (n.includes("inspection")) return "Insp";
+  if (n.includes("signing")) return "Sign";
+  if (n.includes("pre-approval") || n.includes("pre approval")) return "Pre-Appr";
+  if (n.includes("follow up")) return "Follow Up";
+  if (n.includes("re-engagement") || n.includes("re engagement")) return "Re-Eng";
+  if (n.includes("central park")) return "CP";
   // Fallback: initials of each word, max 5 chars
-  return serviceName.split(/[\s-]+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 5);
+  return serviceName
+    .split(/[\s-]+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 5);
 }
 
 // Greedy column-packing for overlapping events within a service column
 function assignOverlapLayout(evs: CalendarEvent[]): Array<CalendarEvent & { evLeft: string; evWidth: string }> {
   if (evs.length === 0) return [];
   const toMins = (t: string) => {
-    const [h, m] = (t || '00:00').split(':').map(Number);
+    const [h, m] = (t || "00:00").split(":").map(Number);
     return (h || 0) * 60 + (m || 0);
   };
   const toStr = (mins: number) =>
-    `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-  const sorted = [...evs].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+    `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  const sorted = [...evs].sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
   const colEnds: string[] = [];
-  const assign: number[] = sorted.map(ev => {
+  const assign: number[] = sorted.map((ev) => {
     const sm = toMins(ev.startTime);
     for (let i = 0; i < colEnds.length; i++) {
       if (toMins(colEnds[i]) <= sm) {
@@ -164,9 +175,9 @@ function assignOverlapLayout(evs: CalendarEvent[]): Array<CalendarEvent & { evLe
   }));
 }
 
-type CalendarView = 'day' | 'week' | 'agenda';
+type CalendarView = "day" | "week" | "agenda";
 
-type CalendarEventSource = 'appointment' | 'callback' | 'booking' | 'fc-appt' | 'fr-appt' | 'ps-appt' | 'settlement';
+type CalendarEventSource = "appointment" | "callback" | "booking" | "fc-appt" | "fr-appt" | "ps-appt" | "settlement";
 
 interface CalendarEvent {
   id: string;
@@ -184,82 +195,83 @@ interface CalendarEvent {
 }
 
 const STATUS_BADGE_COLORS: Record<AppointmentStatus, string> = {
-  'pencilled-in':           'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400',
-  'confirmed':              'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  'arrived':                'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
-  'started':                'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  'completed':              'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-  'no-show':                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  'cancelled':              'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-500',
-  'rebook-fc':              'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  'rebook-fr':              'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  'fc-complete-fr-booked':  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  'stopped-at-door':        'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  'presented-no-sale':      'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-  'did-not-qualify':        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
+  "pencilled-in": "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400",
+  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  arrived: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  started: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  completed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  "no-show": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  cancelled: "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-500",
+  "rebook-fc": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  "rebook-fr": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  "fc-complete-fr-booked": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  "stopped-at-door": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  "presented-no-sale": "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+  "did-not-qualify": "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400",
 };
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  'pencilled-in':           'Pencilled In',
-  'confirmed':              'Confirmed',
-  'arrived':                'Arrived',
-  'started':                'Started',
-  'completed':              'Completed',
-  'no-show':                'No Show',
-  'cancelled':              'Cancelled',
-  'rebook-fc':              'ReBook FC',
-  'rebook-fr':              'ReBook FR',
-  'fc-complete-fr-booked':  'FC Done - FR Booked',
-  'stopped-at-door':        'Stopped At Door',
-  'presented-no-sale':      'Presented No Sale',
-  'did-not-qualify':        'Did Not Qualify',
+  "pencilled-in": "Pencilled In",
+  confirmed: "Confirmed",
+  arrived: "Arrived",
+  started: "Started",
+  completed: "Completed",
+  "no-show": "No Show",
+  cancelled: "Cancelled",
+  "rebook-fc": "ReBook FC",
+  "rebook-fr": "ReBook FR",
+  "fc-complete-fr-booked": "FC Done - FR Booked",
+  "stopped-at-door": "Stopped At Door",
+  "presented-no-sale": "Presented No Sale",
+  "did-not-qualify": "Did Not Qualify",
 };
 
 // ── Helper functions ──────────────────────────────────────────────────────────
 
 const todayStr = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 function formatDateLabel(dateStr: string, view: CalendarView): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  if (view === 'day') return d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  if (view === 'week') {
+  const d = new Date(dateStr + "T00:00:00");
+  if (view === "day")
+    return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  if (view === "week") {
     const weekDates = getWeekDates(dateStr);
-    const start = new Date(weekDates[0] + 'T00:00:00');
-    const end = new Date(weekDates[6] + 'T00:00:00');
-    const startStr = start.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-    const endStr = end.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    const start = new Date(weekDates[0] + "T00:00:00");
+    const end = new Date(weekDates[6] + "T00:00:00");
+    const startStr = start.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+    const endStr = end.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
     return `${startStr} – ${endStr}`;
   }
-  return d.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString("en-AU", { month: "long", year: "numeric" });
 }
 
 function getWeekDates(date: string): string[] {
-  const d = new Date(date + 'T00:00:00');
+  const d = new Date(date + "T00:00:00");
   const day = d.getDay();
   const monday = new Date(d);
   monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return Array.from({ length: 7 }, (_, i) => {
     const dd = new Date(monday);
     dd.setDate(monday.getDate() + i);
-    return dd.toISOString().split('T')[0];
+    return dd.toISOString().split("T")[0];
   });
 }
 
 function navigateDate(date: string, view: CalendarView, direction: -1 | 1): string {
   // Parse as local date components to avoid UTC timezone shift (AU is UTC+8/10/11)
-  const [y, m, day] = date.split('-').map(Number);
+  const [y, m, day] = date.split("-").map(Number);
   const d = new Date(y, m - 1, day); // month is 0-indexed; creates LOCAL midnight
-  if (view === 'day') d.setDate(d.getDate() + direction);
-  else if (view === 'week') d.setDate(d.getDate() + direction * 7);
+  if (view === "day") d.setDate(d.getDate() + direction);
+  else if (view === "week") d.setDate(d.getDate() + direction * 7);
   else d.setMonth(d.getMonth() + direction);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function slotTopPx(timeStr: string): number {
   if (!timeStr) return 0;
-  const parts = timeStr.split(':');
+  const parts = timeStr.split(":");
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   const minsFromStart = (h - GRID_START_HOUR) * 60 + m;
@@ -271,11 +283,11 @@ function durationHeightPx(mins: number): number {
 }
 
 function formatTime(timeStr: string): string {
-  if (!timeStr) return '';
-  const parts = timeStr.split(':');
+  if (!timeStr) return "";
+  const parts = timeStr.split(":");
   const h = parseInt(parts[0], 10);
   const m = parts[1];
-  const ampm = h >= 12 ? 'pm' : 'am';
+  const ampm = h >= 12 ? "pm" : "am";
   const hour = h % 12 || 12;
   return `${hour}:${m}${ampm}`;
 }
@@ -290,14 +302,33 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
   );
 }
 
+function BookingStatusBadge({ status }: { status: AppointmentStatus }) {
+  const isRelevant = ["confirmed", "pencilled-in", "cancelled"].includes(status);
+  if (!isRelevant) return null;
+
+  const colors = {
+    confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    "pencilled-in": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  };
+
+  const labels = {
+    confirmed: "Confirmed",
+    "pencilled-in": "Pending",
+    cancelled: "Cancelled",
+  };
+
+  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${colors[status]}`}>{labels[status]}</span>;
+}
+
 interface ToolbarProps {
   view: CalendarView;
   onViewChange: (v: CalendarView) => void;
   focusDate: string;
   onFocusDateChange: (d: string) => void;
   reps: Rep[];
-  repFilter: number | 'all';
-  onRepFilter: (r: number | 'all') => void;
+  repFilter: number | "all";
+  onRepFilter: (r: number | "all") => void;
   serviceTypes: ServiceType[];
   serviceFilter: string[];
   onServiceFilter: (s: string[]) => void;
@@ -308,20 +339,36 @@ interface ToolbarProps {
 }
 
 function CalendarToolbar({
-  view, onViewChange, focusDate, onFocusDateChange,
-  reps, repFilter, onRepFilter, serviceTypes, serviceFilter, onServiceFilter,
-  onRunSheet, onImportTimely, showLegend, onLegendToggle,
+  view,
+  onViewChange,
+  focusDate,
+  onFocusDateChange,
+  reps,
+  repFilter,
+  onRepFilter,
+  serviceTypes,
+  serviceFilter,
+  onServiceFilter,
+  onRunSheet,
+  onImportTimely,
+  showLegend,
+  onLegendToggle,
 }: ToolbarProps) {
-  const btnBase = 'px-3 py-1.5 text-sm rounded-lg font-medium transition-colors';
-  const btnActive = 'bg-amber-500 text-white';
-  const btnInactive = 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700';
+  const btnBase = "px-3 py-1.5 text-sm rounded-lg font-medium transition-colors";
+  const btnActive = "bg-amber-500 text-white";
+  const btnInactive =
+    "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700";
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
       {/* View toggle */}
       <div className="flex gap-1">
-        {(['day', 'week', 'agenda'] as CalendarView[]).map((v) => (
-          <button key={v} onClick={() => onViewChange(v)} className={`${btnBase} ${view === v ? btnActive : btnInactive}`}>
+        {(["day", "week", "agenda"] as CalendarView[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => onViewChange(v)}
+            className={`${btnBase} ${view === v ? btnActive : btnInactive}`}
+          >
             {v.charAt(0).toUpperCase() + v.slice(1)}
           </button>
         ))}
@@ -344,10 +391,7 @@ function CalendarToolbar({
         >
           <ChevronRight size={16} />
         </button>
-        <button
-          onClick={() => onFocusDateChange(todayStr())}
-          className={`${btnBase} ${btnInactive} text-xs`}
-        >
+        <button onClick={() => onFocusDateChange(todayStr())} className={`${btnBase} ${btnInactive} text-xs`}>
           Today
         </button>
       </div>
@@ -356,15 +400,19 @@ function CalendarToolbar({
       <div className="flex items-center gap-2">
         <select
           value={repFilter}
-          onChange={e => onRepFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          onChange={(e) => onRepFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
           className="text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300"
         >
           <option value="all">All Staff</option>
-          {reps.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          {reps.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
         </select>
         <button
           onClick={() => onLegendToggle?.()}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${showLegend ? 'bg-slate-700 text-white' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${showLegend ? "bg-slate-700 text-white" : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
         >
           🎨 <span className="hidden sm:inline">Legend</span>
         </button>
@@ -391,7 +439,7 @@ interface DayViewProps {
   events: CalendarEvent[];
   focusDate: string;
   reps: Rep[];
-  repFilter: number | 'all';
+  repFilter: number | "all";
   serviceTypes: ServiceType[];
   hiddenRepIds?: Set<number>;
   columns?: CalendarColumnDef[];
@@ -399,19 +447,35 @@ interface DayViewProps {
   onEventClick: (ev: CalendarEvent) => void;
 }
 
-function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepIds, columns, onSlotClick, onEventClick }: DayViewProps) {
+function DayView({
+  events,
+  focusDate,
+  reps,
+  repFilter,
+  serviceTypes,
+  hiddenRepIds,
+  columns,
+  onSlotClick,
+  onEventClick,
+}: DayViewProps) {
   const effectiveColumns = columns ?? CALENDAR_COLUMNS;
   const [currentTimePx, setCurrentTimePx] = useState<number | null>(null);
   const isToday = focusDate === todayStr();
 
   useEffect(() => {
-    if (!isToday) { setCurrentTimePx(null); return; }
+    if (!isToday) {
+      setCurrentTimePx(null);
+      return;
+    }
     const update = () => {
       const now = new Date();
       const h = now.getHours();
       const m = now.getMinutes();
-      if (h < GRID_START_HOUR || h >= GRID_END_HOUR) { setCurrentTimePx(null); return; }
-      setCurrentTimePx(((h - GRID_START_HOUR) * 60 + m) / SLOT_MINS * SLOT_HEIGHT_PX);
+      if (h < GRID_START_HOUR || h >= GRID_END_HOUR) {
+        setCurrentTimePx(null);
+        return;
+      }
+      setCurrentTimePx((((h - GRID_START_HOUR) * 60 + m) / SLOT_MINS) * SLOT_HEIGHT_PX);
     };
     update();
     const interval = setInterval(update, 60000);
@@ -423,18 +487,22 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
   const hours = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }, (_, i) => GRID_START_HOUR + i);
 
   // Events for this day, filtered by rep/hidden
-  const dayEvents = useMemo(() => events.filter(ev => {
-    if (ev.date !== focusDate) return false;
-    if (repFilter !== 'all' && ev.repId !== repFilter) return false;
-    if (ev.repId !== undefined && hiddenRepIds?.has(ev.repId)) return false;
-    return true;
-  }), [events, focusDate, repFilter, hiddenRepIds]);
+  const dayEvents = useMemo(
+    () =>
+      events.filter((ev) => {
+        if (ev.date !== focusDate) return false;
+        if (repFilter !== "all" && ev.repId !== repFilter) return false;
+        if (ev.repId !== undefined && hiddenRepIds?.has(ev.repId)) return false;
+        return true;
+      }),
+    [events, focusDate, repFilter, hiddenRepIds],
+  );
 
   // Group events into service-type columns
   const columnEvents = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    effectiveColumns.forEach(col => map.set(col.key, []));
-    dayEvents.forEach(ev => {
+    effectiveColumns.forEach((col) => map.set(col.key, []));
+    dayEvents.forEach((ev) => {
       const key = getColumnForEvent(ev, serviceTypes);
       map.get(key)?.push(ev);
     });
@@ -448,13 +516,13 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
         {/* Spacer matching column header height */}
         <div style={{ height: 48 }} />
         <div className="relative" style={{ height: gridHeight + 32 }}>
-          {hours.map(h => (
+          {hours.map((h) => (
             <div
               key={h}
               className="absolute text-xs text-gray-400 dark:text-gray-500 text-right pr-2"
-              style={{ top: (h - GRID_START_HOUR) * 2 * SLOT_HEIGHT_PX - 8, width: '100%' }}
+              style={{ top: (h - GRID_START_HOUR) * 2 * SLOT_HEIGHT_PX - 8, width: "100%" }}
             >
-              {h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`}
+              {h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`}
             </div>
           ))}
         </div>
@@ -463,12 +531,16 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
       {/* Service-type columns */}
       <div className="flex-1 overflow-auto">
         <div className="flex" style={{ minWidth: effectiveColumns.length * 160 }}>
-          {effectiveColumns.map(col => {
+          {effectiveColumns.map((col) => {
             const colEvs = columnEvents.get(col.key) ?? [];
             const positioned = assignOverlapLayout(colEvs);
 
             return (
-              <div key={col.key} className="border-r border-gray-200 dark:border-slate-700 flex-1" style={{ minWidth: 160 }}>
+              <div
+                key={col.key}
+                className="border-r border-gray-200 dark:border-slate-700 flex-1"
+                style={{ minWidth: 160 }}
+              >
                 {/* Column header */}
                 <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
                   {/* Colour accent bar */}
@@ -491,16 +563,16 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                   {/* Clickable slots */}
                   {Array.from({ length: totalSlots }, (_, i) => {
                     const slotH = GRID_START_HOUR + Math.floor(i / 2);
-                    const slotM = i % 2 === 0 ? '00' : '30';
-                    const timeStr = `${String(slotH).padStart(2, '0')}:${slotM}`;
+                    const slotM = i % 2 === 0 ? "00" : "30";
+                    const timeStr = `${String(slotH).padStart(2, "0")}:${slotM}`;
                     return (
                       <div
                         key={i}
                         onClick={() => onSlotClick({ date: focusDate, time: timeStr })}
                         className={`absolute w-full cursor-pointer hover:bg-amber-50/60 dark:hover:bg-amber-900/10 transition-colors ${
                           i % 2 === 0
-                            ? 'border-t border-gray-200 dark:border-slate-700'
-                            : 'border-t border-gray-100 dark:border-slate-800/60'
+                            ? "border-t border-gray-200 dark:border-slate-700"
+                            : "border-t border-gray-100 dark:border-slate-800/60"
                         }`}
                         style={{ top: i * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
                       />
@@ -519,22 +591,20 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                   )}
 
                   {/* Event blocks — Timely style: service-type colour block, client name + abbr·rep label */}
-                  {positioned.map(ev => {
+                  {positioned.map((ev) => {
                     const top = slotTopPx(ev.startTime);
                     const height = durationHeightPx(ev.durationMins ?? 30);
-                    const rep = reps.find(r => r.id === ev.repId);
-                    const repColor = rep?.color ?? '#9ca3af';
+                    const rep = reps.find((r) => r.id === ev.repId);
+                    const repColor = rep?.color ?? "#9ca3af";
                     const blockColor = col.headerColor; // colour = service type (column), not rep
                     const isTall = height >= 52;
-                    const isMed  = height >= 36;
+                    const isMed = height >= 36;
 
                     // Build the "FR · Joe" tag shown below client name
-                    const st = serviceTypes.find(s => s.id === ev.appointmentData?.serviceTypeId);
+                    const st = serviceTypes.find((s) => s.id === ev.appointmentData?.serviceTypeId);
                     const abbr = st ? getServiceAbbr(st.name) : null;
-                    const repFirst = rep?.name.split(' ')[0].toUpperCase() ?? null;
-                    const typeRepTag = abbr && repFirst
-                      ? `${abbr} · ${repFirst}`
-                      : abbr ?? repFirst ?? null;
+                    const repFirst = rep?.name.split(" ")[0].toUpperCase() ?? null;
+                    const typeRepTag = abbr && repFirst ? `${abbr} · ${repFirst}` : (abbr ?? repFirst ?? null);
 
                     // For lead overlays (dashed), keep simpler styling
                     const isDashed = ev.isLeadOverlay;
@@ -542,7 +612,10 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                     return (
                       <div
                         key={ev.id}
-                        onClick={e => { e.stopPropagation(); onEventClick(ev); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEventClick(ev);
+                        }}
                         className="absolute overflow-hidden rounded-md cursor-pointer hover:brightness-95 active:scale-[0.98] transition-all z-10 select-none"
                         style={{
                           top,
@@ -550,7 +623,7 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                           left: `calc(${ev.evLeft} + 2px)`,
                           width: `calc(${ev.evWidth} - 4px)`,
                           // Service-type tint background; rep colour on left border
-                          backgroundColor: blockColor + '22',
+                          backgroundColor: blockColor + "22",
                           borderLeft: `4px solid ${repColor}`,
                           borderTop: isDashed ? `1px dashed ${blockColor}88` : `1px solid ${blockColor}44`,
                           borderRight: isDashed ? `1px dashed ${blockColor}88` : `1px solid ${blockColor}33`,
@@ -558,15 +631,10 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                         }}
                       >
                         <div className="px-1.5 pt-0.5 pb-1 h-full flex flex-col overflow-hidden gap-0">
-                          {isDashed && (
-                            <span className="self-end text-[9px] opacity-60 leading-none">🔗</span>
-                          )}
+                          {isDashed && <span className="self-end text-[9px] opacity-60 leading-none">🔗</span>}
 
                           {/* ── PRIMARY: Client name ── */}
-                          <div
-                            className="text-xs font-extrabold leading-tight truncate"
-                            style={{ color: blockColor }}
-                          >
+                          <div className="text-xs font-extrabold leading-tight truncate" style={{ color: blockColor }}>
                             {ev.title}
                           </div>
 
@@ -584,14 +652,16 @@ function DayView({ events, focusDate, reps, repFilter, serviceTypes, hiddenRepId
                           {ev.startTime && isMed && (
                             <div className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
                               {formatTime(ev.startTime)}
-                              {ev.endTime ? ` – ${formatTime(ev.endTime)}` : ''}
+                              {ev.endTime ? ` – ${formatTime(ev.endTime)}` : ""}
                             </div>
                           )}
 
                           {/* ── Status badge (bottom, only on tall blocks) ── */}
                           {ev.appointmentData && isTall && (
                             <div className="mt-auto pt-0.5">
-                              <span className={`px-1 py-0.5 rounded text-[9px] font-semibold ${STATUS_BADGE_COLORS[ev.appointmentData.status]}`}>
+                              <span
+                                className={`px-1 py-0.5 rounded text-[9px] font-semibold ${STATUS_BADGE_COLORS[ev.appointmentData.status]}`}
+                              >
                                 {STATUS_LABELS[ev.appointmentData.status]}
                               </span>
                             </div>
@@ -625,17 +695,17 @@ interface WeekViewProps {
 function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventClick, onDayClick }: WeekViewProps) {
   const weekDates = getWeekDates(focusDate);
   const today = todayStr();
-  const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <div className="flex-1 overflow-auto h-full">
       <div className="grid grid-cols-7 min-w-[700px]">
         {weekDates.map((date, idx) => {
-          const dayEvents = events.filter(ev => ev.date === date);
-          const timedEvents = dayEvents.filter(ev => ev.startTime).slice(0, 4);
-          const allDayEvents = dayEvents.filter(ev => !ev.startTime);
-          const overflow = dayEvents.filter(ev => ev.startTime).length - 4;
-          const d = new Date(date + 'T00:00:00');
+          const dayEvents = events.filter((ev) => ev.date === date);
+          const timedEvents = dayEvents.filter((ev) => ev.startTime).slice(0, 4);
+          const allDayEvents = dayEvents.filter((ev) => !ev.startTime);
+          const overflow = dayEvents.filter((ev) => ev.startTime).length - 4;
+          const d = new Date(date + "T00:00:00");
           const dayNum = d.getDate();
           const isToday = date === today;
 
@@ -644,32 +714,35 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
               {/* Day header */}
               <div
                 onClick={() => onDayClick(date)}
-                className={`px-2 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 border-b border-gray-200 dark:border-slate-700 ${isToday ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-white dark:bg-slate-900'}`}
+                className={`px-2 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 border-b border-gray-200 dark:border-slate-700 ${isToday ? "bg-amber-50 dark:bg-amber-900/10" : "bg-white dark:bg-slate-900"}`}
               >
                 <div className="text-xs text-gray-500 dark:text-gray-400">{DAY_NAMES[idx]}</div>
-                <div className={`text-lg font-bold ${isToday ? 'text-amber-600' : 'text-gray-800 dark:text-gray-200'}`}>{dayNum}</div>
+                <div className={`text-lg font-bold ${isToday ? "text-amber-600" : "text-gray-800 dark:text-gray-200"}`}>
+                  {dayNum}
+                </div>
               </div>
 
               {/* All-day events */}
-              {allDayEvents.map(ev => (
+              {allDayEvents.map((ev) => (
                 <div
                   key={ev.id}
                   onClick={() => onEventClick(ev)}
                   className="mx-1 mb-1 mt-1 px-1.5 py-0.5 rounded text-xs cursor-pointer truncate font-medium"
-                  style={{ backgroundColor: ev.color + '33', borderLeft: `3px solid ${ev.color}` }}
+                  style={{ backgroundColor: ev.color + "33", borderLeft: `3px solid ${ev.color}` }}
                 >
-                  {ev.isLeadOverlay ? '🔗 ' : ''}{ev.title}
+                  {ev.isLeadOverlay ? "🔗 " : ""}
+                  {ev.title}
                 </div>
               ))}
 
               {/* Timed events */}
               <div className="px-1 py-1 space-y-0.5">
-                {timedEvents.map(ev => {
-                  const st = serviceTypes.find(s => s.id === ev.appointmentData?.serviceTypeId);
-                  const rep = reps.find(r => r.id === ev.repId);
+                {timedEvents.map((ev) => {
+                  const st = serviceTypes.find((s) => s.id === ev.appointmentData?.serviceTypeId);
+                  const rep = reps.find((r) => r.id === ev.repId);
                   const abbr = st ? getServiceAbbr(st.name) : null;
-                  const repFirst = rep?.name.split(' ')[0].toUpperCase();
-                  const tag = abbr && repFirst ? `${abbr} · ${repFirst}` : abbr ?? repFirst ?? null;
+                  const repFirst = rep?.name.split(" ")[0].toUpperCase();
+                  const tag = abbr && repFirst ? `${abbr} · ${repFirst}` : (abbr ?? repFirst ?? null);
                   const blockColor = ev.color; // service type colour
                   const repColor = rep?.color ?? ev.color;
                   return (
@@ -677,10 +750,11 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
                       key={ev.id}
                       onClick={() => onEventClick(ev)}
                       className="rounded px-1 py-0.5 cursor-pointer hover:opacity-80"
-                      style={{ backgroundColor: blockColor + '22', borderLeft: `2px solid ${repColor}` }}
+                      style={{ backgroundColor: blockColor + "22", borderLeft: `2px solid ${repColor}` }}
                     >
                       <div className="text-[10px] font-bold truncate" style={{ color: blockColor }}>
-                        {ev.isLeadOverlay ? '🔗 ' : ''}{ev.title}
+                        {ev.isLeadOverlay ? "🔗 " : ""}
+                        {ev.title}
                       </div>
                       {tag && (
                         <div className="text-[9px] font-semibold truncate" style={{ color: repColor }}>
@@ -691,16 +765,13 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
                   );
                 })}
                 {overflow > 0 && (
-                  <button
-                    onClick={() => onDayClick(date)}
-                    className="text-[10px] text-amber-600 hover:underline px-1"
-                  >
+                  <button onClick={() => onDayClick(date)} className="text-[10px] text-amber-600 hover:underline px-1">
                     +{overflow} more
                   </button>
                 )}
                 {/* Click to add */}
                 <div
-                  onClick={() => onSlotClick({ date, time: '09:00' })}
+                  onClick={() => onSlotClick({ date, time: "09:00" })}
                   className="text-[10px] text-gray-300 dark:text-gray-600 hover:text-gray-500 cursor-pointer px-1 py-1"
                 >
                   + Add
@@ -732,16 +803,16 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
   const start = focusDate >= today ? focusDate : today;
 
   const endDate = useMemo(() => {
-    const d = new Date(start + 'T00:00:00');
+    const d = new Date(start + "T00:00:00");
     d.setDate(d.getDate() + daysAhead);
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split("T")[0];
   }, [start, daysAhead]);
 
   const groupedEvents = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     events
-      .filter(ev => ev.date >= start && ev.date <= endDate)
-      .forEach(ev => {
+      .filter((ev) => ev.date >= start && ev.date <= endDate)
+      .forEach((ev) => {
         if (!map.has(ev.date)) map.set(ev.date, []);
         map.get(ev.date)!.push(ev);
       });
@@ -749,8 +820,13 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, evs]) => ({
         date,
-        label: new Date(date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-        events: evs.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || '')),
+        label: new Date(date + "T00:00:00").toLocaleDateString("en-AU", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        events: evs.sort((a, b) => (a.startTime || "").localeCompare(b.startTime || "")),
       }));
   }, [events, start, endDate]);
 
@@ -760,7 +836,7 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
         <div className="text-center">
           <Calendar size={48} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">No appointments in the next {daysAhead} days</p>
-          <button onClick={() => setDaysAhead(d => d + 30)} className="mt-2 text-sm text-amber-600 hover:underline">
+          <button onClick={() => setDaysAhead((d) => d + 30)} className="mt-2 text-sm text-amber-600 hover:underline">
             Load more
           </button>
         </div>
@@ -770,23 +846,32 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {groupedEvents.map(group => (
+      {groupedEvents.map((group) => (
         <div key={group.date}>
-          <div className={`px-4 py-2 flex items-center gap-2 sticky top-0 z-10 ${group.date === today ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-gray-50 dark:bg-slate-800/50'} border-b border-gray-200 dark:border-slate-700`}>
-            <span className={`text-sm font-semibold ${group.date === today ? 'text-amber-700 dark:text-amber-400' : 'text-gray-700 dark:text-gray-300'}`}>{group.label}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-400">{group.events.length}</span>
+          <div
+            className={`px-4 py-2 flex items-center gap-2 sticky top-0 z-10 ${group.date === today ? "bg-amber-50 dark:bg-amber-900/10" : "bg-gray-50 dark:bg-slate-800/50"} border-b border-gray-200 dark:border-slate-700`}
+          >
+            <span
+              className={`text-sm font-semibold ${group.date === today ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}
+            >
+              {group.label}
+            </span>
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-400">
+              {group.events.length}
+            </span>
           </div>
-          {group.events.map(ev => {
-            const st = ev.source === 'appointment' && ev.appointmentData
-              ? serviceTypes.find(s => s.id === ev.appointmentData!.serviceTypeId)
-              : null;
-            const rep = reps.find(r => r.id === ev.repId);
+          {group.events.map((ev) => {
+            const st =
+              ev.source === "appointment" && ev.appointmentData
+                ? serviceTypes.find((s) => s.id === ev.appointmentData!.serviceTypeId)
+                : null;
+            const rep = reps.find((r) => r.id === ev.repId);
             return (
               <div
                 key={ev.id}
                 onClick={() => {
                   if (ev.isLeadOverlay && ev.leadId) {
-                    const lead = leads.find(l => l.id === ev.leadId);
+                    const lead = leads.find((l) => l.id === ev.leadId);
                     if (lead) onLeadClick(lead);
                   } else {
                     onEventClick(ev);
@@ -795,20 +880,25 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
                 className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <div className="w-16 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                  {ev.startTime ? formatTime(ev.startTime) : 'All day'}
+                  {ev.startTime ? formatTime(ev.startTime) : "All day"}
                   {ev.endTime && <span className="block">{formatTime(ev.endTime)}</span>}
                 </div>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ev.color }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                    {ev.isLeadOverlay && <span className="mr-1 text-xs">🔗</span>}{ev.title}
+                    {ev.isLeadOverlay && <span className="mr-1 text-xs">🔗</span>}
+                    {ev.title}
                   </div>
                   {st && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{st.name}</div>}
-                  {ev.source !== 'appointment' && (
-                    <div className="text-xs text-gray-400 capitalize">{ev.source.replace('-', ' ')}</div>
+                  {ev.source !== "appointment" && (
+                    <div className="text-xs text-gray-400 capitalize">{ev.source.replace("-", " ")}</div>
                   )}
                 </div>
-                {rep && <div className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 hidden sm:block">{rep.name}</div>}
+                {rep && (
+                  <div className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 hidden sm:block">
+                    {rep.name}
+                  </div>
+                )}
                 {ev.appointmentData && <StatusBadge status={ev.appointmentData.status} />}
               </div>
             );
@@ -816,7 +906,10 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
         </div>
       ))}
       <div className="p-4 text-center">
-        <button onClick={() => setDaysAhead(d => d + 30)} className="text-sm text-amber-600 hover:underline px-4 py-2">
+        <button
+          onClick={() => setDaysAhead((d) => d + 30)}
+          className="text-sm text-amber-600 hover:underline px-4 py-2"
+        >
           Load next 30 days
         </button>
       </div>
@@ -831,49 +924,48 @@ interface RunSheetModalProps {
   focusDate: string;
   reps: Rep[];
   serviceTypes: ServiceType[];
-  repFilter: number | 'all';
+  repFilter: number | "all";
   onClose: () => void;
 }
 
 function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClose }: RunSheetModalProps) {
   const todayEvents = useMemo(() => {
-    return events
-      .filter(e => e.date === focusDate)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return events.filter((e) => e.date === focusDate).sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [events, focusDate]);
 
-  const repName = repFilter === 'all'
-    ? 'All Staff'
-    : reps.find(r => r.id === repFilter)?.name ?? 'Unknown';
+  const repName = repFilter === "all" ? "All Staff" : (reps.find((r) => r.id === repFilter)?.name ?? "Unknown");
 
   const handlePrint = () => window.print();
 
   const formatTimeAMPM = (t: string) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
-    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
   };
 
   const getAddress = (event: CalendarEvent): string => {
     if (event.appointmentData?.clientAddress) return event.appointmentData.clientAddress;
-    return '';
+    return "";
   };
 
   const getPhone = (event: CalendarEvent): string => {
     if (event.appointmentData?.clientPhone) return event.appointmentData.clientPhone;
-    return '';
+    return "";
   };
 
   const getServiceName = (event: CalendarEvent): string => {
     if (!event.appointmentData) return event.source;
-    return serviceTypes.find(s => s.id === event.appointmentData!.serviceTypeId)?.name ?? event.title;
+    return serviceTypes.find((s) => s.id === event.appointmentData!.serviceTypeId)?.name ?? event.title;
   };
 
-  const repColor = repFilter !== 'all' ? reps.find(r => r.id === repFilter)?.color : undefined;
-  const formattedDate = new Date(focusDate + 'T00:00:00').toLocaleDateString('en-AU', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  const repColor = repFilter !== "all" ? reps.find((r) => r.id === repFilter)?.color : undefined;
+  const formattedDate = new Date(focusDate + "T00:00:00").toLocaleDateString("en-AU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 
   return (
@@ -898,7 +990,10 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
         {/* Printable content */}
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden print-sheet">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200" style={{ borderTopColor: repColor ?? '#f59e0b', borderTopWidth: 4 }}>
+          <div
+            className="px-8 py-6 border-b border-gray-200"
+            style={{ borderTopColor: repColor ?? "#f59e0b", borderTopWidth: 4 }}
+          >
             <div className="flex items-center gap-3">
               {repColor && <div className="w-4 h-4 rounded-full" style={{ backgroundColor: repColor }} />}
               <div>
@@ -918,17 +1013,13 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
               {todayEvents.map((event) => {
                 const address = getAddress(event);
                 const phone = getPhone(event);
-                const mapsUrl = address
-                  ? `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
-                  : null;
-                const repForEvent = event.repId ? reps.find(r => r.id === event.repId) : null;
+                const mapsUrl = address ? `https://maps.google.com/maps?q=${encodeURIComponent(address)}` : null;
+                const repForEvent = event.repId ? reps.find((r) => r.id === event.repId) : null;
                 return (
                   <div key={event.id} className="px-8 py-5 flex gap-6">
                     {/* Time column */}
                     <div className="w-24 flex-shrink-0">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {formatTimeAMPM(event.startTime)}
-                      </div>
+                      <div className="text-sm font-semibold text-gray-900">{formatTimeAMPM(event.startTime)}</div>
                       {event.endTime && (
                         <div className="text-xs text-gray-400 mt-0.5">→ {formatTimeAMPM(event.endTime)}</div>
                       )}
@@ -942,9 +1033,12 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
                           <p className="font-semibold text-gray-900">{event.title}</p>
                           <p className="text-xs text-gray-500 mt-0.5">{getServiceName(event)}</p>
                         </div>
-                        {repForEvent && repFilter === 'all' && (
+                        {repForEvent && repFilter === "all" && (
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: repForEvent.color ?? '#9ca3af' }} />
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: repForEvent.color ?? "#9ca3af" }}
+                            />
                             <span className="text-xs text-gray-500">{repForEvent.name}</span>
                           </div>
                         )}
@@ -952,17 +1046,28 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
                       <div className="mt-2 space-y-1">
                         {phone && (
                           <p className="text-sm text-gray-700">
-                            📞 <a href={`tel:${phone}`} className="no-print">{phone}</a>
+                            📞{" "}
+                            <a href={`tel:${phone}`} className="no-print">
+                              {phone}
+                            </a>
                             <span className="print-only hidden">{phone}</span>
                           </p>
                         )}
                         {address && (
                           <p className="text-sm text-gray-700">
-                            📍 {mapsUrl ? (
-                              <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline no-print">
+                            📍{" "}
+                            {mapsUrl ? (
+                              <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline no-print"
+                              >
                                 {address}
                               </a>
-                            ) : address}
+                            ) : (
+                              address
+                            )}
                             <span className="print-only hidden">{address}</span>
                           </p>
                         )}
@@ -980,7 +1085,7 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
           {/* Footer */}
           <div className="px-8 py-4 bg-gray-50 border-t border-gray-100">
             <p className="text-xs text-gray-400 text-center">
-              ASG Live Leads — Generated {new Date().toLocaleDateString('en-AU')}
+              ASG Live Leads — Generated {new Date().toLocaleDateString("en-AU")}
             </p>
           </div>
         </div>
@@ -991,7 +1096,15 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
 
 // ── Calendar Legend ───────────────────────────────────────────────────────────
 
-const LEGEND_CATEGORY_ORDER = ['First Consult', 'Finance Run', 'Property Sale', 'SMSF', 'Coffee Runs', 'General', 'Finance'];
+const LEGEND_CATEGORY_ORDER = [
+  "First Consult",
+  "Finance Run",
+  "Property Sale",
+  "SMSF",
+  "Coffee Runs",
+  "General",
+  "Finance",
+];
 
 interface CalendarLegendProps {
   reps: Rep[];
@@ -1001,17 +1114,25 @@ interface CalendarLegendProps {
   columnOrder: string[];
   onToggleRep: (id: number) => void;
   onToggleServiceType: (id: string) => void;
-  onMoveColumn: (key: string, dir: 'up' | 'down') => void;
+  onMoveColumn: (key: string, dir: "up" | "down") => void;
   onDateJump: (date: string) => void;
   onClose: () => void;
 }
 
 function CalendarLegend({
-  reps, serviceTypes, hiddenRepIds, hiddenServiceTypeIds, columnOrder,
-  onToggleRep, onToggleServiceType, onMoveColumn, onDateJump, onClose,
+  reps,
+  serviceTypes,
+  hiddenRepIds,
+  hiddenServiceTypeIds,
+  columnOrder,
+  onToggleRep,
+  onToggleServiceType,
+  onMoveColumn,
+  onDateJump,
+  onClose,
 }: CalendarLegendProps) {
-  const [jumpDate, setJumpDate] = useState('');
-  const categories = Array.from(new Set(serviceTypes.map(s => s.category))).sort((a, b) => {
+  const [jumpDate, setJumpDate] = useState("");
+  const categories = Array.from(new Set(serviceTypes.map((s) => s.category))).sort((a, b) => {
     const ai = LEGEND_CATEGORY_ORDER.indexOf(a);
     const bi = LEGEND_CATEGORY_ORDER.indexOf(b);
     if (ai !== -1 && bi !== -1) return ai - bi;
@@ -1032,15 +1153,18 @@ function CalendarLegend({
       {/* Team Members */}
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Team Members</p>
       <div className="space-y-1 mb-4">
-        {reps.map(rep => (
-          <label key={rep.id} className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800">
+        {reps.map((rep) => (
+          <label
+            key={rep.id}
+            className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+          >
             <input
               type="checkbox"
               checked={!hiddenRepIds.has(rep.id)}
               onChange={() => onToggleRep(rep.id)}
               className="rounded accent-amber-500"
             />
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: rep.color ?? '#9ca3af' }} />
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: rep.color ?? "#9ca3af" }} />
             <span className="text-sm text-gray-700 dark:text-gray-300">{rep.name}</span>
           </label>
         ))}
@@ -1048,22 +1172,27 @@ function CalendarLegend({
 
       {/* Appointment Types by category */}
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Appointment Types</p>
-      {categories.map(cat => (
+      {categories.map((cat) => (
         <div key={cat} className="mb-2.5">
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1 px-1">{cat}</p>
           <div className="space-y-1">
-            {serviceTypes.filter(s => s.category === cat).map(st => (
-              <label key={st.id} className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800">
-                <input
-                  type="checkbox"
-                  checked={!hiddenServiceTypeIds.has(st.id)}
-                  onChange={() => onToggleServiceType(st.id)}
-                  className="rounded accent-amber-500"
-                />
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: st.color }} />
-                <span className="text-xs text-gray-700 dark:text-gray-300">{st.name}</span>
-              </label>
-            ))}
+            {serviceTypes
+              .filter((s) => s.category === cat)
+              .map((st) => (
+                <label
+                  key={st.id}
+                  className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!hiddenServiceTypeIds.has(st.id)}
+                    onChange={() => onToggleServiceType(st.id)}
+                    className="rounded accent-amber-500"
+                  />
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: st.color }} />
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{st.name}</span>
+                </label>
+              ))}
           </div>
         </div>
       ))}
@@ -1074,9 +1203,12 @@ function CalendarLegend({
         <input
           type="date"
           value={jumpDate}
-          onChange={e => {
+          onChange={(e) => {
             setJumpDate(e.target.value);
-            if (e.target.value) { onDateJump(e.target.value); onClose(); }
+            if (e.target.value) {
+              onDateJump(e.target.value);
+              onClose();
+            }
           }}
           className="w-full text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200"
         />
@@ -1087,24 +1219,31 @@ function CalendarLegend({
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Column Order</p>
         <div className="space-y-0.5">
           {columnOrder.map((key, idx) => {
-            const col = CALENDAR_COLUMNS.find(c => c.key === key);
+            const col = CALENDAR_COLUMNS.find((c) => c.key === key);
             if (!col) return null;
             return (
-              <div key={key} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800">
+              <div
+                key={key}
+                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+              >
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.headerColor }} />
                 <span className="text-xs text-gray-700 dark:text-gray-300 flex-1">{col.label}</span>
                 <button
                   disabled={idx === 0}
-                  onClick={() => onMoveColumn(key, 'up')}
+                  onClick={() => onMoveColumn(key, "up")}
                   className="px-1 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-not-allowed leading-none"
                   title="Move left"
-                >↑</button>
+                >
+                  ↑
+                </button>
                 <button
                   disabled={idx === columnOrder.length - 1}
-                  onClick={() => onMoveColumn(key, 'down')}
+                  onClick={() => onMoveColumn(key, "down")}
                   className="px-1 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-not-allowed leading-none"
                   title="Move right"
-                >↓</button>
+                >
+                  ↓
+                </button>
               </div>
             );
           })}
@@ -1122,22 +1261,34 @@ interface CalendarClientPanelProps {
   serviceTypes: ServiceType[];
   events: CalendarEvent[];
   onEditAppointment: (appt: Appointment) => void;
+  onCreateAppointment: () => void;
   onViewProfile: (lead: Lead) => void;
   onClose: () => void;
 }
 
 function CalendarClientPanel({
-  lead, reps, serviceTypes, events, onEditAppointment, onViewProfile, onClose,
+  lead,
+  reps,
+  serviceTypes,
+  events,
+  onEditAppointment,
+  onCreateAppointment,
+  onViewProfile,
+  onClose,
 }: CalendarClientPanelProps) {
   const relatedAppointments = events
-    .filter(ev => ev.leadId === lead.id && ev.appointmentData)
-    .map(ev => ev.appointmentData!);
+    .filter((ev) => (ev.leadId === lead.id || ev.appointmentData?.linkedLeadId === lead.id) && ev.appointmentData)
+    .map((ev) => ev.appointmentData!);
+  const firstAppointment = relatedAppointments[0];
 
   return (
     <div className="hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-200 truncate">{lead.name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-200 truncate">{lead.name}</h3>
+          {firstAppointment && <BookingStatusBadge status={firstAppointment.status} />}
+        </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
           <X size={16} />
         </button>
@@ -1164,19 +1315,28 @@ function CalendarClientPanel({
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Appointments</p>
             <div className="space-y-2">
-              {relatedAppointments.map(appt => {
-                const st = serviceTypes.find(s => s.id === appt.serviceTypeId);
-                const rep = reps.find(r => r.id === appt.repId);
+              {relatedAppointments.map((appt) => {
+                const st = serviceTypes.find((s) => s.id === appt.serviceTypeId);
+                const rep = reps.find((r) => r.id === appt.repId);
                 return (
-                  <div key={appt.id} className="p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <div
+                    key={appt.id}
+                    className="p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  >
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{st?.name ?? 'Appointment'}</span>
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                        {st?.name ?? "Appointment"}
+                      </span>
                       <StatusBadge status={appt.status} />
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(appt.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {new Date(appt.date + "T00:00:00").toLocaleDateString("en-AU", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                      })}
                       {appt.startTime && ` · ${formatTime(appt.startTime)}`}
-                      {rep && ` · ${rep.name.split(' ')[0]}`}
+                      {rep && ` · ${rep.name.split(" ")[0]}`}
                     </div>
                     {appt.notes && <p className="text-xs text-gray-400 mt-1 italic">{appt.notes}</p>}
                     <button
@@ -1197,15 +1357,20 @@ function CalendarClientPanel({
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Recent Calls</p>
             <div className="space-y-1.5">
-              {lead.callHistory.slice(-5).reverse().map((call, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <span className="text-gray-400 flex-shrink-0 w-16">
-                    {new Date(call.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                  </span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">{String(call.result).replace(/-/g, ' ')}</span>
-                  {call.rep && <span className="text-gray-400">· {call.rep}</span>}
-                </div>
-              ))}
+              {lead.callHistory
+                .slice(-5)
+                .reverse()
+                .map((call, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className="text-gray-400 flex-shrink-0 w-16">
+                      {new Date(call.date).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                    </span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">
+                      {String(call.result).replace(/-/g, " ")}
+                    </span>
+                    {call.rep && <span className="text-gray-400">· {call.rep}</span>}
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -1219,12 +1384,50 @@ function CalendarClientPanel({
         )}
       </div>
 
+      {/* Compact Profile Snippet */}
+      <div className="px-4 py-2 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          {lead.name && <div className="font-medium text-gray-800 dark:text-gray-200">{lead.name}</div>}
+          {lead.phone && <div className="text-gray-600 dark:text-gray-400">📞 {lead.phone}</div>}
+          {lead.status && <div className="text-gray-600 dark:text-gray-400">Status: {lead.status}</div>}
+          {lead.notes && (
+            <div className="col-span-2 text-gray-500 dark:text-gray-500 truncate">
+              {lead.notes.length > 80 ? `${lead.notes.slice(0, 80)}...` : lead.notes}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Footer */}
       <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700">
+        <div className="flex flex-col gap-2 mb-2">
+          <button
+            onClick={() => firstAppointment && onEditAppointment(firstAppointment)}
+            disabled={!firstAppointment}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Edit size={16} />
+            Edit Booking
+          </button>
+          <button
+            onClick={() => {
+              if (firstAppointment) {
+                onEditAppointment(firstAppointment);
+              } else {
+                onCreateAppointment();
+              }
+            }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
+          >
+            <Calendar size={16} />
+            Reschedule Booking
+          </button>
+        </div>
         <button
           onClick={() => onViewProfile(lead)}
-          className="w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
         >
+          <User size={16} />
           View Full Profile →
         </button>
       </div>
@@ -1249,7 +1452,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
   const { save: saveAppt } = useSaveAppointment();
   const { remove: deleteAppt } = useDeleteAppointment();
   const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === "admin";
 
   const handleLoadDefaultServiceTypes = async () => {
     setLoadingDefaults(true);
@@ -1257,11 +1460,11 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       for (const st of DEFAULT_SERVICE_TYPES) {
         const id = `st_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         await saveSvcType({ id, ...st });
-        await new Promise(r => setTimeout(r, 60));
+        await new Promise((r) => setTimeout(r, 60));
       }
-      showToast(`✅ ${DEFAULT_SERVICE_TYPES.length} service types loaded`, 'success');
+      showToast(`✅ ${DEFAULT_SERVICE_TYPES.length} service types loaded`, "success");
     } catch {
-      showToast('❌ Failed to load defaults', 'error');
+      showToast("❌ Failed to load defaults", "error");
     } finally {
       setLoadingDefaults(false);
     }
@@ -1270,37 +1473,42 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
   // Column ordering — persisted to localStorage
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     try {
-      const stored = localStorage.getItem('asgCalColOrder');
+      const stored = localStorage.getItem("asgCalColOrder");
       if (stored) {
         const parsed = JSON.parse(stored) as string[];
-        const allKeys = CALENDAR_COLUMNS.map(c => c.key);
-        const valid = parsed.filter(k => allKeys.includes(k));
-        const missing = allKeys.filter(k => !valid.includes(k));
+        const allKeys = CALENDAR_COLUMNS.map((c) => c.key);
+        const valid = parsed.filter((k) => allKeys.includes(k));
+        const missing = allKeys.filter((k) => !valid.includes(k));
         return [...valid, ...missing];
       }
-    } catch { /* ignore */ }
-    return CALENDAR_COLUMNS.map(c => c.key);
+    } catch {
+      /* ignore */
+    }
+    return CALENDAR_COLUMNS.map((c) => c.key);
   });
 
-  const orderedColumns = useMemo(() =>
-    columnOrder.map(k => CALENDAR_COLUMNS.find(c => c.key === k)).filter(Boolean) as typeof CALENDAR_COLUMNS,
-    [columnOrder]
+  const orderedColumns = useMemo(
+    () => columnOrder.map((k) => CALENDAR_COLUMNS.find((c) => c.key === k)).filter(Boolean) as typeof CALENDAR_COLUMNS,
+    [columnOrder],
   );
 
-  const handleMoveColumn = (key: string, dir: 'up' | 'down') => {
-    setColumnOrder(prev => {
+  const handleMoveColumn = (key: string, dir: "up" | "down") => {
+    setColumnOrder((prev) => {
       const arr = [...prev];
       const idx = arr.indexOf(key);
-      if (dir === 'up' && idx > 0) { [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]]; }
-      else if (dir === 'down' && idx < arr.length - 1) { [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]; }
-      localStorage.setItem('asgCalColOrder', JSON.stringify(arr));
+      if (dir === "up" && idx > 0) {
+        [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+      } else if (dir === "down" && idx < arr.length - 1) {
+        [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+      }
+      localStorage.setItem("asgCalColOrder", JSON.stringify(arr));
       return arr;
     });
   };
 
-  const [view, setView] = useState<CalendarView>('day');
+  const [view, setView] = useState<CalendarView>("day");
   const [focusDate, setFocusDate] = useState<string>(todayStr());
-  const [repFilter, setRepFilter] = useState<number | 'all'>('all');
+  const [repFilter, setRepFilter] = useState<number | "all">("all");
   const [serviceFilter, setServiceFilter] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
@@ -1316,18 +1524,15 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
   const [clientPanelLead, setClientPanelLead] = useState<Lead | null>(null);
 
   // Reps visible on calendar (respect showOnCalendar flag)
-  const visibleReps = useMemo(() =>
-    reps.filter(r => r.active && r.showOnCalendar !== false),
-    [reps]
-  );
+  const visibleReps = useMemo(() => reps.filter((r) => r.active && r.showOnCalendar !== false), [reps]);
 
   const dateRange = useMemo(() => {
-    const d = new Date(focusDate + 'T00:00:00');
+    const d = new Date(focusDate + "T00:00:00");
     const from = new Date(d);
     from.setDate(from.getDate() - 14);
     const to = new Date(d);
     to.setDate(to.getDate() + 45);
-    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+    return { from: from.toISOString().split("T")[0], to: to.toISOString().split("T")[0] };
   }, [focusDate]);
 
   const { appointments } = useAppointments(dateRange);
@@ -1339,7 +1544,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
     appointments.forEach((a) => {
       events.push({
         id: a.id,
-        source: 'appointment',
+        source: "appointment",
         date: a.date,
         startTime: a.startTime,
         endTime: a.endTime,
@@ -1355,17 +1560,17 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
     // Lead overlays
     leads.forEach((lead) => {
       const leadId = lead.id;
-      const name = lead.name ?? 'Unknown';
+      const name = lead.name ?? "Unknown";
 
-      if (lead.callbackDate && lead.status === 'Revisit') {
+      if (lead.callbackDate && lead.status === "Revisit") {
         events.push({
           id: `lead-${leadId}-cb`,
-          source: 'callback',
+          source: "callback",
           date: lead.callbackDate,
-          startTime: lead.callbackTime ?? '',
+          startTime: lead.callbackTime ?? "",
           title: `📞 ${name}`,
           repId: lead.dqRep,
-          color: '#f97316',
+          color: "#f97316",
           isLeadOverlay: true,
           leadId,
         });
@@ -1373,12 +1578,12 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       if (lead.bookingDate) {
         events.push({
           id: `lead-${leadId}-bk`,
-          source: 'booking',
+          source: "booking",
           date: lead.bookingDate,
-          startTime: lead.bookingTime ?? '',
+          startTime: lead.bookingTime ?? "",
           title: `🗓 ${name}`,
           repId: lead.fcRep ?? lead.dqRep,
-          color: '#8b5cf6',
+          color: "#8b5cf6",
           isLeadOverlay: true,
           leadId,
         });
@@ -1386,12 +1591,12 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       if (lead.fcAppt?.date) {
         events.push({
           id: `lead-${leadId}-fc`,
-          source: 'fc-appt',
+          source: "fc-appt",
           date: lead.fcAppt.date,
-          startTime: '',
+          startTime: "",
           title: `FC: ${name}`,
           repId: lead.fcAppt.repId ?? lead.fcRep,
-          color: '#ef4444',
+          color: "#ef4444",
           isLeadOverlay: true,
           leadId,
         });
@@ -1399,12 +1604,12 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       if (lead.frAppt?.date) {
         events.push({
           id: `lead-${leadId}-fr`,
-          source: 'fr-appt',
+          source: "fr-appt",
           date: lead.frAppt.date,
-          startTime: '',
+          startTime: "",
           title: `FR: ${name}`,
           repId: lead.frAppt.repId ?? lead.frRep,
-          color: '#22c55e',
+          color: "#22c55e",
           isLeadOverlay: true,
           leadId,
         });
@@ -1412,12 +1617,12 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       if (lead.settlementDate) {
         events.push({
           id: `lead-${leadId}-st`,
-          source: 'settlement',
+          source: "settlement",
           date: lead.settlementDate,
-          startTime: '',
+          startTime: "",
           title: `🏦 ${name}`,
           repId: lead.psRep,
-          color: '#f59e0b',
+          color: "#f59e0b",
           isLeadOverlay: true,
           leadId,
         });
@@ -1429,8 +1634,8 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
 
   const filteredEvents = useMemo(() => {
     return allEvents.filter((ev) => {
-      if (repFilter !== 'all' && ev.repId !== repFilter) return false;
-      if (serviceFilter.length > 0 && ev.source === 'appointment' && ev.appointmentData) {
+      if (repFilter !== "all" && ev.repId !== repFilter) return false;
+      if (serviceFilter.length > 0 && ev.source === "appointment" && ev.appointmentData) {
         if (!serviceFilter.includes(ev.appointmentData.serviceTypeId)) return false;
       }
       // Legend hide filters
@@ -1442,48 +1647,57 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
 
   const handleSaveAppt = async (appt: Appointment) => {
     const ok = await saveAppt(appt);
-    if (ok) showToast('✅ Appointment saved', 'success');
-    else showToast('❌ Failed to save appointment', 'error');
+    if (ok) showToast("✅ Appointment saved", "success");
+    else showToast("❌ Failed to save appointment", "error");
     setModalOpen(false);
     setEditingAppt(null);
   };
 
   const handleDeleteAppt = async (id: string) => {
     await deleteAppt(id);
-    showToast('Appointment deleted', 'success');
+    showToast("Appointment deleted", "success");
     setModalOpen(false);
     setEditingAppt(null);
   };
 
-  const handleEventClick = useCallback((ev: CalendarEvent) => {
-    if (ev.isLeadOverlay && ev.leadId) {
-      const lead = leads.find(l => l.id === ev.leadId) ?? null;
-      setSelectedLead(lead);
-    } else if (ev.appointmentData) {
-      // If appointment is linked to a lead, open client panel instead of modal
-      const linkedLead = ev.appointmentData.linkedLeadId
-        ? leads.find(l => l.id === ev.appointmentData!.linkedLeadId) ?? null
-        : null;
-      if (linkedLead) {
-        setClientPanelLead(linkedLead);
-        setSelectedLead(null);
-      } else {
-        setClientPanelLead(null);
-        setEditingAppt(ev.appointmentData);
-        setPrefilledTime(null);
-        setModalOpen(true);
+  const handleEventClick = useCallback(
+    (ev: CalendarEvent) => {
+      if (ev.isLeadOverlay && ev.leadId) {
+        const lead = leads.find((l) => l.id === ev.leadId) ?? null;
+        setSelectedLead(lead);
+      } else if (ev.appointmentData) {
+        // If appointment is linked to a lead, open client panel instead of modal
+        const linkedLead = ev.appointmentData.linkedLeadId
+          ? (leads.find((l) => l.id === ev.appointmentData!.linkedLeadId) ?? null)
+          : null;
+        if (linkedLead) {
+          setClientPanelLead(linkedLead);
+          setSelectedLead(null);
+        } else {
+          setClientPanelLead(null);
+          setEditingAppt(ev.appointmentData);
+          setPrefilledTime(null);
+          setModalOpen(true);
+        }
       }
-    }
-  }, [leads]);
+    },
+    [leads],
+  );
 
-  const handleSaveLeadFromSidebar = useCallback((lead: Lead) => {
-    saveLead(lead);
-  }, [saveLead]);
+  const handleSaveLeadFromSidebar = useCallback(
+    (lead: Lead) => {
+      saveLead(lead);
+    },
+    [saveLead],
+  );
 
-  const handleDeleteLeadFromSidebar = useCallback((lead: Lead) => {
-    deleteLead(lead.id);
-    setSelectedLead(null);
-  }, [deleteLead]);
+  const handleDeleteLeadFromSidebar = useCallback(
+    (lead: Lead) => {
+      deleteLead(lead.id);
+      setSelectedLead(null);
+    },
+    [deleteLead],
+  );
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-slate-900">
@@ -1502,7 +1716,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
           onRunSheet={() => setShowRunSheet(true)}
           onImportTimely={() => setShowTimelyImport(true)}
           showLegend={showLegend}
-          onLegendToggle={() => setShowLegend(s => !s)}
+          onLegendToggle={() => setShowLegend((s) => !s)}
         />
         {showLegend && (
           <CalendarLegend
@@ -1512,17 +1726,23 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
             hiddenServiceTypeIds={hiddenServiceTypeIds}
             columnOrder={columnOrder}
             onMoveColumn={handleMoveColumn}
-            onToggleRep={(id) => setHiddenRepIds(prev => {
-              const next = new Set(prev);
-              next.has(id) ? next.delete(id) : next.add(id);
-              return next;
-            })}
-            onToggleServiceType={(id) => setHiddenServiceTypeIds(prev => {
-              const next = new Set(prev);
-              next.has(id) ? next.delete(id) : next.add(id);
-              return next;
-            })}
-            onDateJump={(date) => { setFocusDate(date); }}
+            onToggleRep={(id) =>
+              setHiddenRepIds((prev) => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+              })
+            }
+            onToggleServiceType={(id) =>
+              setHiddenServiceTypeIds((prev) => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+              })
+            }
+            onDateJump={(date) => {
+              setFocusDate(date);
+            }}
             onClose={() => setShowLegend(false)}
           />
         )}
@@ -1532,23 +1752,29 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
       {serviceTypes.length === 0 && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300 flex-shrink-0">
           <span className="text-base">📋</span>
-          <span className="flex-1">No appointment types configured — the calendar columns won't show until you load the defaults.</span>
+          <span className="flex-1">
+            No appointment types configured — the calendar columns won't show until you load the defaults.
+          </span>
           {isAdmin && (
             <button
               onClick={handleLoadDefaultServiceTypes}
               disabled={loadingDefaults}
               className="px-3 py-1 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-400 disabled:opacity-50 transition flex-shrink-0"
             >
-              {loadingDefaults ? 'Loading…' : 'Load Defaults'}
+              {loadingDefaults ? "Loading…" : "Load Defaults"}
             </button>
           )}
-          {!isAdmin && <span className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">Ask your manager to load service types in Admin → Calendar Settings.</span>}
+          {!isAdmin && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">
+              Ask your manager to load service types in Admin → Calendar Settings.
+            </span>
+          )}
         </div>
       )}
 
       <div className="flex-1 min-h-0 overflow-hidden flex">
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          {view === 'day' && (
+          {view === "day" && (
             <DayView
               events={filteredEvents}
               focusDate={focusDate}
@@ -1557,22 +1783,33 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
               serviceTypes={serviceTypes}
               hiddenRepIds={hiddenRepIds}
               columns={orderedColumns}
-              onSlotClick={(slot) => { setPrefilledTime(slot); setEditingAppt(null); setModalOpen(true); }}
+              onSlotClick={(slot) => {
+                setPrefilledTime(slot);
+                setEditingAppt(null);
+                setModalOpen(true);
+              }}
               onEventClick={handleEventClick}
             />
           )}
-          {view === 'week' && (
+          {view === "week" && (
             <WeekView
               events={filteredEvents}
               focusDate={focusDate}
               reps={visibleReps}
               serviceTypes={serviceTypes}
-              onSlotClick={(slot) => { setPrefilledTime(slot); setEditingAppt(null); setModalOpen(true); }}
+              onSlotClick={(slot) => {
+                setPrefilledTime(slot);
+                setEditingAppt(null);
+                setModalOpen(true);
+              }}
               onEventClick={handleEventClick}
-              onDayClick={(date) => { setFocusDate(date); setView('day'); }}
+              onDayClick={(date) => {
+                setFocusDate(date);
+                setView("day");
+              }}
             />
           )}
-          {view === 'agenda' && (
+          {view === "agenda" && (
             <AgendaView
               events={filteredEvents}
               focusDate={focusDate}
@@ -1595,6 +1832,12 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
             onEditAppointment={(appt) => {
               setClientPanelLead(null);
               setEditingAppt(appt);
+              setPrefilledTime(null);
+              setModalOpen(true);
+            }}
+            onCreateAppointment={() => {
+              setClientPanelLead(null);
+              setEditingAppt(null);
               setPrefilledTime(null);
               setModalOpen(true);
             }}
@@ -1628,7 +1871,10 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
           currentUser={currentUser}
           onSave={handleSaveAppt}
           onDelete={handleDeleteAppt}
-          onClose={() => { setModalOpen(false); setEditingAppt(null); }}
+          onClose={() => {
+            setModalOpen(false);
+            setEditingAppt(null);
+          }}
         />
       )}
 
@@ -1645,9 +1891,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
 
       {showTimelyImport && (
         <Suspense fallback={null}>
-          <TimelyCSVImportModal
-            onClose={() => setShowTimelyImport(false)}
-          />
+          <TimelyCSVImportModal onClose={() => setShowTimelyImport(false)} />
         </Suspense>
       )}
     </div>
