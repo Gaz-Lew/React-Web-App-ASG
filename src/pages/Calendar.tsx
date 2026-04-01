@@ -198,8 +198,8 @@ const STATUS_BADGE_COLORS: Record<AppointmentStatus, string> = {
   "pencilled-in": "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400",
   confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   arrived: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  started: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  completed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  started: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400",
+  completed: "bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300",
   "no-show": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   cancelled: "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-500",
   "rebook-fc": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -418,7 +418,7 @@ function CalendarToolbar({
         </button>
         <button
           onClick={() => onImportTimely?.()}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
         >
           📥 <span className="hidden sm:inline">Import Timely</span>
         </button>
@@ -1304,9 +1304,15 @@ function CalendarClientPanel({
       })()
     : "No appointment scheduled";
 
+  // Construct full address for navigation
+  const fullAddress = [lead.houseNum, lead.street, lead.suburb, lead.postcode].filter(Boolean).join(" ");
+  const mapsUrl = fullAddress
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`
+    : "";
+
   return (
     <div
-      className={`hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 ${relatedAppointments.length === 0 ? "bg-amber-50 dark:bg-amber-900/20" : ""}`}
+      className={`hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-[var(--surface)] hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 ${relatedAppointments.length === 0 ? "bg-amber-50 dark:bg-amber-900/20" : ""}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
@@ -1327,7 +1333,16 @@ function CalendarClientPanel({
               📞 {lead.phone}
             </a>
           )}
-          {lead.suburb && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {lead.suburb}</p>}
+          {fullAddress && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
+            >
+              📍 {fullAddress}
+            </a>
+          )}
           {lead.dealStage && (
             <span className="inline-block px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded text-xs font-medium">
               {lead.dealStage}
@@ -1346,7 +1361,7 @@ function CalendarClientPanel({
                 return (
                   <div
                     key={appt.id}
-                    className="p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    className="p-2.5 rounded-lg bg-gray-50 dark:bg-[var(--surface)] border border-gray-200 dark:border-slate-700"
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -1410,10 +1425,14 @@ function CalendarClientPanel({
       </div>
 
       {/* Compact Profile Snippet */}
-      <div className="px-4 py-2 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+      <div className="px-4 py-2 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-[var(--surface)]">
         <div className="grid grid-cols-2 gap-2 text-sm">
           {lead.name && <div className="font-medium text-gray-800 dark:text-gray-200">{lead.name}</div>}
-          {lead.phone && <div className="text-gray-600 dark:text-gray-400">📞 {lead.phone}</div>}
+          {lead.phone && (
+            <a href={`tel:${lead.phone}`} className="text-gray-600 dark:text-gray-400 hover:underline">
+              📞 {lead.phone}
+            </a>
+          )}
           {lead.status && <div className="text-gray-600 dark:text-gray-400">Status: {lead.status}</div>}
           {lead.notes && (
             <div className="col-span-2 text-gray-500 dark:text-gray-500 truncate">
@@ -1430,7 +1449,7 @@ function CalendarClientPanel({
           <button
             onClick={() => firstAppointment && onEditAppointment(firstAppointment)}
             disabled={!firstAppointment}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.98] transition-all duration-150"
           >
             <Edit size={16} />
             Edit Booking
@@ -1443,7 +1462,7 @@ function CalendarClientPanel({
                 onCreateAppointment();
               }
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium hover:scale-[1.01] active:scale-[0.98] transition-all duration-150"
           >
             <Calendar size={16} />
             Reschedule Booking
@@ -1451,7 +1470,7 @@ function CalendarClientPanel({
         </div>
         <button
           onClick={() => onViewProfile(lead)}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium hover:scale-[1.01] active:scale-[0.98] transition-all duration-150"
         >
           <User size={16} />
           View Full Profile →

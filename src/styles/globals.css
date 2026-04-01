@@ -4,25 +4,27 @@
 
 /* Root font-size controlled by useUiScale() hook — default 16px.
    All Tailwind rem units (text-*, p-*, gap-*, etc.) scale proportionally. */
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+}
 
 @layer base {
   :root {
     /* Typography */
-    --font-body:    'Instrument Sans', system-ui, sans-serif;
-    --font-display: 'Syne', system-ui, sans-serif;
+    --font-body: "Instrument Sans", system-ui, sans-serif;
+    --font-display: "Syne", system-ui, sans-serif;
 
     /* Brass accent */
-    --brass:        #b8933a;
-    --brass-light:  #d4aa55;
-    --brass-dark:   #9a7a2e;
+    --brass: #b8933a;
+    --brass-light: #d4aa55;
+    --brass-dark: #9a7a2e;
 
     /* Light mode surfaces (warm off-white) */
-    --bg:           #f0f0ee;
-    --surface:      #f4f4f2;
-    --border:       #e2e2de;
-    --text:         #1a1a18;
-    --text-muted:   #6b6b65;
+    --bg: #f0f0ee;
+    --surface: #f4f4f2;
+    --border: #e2e2de;
+    --text: #1a1a18;
+    --text-muted: #6b6b65;
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -31,18 +33,21 @@ html { font-size: 16px; }
   }
 
   .dark {
-    --bg:           #0e0e0d;
-    --surface:      #1a1a18;
-    --border:       #2e2e2b;
-    --text:         #f0f0ee;
-    --text-muted:   #8a8a84;
+    --bg: #121214;
+    --surface: #1a1a1d;
+    --border: rgba(255, 255, 255, 0.06);
+    --hover: #222226;
+    --text: #f0f0ee;
+    --text-muted: #8a8a84;
   }
 
   * {
     box-sizing: border-box;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     margin: 0;
     padding: 0;
@@ -54,8 +59,31 @@ html { font-size: 16px; }
     color: #0f172a;
   }
 
+  /* Subtle hover and active states for cards and buttons */
+  .card,
+  .btn {
+    transition: all 0.15s ease;
+  }
+
+  .card:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+    transform: scale(1.01);
+  }
+
+  .card:active {
+    transform: scale(0.98);
+  }
+
+  .btn:hover {
+    transform: scale(1.01);
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
   .dark body {
-    background-color: #0f172a;
+    background-color: #121214;
     color: #f8fafc;
   }
 }
@@ -90,22 +118,35 @@ html { font-size: 16px; }
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(1rem); }
-    to   { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   /* Animated brass gradient background for login screen */
   .login-bg {
-    background: radial-gradient(ellipse at 20% 50%, rgba(184, 147, 58, 0.15) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 20%, rgba(184, 147, 58, 0.10) 0%, transparent 50%),
-                radial-gradient(ellipse at 60% 80%, rgba(26, 26, 24, 0.8) 0%, transparent 70%);
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(184, 147, 58, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(184, 147, 58, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 80%, rgba(26, 26, 24, 0.8) 0%, transparent 70%);
     animation: loginPulse 8s ease-in-out infinite alternate;
   }
 
   @keyframes loginPulse {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
   /* Skeleton shimmer for initial load */
@@ -122,7 +163,11 @@ html { font-size: 16px; }
   }
 
   @keyframes shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 }

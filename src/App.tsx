@@ -76,6 +76,7 @@ import {
   Briefcase,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 
 // ── Google Sheets Quick Pull constants ───────────────────────────────────────
@@ -101,8 +102,8 @@ function useDarkMode(): [boolean, () => void] {
 function useUiScale(): [string, (v: string) => void] {
   const getAuto = () => {
     const w = window.innerWidth;
-    if (w < 390)  return "0.85";
-    if (w < 640)  return "0.90";
+    if (w < 390) return "0.85";
+    if (w < 640) return "0.90";
     if (w < 1024) return "0.95";
     return "1";
   };
@@ -116,7 +117,9 @@ function useUiScale(): [string, (v: string) => void] {
     document.documentElement.style.fontSize = `${numeric * 16}px`;
   }, []);
 
-  useEffect(() => { applyScale(scale); }, [scale, applyScale]);
+  useEffect(() => {
+    applyScale(scale);
+  }, [scale, applyScale]);
 
   const setScale = useCallback((val: string) => {
     localStorage.setItem("asgUiScale", val);
@@ -139,16 +142,17 @@ type Page =
   | "knowledge-base"
   | "document-centre"
   | "deal-dashboard"
-  | "calendar";
+  | "calendar"
+  | "settings";
 
 // ── Login screen ──────────────────────────────────────────────────────────────
 type LoginStep = "select" | "access-code" | "setup" | "pin" | "forgot" | "new-pin" | "admin";
 
 const INPUT_CLS =
-  "w-full px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#b8933a] text-sm";
+  "w-full px-3 py-2 rounded-lg bg-panel border border-panel text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#b8933a] text-sm";
 const BTN_AMBER =
   "w-full py-2 rounded-lg bg-[#b8933a] text-white font-semibold hover:bg-[#d4aa55] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm";
-const BTN_GHOST = "w-full py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700 transition text-sm";
+const BTN_GHOST = "w-full py-2 rounded-lg border border-panel text-slate-300 hover:bg-hover transition text-sm";
 
 // Shared card wrapper — logo fills the full screen, glass card floats in the centre
 function LoginCard({ children }: { children: React.ReactNode }) {
@@ -1148,28 +1152,45 @@ function AppShell() {
   // ── Sidebar nav helpers (shared between desktop + mobile) ────────────────
   const sidebarNav = (onNav: (p: Page) => void) => (
     <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto scrollbar-none">
-      {(canSee("dashboard") || canSee("team-chat")) && (
-        <SidebarSection label="Overview">
-          {canSee("dashboard") && (
-            <SidebarItem
-              icon={<LayoutDashboard size={15} />}
-              label="Dashboard"
-              active={effectivePage === "dashboard"}
-              onClick={() => onNav("dashboard")}
-            />
-          )}
-          {canSee("team-chat") && (
-            <SidebarItem
-              icon={<MessageCircle size={15} />}
-              label="Team Chat"
-              active={effectivePage === "team-chat"}
-              onClick={() => onNav("team-chat")}
-            />
-          )}
-        </SidebarSection>
-      )}
-      {(canSee("leads") || canSee("dq-import")) && (
-        <SidebarSection label="Leads">
+      {/* Top section (no label) */}
+      <div className="space-y-1">
+        {canSee("dashboard") && (
+          <SidebarItem
+            icon={<LayoutDashboard size={15} />}
+            label="Dashboard"
+            active={effectivePage === "dashboard"}
+            onClick={() => onNav("dashboard")}
+          />
+        )}
+        {canSee("team-chat") && (
+          <SidebarItem
+            icon={<MessageCircle size={15} />}
+            label="Team Chat"
+            active={effectivePage === "team-chat"}
+            onClick={() => onNav("team-chat")}
+          />
+        )}
+        {canSee("map") && (
+          <SidebarItem
+            icon={<MapPin size={15} />}
+            label="Map"
+            active={effectivePage === "map"}
+            onClick={() => onNav("map")}
+          />
+        )}
+        {canSee("calendar") && (
+          <SidebarItem
+            icon={<CalendarDays size={15} />}
+            label="Calendar"
+            active={effectivePage === "calendar"}
+            onClick={() => onNav("calendar")}
+          />
+        )}
+      </div>
+
+      {/* LEADS */}
+      {(canSee("leads") || canSee("dq-import") || canSee("draps")) && (
+        <SidebarSection label="LEADS">
           {canSee("leads") && (
             <SidebarItem
               icon={<Users size={15} />}
@@ -1187,10 +1208,20 @@ function AppShell() {
               onClick={() => onNav("dq-import")}
             />
           )}
+          {canSee("draps") && (
+            <SidebarItem
+              icon={<BarChart3 size={15} />}
+              label="DRAPS & Stats"
+              active={effectivePage === "draps"}
+              onClick={() => onNav("draps")}
+            />
+          )}
         </SidebarSection>
       )}
-      {(canSee("client-hub") || canSee("deal-dashboard")) && (
-        <SidebarSection label="Sales">
+
+      {/* SALES */}
+      {(canSee("client-hub") || canSee("deal-dashboard") || canSee("commissions")) && (
+        <SidebarSection label="SALES">
           {canSee("client-hub") && (
             <SidebarItem
               icon={<Briefcase size={15} />}
@@ -1207,38 +1238,6 @@ function AppShell() {
               onClick={() => onNav("deal-dashboard")}
             />
           )}
-        </SidebarSection>
-      )}
-      {(canSee("calendar") || canSee("map")) && (
-        <SidebarSection label="Field">
-          {canSee("calendar") && (
-            <SidebarItem
-              icon={<CalendarDays size={15} />}
-              label="Calendar"
-              active={effectivePage === "calendar"}
-              onClick={() => onNav("calendar")}
-            />
-          )}
-          {canSee("map") && (
-            <SidebarItem
-              icon={<MapPin size={15} />}
-              label="Map"
-              active={effectivePage === "map"}
-              onClick={() => onNav("map")}
-            />
-          )}
-        </SidebarSection>
-      )}
-      {(canSee("draps") || canSee("commissions") || canSee("document-centre") || canSee("knowledge-base")) && (
-        <SidebarSection label="Management">
-          {canSee("draps") && (
-            <SidebarItem
-              icon={<BarChart3 size={15} />}
-              label="DRAPS & Stats"
-              active={effectivePage === "draps"}
-              onClick={() => onNav("draps")}
-            />
-          )}
           {canSee("commissions") && (
             <SidebarItem
               icon={<DollarSign size={15} />}
@@ -1247,6 +1246,12 @@ function AppShell() {
               onClick={() => onNav("commissions")}
             />
           )}
+        </SidebarSection>
+      )}
+
+      {/* DOCUMENTS & TRAINING */}
+      {(canSee("document-centre") || canSee("knowledge-base")) && (
+        <SidebarSection label="DOCUMENTS & TRAINING">
           {canSee("document-centre") && (
             <SidebarItem
               icon={<FolderOpen size={15} />}
@@ -1265,16 +1270,24 @@ function AppShell() {
           )}
         </SidebarSection>
       )}
-      {isAdmin && (
-        <SidebarSection label="System">
+
+      {/* SYSTEM */}
+      <SidebarSection label="SYSTEM">
+        <SidebarItem
+          icon={<Settings size={15} />}
+          label="Settings"
+          active={effectivePage === "settings"}
+          onClick={() => onNav("settings")}
+        />
+        {isAdmin && (
           <SidebarItem
-            icon={<Settings size={15} />}
+            icon={<Shield size={15} />}
             label="Admin"
             active={effectivePage === "admin"}
             onClick={() => onNav("admin")}
           />
-        </SidebarSection>
-      )}
+        )}
+      </SidebarSection>
     </nav>
   );
 
@@ -1370,13 +1383,27 @@ function AppShell() {
             title="Display zoom"
             className="text-[10px] bg-transparent text-[#7a7a74] hover:text-[#c8c8c4] border border-white/10 rounded px-1 py-0.5 cursor-pointer outline-none"
           >
-            <option value="auto" className="bg-[#111110]">Auto</option>
-            <option value="0.85" className="bg-[#111110]">85%</option>
-            <option value="0.90" className="bg-[#111110]">90%</option>
-            <option value="0.95" className="bg-[#111110]">95%</option>
-            <option value="1"    className="bg-[#111110]">100%</option>
-            <option value="1.1"  className="bg-[#111110]">110%</option>
-            <option value="1.2"  className="bg-[#111110]">120%</option>
+            <option value="auto" className="bg-[#111110]">
+              Auto
+            </option>
+            <option value="0.85" className="bg-[#111110]">
+              85%
+            </option>
+            <option value="0.90" className="bg-[#111110]">
+              90%
+            </option>
+            <option value="0.95" className="bg-[#111110]">
+              95%
+            </option>
+            <option value="1" className="bg-[#111110]">
+              100%
+            </option>
+            <option value="1.1" className="bg-[#111110]">
+              110%
+            </option>
+            <option value="1.2" className="bg-[#111110]">
+              120%
+            </option>
           </select>
           <button
             onClick={handleSignOut}
@@ -1446,7 +1473,7 @@ function AppShell() {
       {/* ── Right Column ──────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="h-14 flex-shrink-0 flex items-center gap-2 px-4 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
+        <header className="h-14 flex-shrink-0 flex items-center gap-2 px-4 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-slate-700">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -1496,7 +1523,7 @@ function AppShell() {
                   <Download size={14} />
                   <span className="hidden md:inline">Export</span>
                 </button>
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg hidden group-hover:block z-30">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg hidden group-hover:block z-30">
                   <button
                     onClick={handleExportLeads}
                     className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-t-xl transition"
@@ -1548,6 +1575,12 @@ function AppShell() {
             {effectivePage === "team-chat" && <TeamChatPage />}
             {effectivePage === "knowledge-base" && <KnowledgeBasePage />}
             {effectivePage === "document-centre" && <DocumentCentrePage />}
+            {effectivePage === "settings" && (
+              <div className="p-6">
+                <h1 className="text-2xl font-bold">Settings</h1>
+                <p>Settings page coming soon.</p>
+              </div>
+            )}
           </Suspense>
         </main>
       </div>
@@ -1566,7 +1599,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <div className="min-h-screen bg-white dark:bg-slate-900">
+        <div className="min-h-screen bg-white dark:bg-[var(--bg)]">
           <AppShell />
         </div>
       </ToastProvider>

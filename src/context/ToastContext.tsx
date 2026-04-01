@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useId } from 'react';
-import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
+import React, { createContext, useContext, useState, useCallback, useId } from "react";
+import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from "lucide-react";
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = "success" | "error" | "warning" | "info";
 
 export interface Toast {
   id: string;
@@ -31,19 +31,16 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback(
-    (message: string, type: ToastType = 'info', duration: number = 3500) => {
-      const id = `toast-${Date.now()}-${Math.random()}`;
+  const showToast = useCallback((message: string, type: ToastType = "info", duration: number = 3500) => {
+    const id = `toast-${Date.now()}-${Math.random()}`;
 
-      setToasts((prev) => [...prev, { id, message, type, duration }]);
+    setToasts((prev) => [...prev, { id, message, type, duration }]);
 
-      // Auto-remove after duration
-      if (duration > 0) {
-        setTimeout(() => removeToast(id), duration);
-      }
-    },
-    []
-  );
+    // Auto-remove after duration
+    if (duration > 0) {
+      setTimeout(() => removeToast(id), duration);
+    }
+  }, []);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -69,7 +66,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error("useToast must be used within ToastProvider");
   }
   return context;
 }
@@ -88,11 +85,7 @@ function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   return (
     <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-md pointer-events-none">
       {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          toast={toast}
-          onRemove={() => onRemove(toast.id)}
-        />
+        <ToastItem key={toast.id} toast={toast} onRemove={() => onRemove(toast.id)} />
       ))}
     </div>
   );
@@ -109,28 +102,28 @@ interface ToastItemProps {
 function ToastItem({ toast, onRemove }: ToastItemProps) {
   const typeConfig = {
     success: {
-      bg: 'bg-green-50 dark:bg-green-900/20',
-      border: 'border-green-200 dark:border-green-800',
+      bg: "bg-green-50 dark:bg-green-900/20",
+      border: "border-green-200 dark:border-green-800",
       icon: <CheckCircle size={18} className="text-green-600 dark:text-green-400" />,
-      text: 'text-green-800 dark:text-green-200',
+      text: "text-green-800 dark:text-green-200",
     },
     error: {
-      bg: 'bg-red-50 dark:bg-red-900/20',
-      border: 'border-red-200 dark:border-red-800',
+      bg: "bg-red-50 dark:bg-red-900/20",
+      border: "border-red-200 dark:border-red-800",
       icon: <AlertCircle size={18} className="text-red-600 dark:text-red-400" />,
-      text: 'text-red-800 dark:text-red-200',
+      text: "text-red-800 dark:text-red-200",
     },
     warning: {
-      bg: 'bg-yellow-50 dark:bg-yellow-900/20',
-      border: 'border-yellow-200 dark:border-yellow-800',
+      bg: "bg-yellow-50 dark:bg-yellow-900/20",
+      border: "border-yellow-200 dark:border-yellow-800",
       icon: <AlertTriangle size={18} className="text-yellow-600 dark:text-yellow-400" />,
-      text: 'text-yellow-800 dark:text-yellow-200',
+      text: "text-yellow-800 dark:text-yellow-200",
     },
     info: {
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'border-blue-200 dark:border-blue-800',
-      icon: <Info size={18} className="text-blue-600 dark:text-blue-400" />,
-      text: 'text-blue-800 dark:text-blue-200',
+      bg: "bg-gray-50 dark:bg-gray-800/20",
+      border: "border-gray-200 dark:border-gray-700",
+      icon: <Info size={18} className="text-gray-600 dark:text-gray-400" />,
+      text: "text-gray-800 dark:text-gray-200",
     },
   };
 

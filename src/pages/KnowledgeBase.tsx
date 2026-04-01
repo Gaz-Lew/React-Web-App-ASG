@@ -7,65 +7,87 @@
  * - Content stored as HTML in Firestore `knowledgeBase` collection
  */
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import DOMPurify from 'dompurify';
-import { KBArticle, KBCategory } from '../types';
-import { useAppStore } from '../stores/appStore';
-import { useKBArticles, useSaveKBArticle, useDeleteKBArticle, useIncrementKBViews } from '../hooks/useFirebase';
-import { useToast } from '../context/ToastContext';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
+import { KBArticle, KBCategory } from "../types";
+import { useAppStore } from "../stores/appStore";
+import { useKBArticles, useSaveKBArticle, useDeleteKBArticle, useIncrementKBViews } from "../hooks/useFirebase";
+import { useToast } from "../context/ToastContext";
 import {
-  BookOpen, Search, Plus, Edit3, Trash2, Pin, X, Check,
-  ChevronRight, Eye, Tag, Clock, Save,
-} from 'lucide-react';
+  BookOpen,
+  Search,
+  Plus,
+  Edit3,
+  Trash2,
+  Pin,
+  X,
+  Check,
+  ChevronRight,
+  Eye,
+  Tag,
+  Clock,
+  Save,
+} from "lucide-react";
 
 const KB_CATEGORIES: KBCategory[] = [
-  'Getting Started', 'Leads', 'Calls', 'DQ Import', 'Map',
-  'Team Chat', 'Calendar', 'Deal Dashboard', 'Documents',
-  'Admin', 'Commissions', 'Sync', 'Client Hub', 'Other',
+  "Getting Started",
+  "Leads",
+  "Calls",
+  "DQ Import",
+  "Map",
+  "Team Chat",
+  "Calendar",
+  "Deal Dashboard",
+  "Documents",
+  "Admin",
+  "Commissions",
+  "Sync",
+  "Client Hub",
+  "Other",
 ];
 
 const CATEGORY_ICONS: Record<KBCategory, string> = {
-  'Getting Started': '🚀',
-  'Leads': '👥',
-  'Calls': '📞',
-  'DQ Import': '📥',
-  'Map': '🗺️',
-  'Team Chat': '💬',
-  'Calendar': '📅',
-  'Deal Dashboard': '🏆',
-  'Documents': '📄',
-  'Admin': '⚙️',
-  'Commissions': '💰',
-  'Sync': '🔄',
-  'Client Hub': '👤',
-  'Other': '📌',
+  "Getting Started": "🚀",
+  Leads: "👥",
+  Calls: "📞",
+  "DQ Import": "📥",
+  Map: "🗺️",
+  "Team Chat": "💬",
+  Calendar: "📅",
+  "Deal Dashboard": "🏆",
+  Documents: "📄",
+  Admin: "⚙️",
+  Commissions: "💰",
+  Sync: "🔄",
+  "Client Hub": "👤",
+  Other: "📌",
 };
 
 const CATEGORY_COLORS: Record<KBCategory, string> = {
-  'Getting Started': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  'Leads': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  'Calls': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  'DQ Import': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  'Map': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
-  'Team Chat': 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
-  'Calendar': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-  'Deal Dashboard': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  'Documents': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
-  'Admin': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  'Commissions': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  'Sync': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  'Client Hub': 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
-  'Other': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
+  "Getting Started": "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  Leads: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400",
+  Calls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  "DQ Import": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  Map: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  "Team Chat": "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+  Calendar: "bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300",
+  "Deal Dashboard": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  Documents: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+  Admin: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  Commissions: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  Sync: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  "Client Hub": "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+  Other: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
 };
 
 // ── Default seed articles ───────────────────────────────────────────────────
 // Admin can click "Seed Default Articles" to populate the KB on first use.
-const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'views' | 'createdBy'>[] = [
+const DEFAULT_ARTICLES: Omit<KBArticle, "id" | "createdAt" | "updatedAt" | "views" | "createdBy">[] = [
   {
-    title: 'Welcome to ASG Live Leads CRM',
-    category: 'Getting Started',
+    title: "Welcome to ASG Live Leads CRM",
+    category: "Getting Started",
     pinned: true,
-    tags: ['overview', 'intro', 'getting started'],
+    tags: ["overview", "intro", "getting started"],
     content: `<h2>Welcome to ASG Live Leads CRM</h2>
 <p>This is the central hub for managing all leads, bookings, appointments, commissions, and team activity for Amplify Solutions Group.</p>
 <h3>Main Sections</h3>
@@ -92,10 +114,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Your session is remembered — you won't need to log in again on the same browser.</p>`,
   },
   {
-    title: 'How to Log a Call',
-    category: 'Calls',
+    title: "How to Log a Call",
+    category: "Calls",
     pinned: false,
-    tags: ['calls', 'call logger', 'notes', 'callback'],
+    tags: ["calls", "call logger", "notes", "callback"],
     content: `<h2>Logging a Call</h2>
 <p>Call logging is the most important daily action in the CRM. Every call must be logged so the team can see the latest status and notes.</p>
 <h3>How to Log</h3>
@@ -120,10 +142,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>If you set a callback date/time, the browser will show a notification reminder when that time arrives (requires browser notification permission).</p>`,
   },
   {
-    title: 'Adding and Managing Leads',
-    category: 'Leads',
+    title: "Adding and Managing Leads",
+    category: "Leads",
     pinned: false,
-    tags: ['leads', 'add lead', 'edit lead', 'status', 'sidebar'],
+    tags: ["leads", "add lead", "edit lead", "status", "sidebar"],
     content: `<h2>Managing Leads</h2>
 <h3>Adding a New Lead</h3>
 <ol>
@@ -155,10 +177,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Select multiple leads using the checkboxes, then use the footer bar to: change status, reassign to a rep, or delete (with confirmation).</p>`,
   },
   {
-    title: 'Importing DQ Leads',
-    category: 'DQ Import',
+    title: "Importing DQ Leads",
+    category: "DQ Import",
     pinned: false,
-    tags: ['dq', 'import', 'bulk', 'spreadsheet'],
+    tags: ["dq", "import", "bulk", "spreadsheet"],
     content: `<h2>DQ Import</h2>
 <p>Use the DQ Import page to bulk-import leads from a spreadsheet in one go.</p>
 <h3>Steps</h3>
@@ -179,10 +201,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 </ul>`,
   },
   {
-    title: 'Using the Map',
-    category: 'Map',
+    title: "Using the Map",
+    category: "Map",
     pinned: false,
-    tags: ['map', 'knock mode', 'geocode', 'zones', 'pins', 'heatmap'],
+    tags: ["map", "knock mode", "geocode", "zones", "pins", "heatmap"],
     content: `<h2>Map</h2>
 <p>The Map page visualises all geocoded leads as pins on a Google Map.</p>
 <h3>Default View</h3>
@@ -211,10 +233,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Leads without coordinates show a count. Click <strong>Geocode All</strong> to batch-geocode them (rate-limited to avoid API quota).</p>`,
   },
   {
-    title: 'Team Chat & Direct Messages',
-    category: 'Team Chat',
+    title: "Team Chat & Direct Messages",
+    category: "Team Chat",
     pinned: false,
-    tags: ['chat', 'team', 'direct message', 'dm', 'location', 'status'],
+    tags: ["chat", "team", "direct message", "dm", "location", "status"],
     content: `<h2>Team Chat</h2>
 <p>Communicate with the whole team or individual reps without leaving the CRM.</p>
 <h3>Group Channel</h3>
@@ -242,10 +264,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Click the 📍 <strong>Location</strong> button to share your current GPS coordinates as a Google Maps link. Requires location permission in the browser.</p>`,
   },
   {
-    title: 'Bookings Calendar',
-    category: 'Calendar',
+    title: "Bookings Calendar",
+    category: "Calendar",
     pinned: false,
-    tags: ['calendar', 'appointments', 'fc', 'fr', 'booking', 'timely'],
+    tags: ["calendar", "appointments", "fc", "fr", "booking", "timely"],
     content: `<h2>Bookings Calendar</h2>
 <p>The Calendar replaces Timely for scheduling FC, FR, PS, SMSF, Coffee Runs, and other appointments.</p>
 <h3>Views</h3>
@@ -271,10 +293,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Callback dates, booking dates, FC/FR appointment dates, and settlement dates from leads are shown as dashed-border overlays on the calendar. Click them to open the lead's profile.</p>`,
   },
   {
-    title: 'Deal Dashboard — FC/FR/PS Pipeline',
-    category: 'Deal Dashboard',
+    title: "Deal Dashboard — FC/FR/PS Pipeline",
+    category: "Deal Dashboard",
     pinned: false,
-    tags: ['deal', 'fc', 'fr', 'ps', 'pipeline', 'commissions'],
+    tags: ["deal", "fc", "fr", "ps", "pipeline", "commissions"],
     content: `<h2>Deal Dashboard</h2>
 <p>The Deal Dashboard tracks active deals through the FC → FR → PS pipeline and manages commissions once settled.</p>
 <h3>Active Deals</h3>
@@ -293,10 +315,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Click <strong>Mark as Complete</strong> when a deal fully settles. It moves to the <strong>Completed</strong> tab where reps can upload invoices and admin can approve payments.</p>`,
   },
   {
-    title: 'Document Centre & PDF Forms',
-    category: 'Documents',
+    title: "Document Centre & PDF Forms",
+    category: "Documents",
     pinned: false,
-    tags: ['documents', 'pdf', 'forms', 'templates', 'filler'],
+    tags: ["documents", "pdf", "forms", "templates", "filler"],
     content: `<h2>Document Centre</h2>
 <p>Store, fill, and manage all client-facing PDF forms and documents.</p>
 <h3>Template Library</h3>
@@ -318,10 +340,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>When a template PDF is replaced, the old version is archived. A version badge (v2, v3…) shows on the card. Previous versions are still accessible.</p>`,
   },
   {
-    title: 'Admin Panel Overview',
-    category: 'Admin',
+    title: "Admin Panel Overview",
+    category: "Admin",
     pinned: false,
-    tags: ['admin', 'settings', 'reps', 'permissions', 'audit'],
+    tags: ["admin", "settings", "reps", "permissions", "audit"],
     content: `<h2>Admin Panel</h2>
 <p>The Admin panel (visible to admin role only) is the control centre for the entire app.</p>
 <h3>Tabs</h3>
@@ -340,10 +362,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>In Rep Roster, expand a rep and use the permissions checkboxes to restrict which pages they can access. Quick presets: <em>Full Access</em> or <em>Knock-Only</em> (Team Chat + Map only).</p>`,
   },
   {
-    title: 'Comms Calculator — Settlements & Invoices',
-    category: 'Commissions',
+    title: "Comms Calculator — Settlements & Invoices",
+    category: "Commissions",
     pinned: false,
-    tags: ['commissions', 'settlements', 'invoices', 'perth', 'brisbane'],
+    tags: ["commissions", "settlements", "invoices", "perth", "brisbane"],
     content: `<h2>Comms Calculator</h2>
 <p>Track settlements and generate invoices for ASG Perth and ASG Brisbane.</p>
 <h3>Adding a Settlement</h3>
@@ -367,10 +389,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Click <strong>📊 Monthly Report</strong> to download a PDF summary of all settlements and rep allocations for the current month.</p>`,
   },
   {
-    title: 'Google Sheets Two-Way Sync',
-    category: 'Sync',
+    title: "Google Sheets Two-Way Sync",
+    category: "Sync",
     pinned: false,
-    tags: ['sync', 'sheets', 'google', 'import', 'export', 'two-way'],
+    tags: ["sync", "sheets", "google", "import", "export", "two-way"],
     content: `<h2>Google Sheets Sync</h2>
 <p>Keep the CRM and a Google Sheet in sync — pull new leads from the sheet and push CRM data back.</p>
 <h3>Setup (Admin)</h3>
@@ -396,10 +418,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>The pull is smart about existing leads: if a lead's phone already exists in the CRM, it <strong>updates the status</strong> to match the sheet instead of creating a duplicate. New phone numbers create new leads.</p>`,
   },
   {
-    title: 'Client Hub',
-    category: 'Client Hub',
+    title: "Client Hub",
+    category: "Client Hub",
     pinned: false,
-    tags: ['clients', 'client hub', 'booked', 'appointments'],
+    tags: ["clients", "client hub", "booked", "appointments"],
     content: `<h2>Client Hub</h2>
 <p>The Client Hub provides a dedicated view of all booked leads and clients — a clean, appointment-focused alternative to the full Leads table.</p>
 <h3>Features</h3>
@@ -414,10 +436,10 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
 <p>Use the Client Hub when you want to focus on existing clients rather than the full lead pool. It's useful for following up on booked appointments or managing post-booking communication.</p>`,
   },
   {
-    title: 'DRAPS & Stats — Daily Activity Tracking',
-    category: 'Other',
+    title: "DRAPS & Stats — Daily Activity Tracking",
+    category: "Other",
     pinned: false,
-    tags: ['draps', 'stats', 'activity', 'daily', 'targets', 'leaderboard'],
+    tags: ["draps", "stats", "activity", "daily", "targets", "leaderboard"],
     content: `<h2>DRAPS &amp; Stats</h2>
 <p>DRAPS tracks the team's daily activity numbers and compares them to targets.</p>
 <h3>Daily Entry</h3>
@@ -441,7 +463,6 @@ const DEFAULT_ARTICLES: Omit<KBArticle, 'id' | 'createdAt' | 'updatedAt' | 'view
   },
 ];
 
-
 // ── Simple Rich Text Editor ─────────────────────────────────────────────────
 
 interface ToolbarButtonProps {
@@ -456,11 +477,14 @@ function ToolbarButton({ title, onClick, children, active }: ToolbarButtonProps)
     <button
       type="button"
       title={title}
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
       className={`px-2 py-1 rounded text-sm font-medium transition ${
         active
-          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'
+          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700"
       }`}
     >
       {children}
@@ -489,30 +513,53 @@ function SimpleRichEditor({ value, onChange }: { value: string; onChange: (html:
   };
 
   const insertLink = () => {
-    const url = prompt('Enter URL:');
-    if (url) exec('createLink', url);
+    const url = prompt("Enter URL:");
+    if (url) exec("createLink", url);
   };
 
-  const inp = 'px-2 py-1 rounded text-sm font-medium transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700';
+  const inp =
+    "px-2 py-1 rounded text-sm font-medium transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700";
 
   return (
     <div className="border border-gray-300 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-slate-700 flex-wrap bg-gray-50 dark:bg-slate-800">
-        <ToolbarButton title="Bold" onClick={() => exec('bold')}><strong>B</strong></ToolbarButton>
-        <ToolbarButton title="Italic" onClick={() => exec('italic')}><em>I</em></ToolbarButton>
-        <ToolbarButton title="Underline" onClick={() => exec('underline')}><u>U</u></ToolbarButton>
+        <ToolbarButton title="Bold" onClick={() => exec("bold")}>
+          <strong>B</strong>
+        </ToolbarButton>
+        <ToolbarButton title="Italic" onClick={() => exec("italic")}>
+          <em>I</em>
+        </ToolbarButton>
+        <ToolbarButton title="Underline" onClick={() => exec("underline")}>
+          <u>U</u>
+        </ToolbarButton>
         <div className="w-px h-5 bg-gray-300 dark:bg-slate-600 mx-1" />
-        <ToolbarButton title="Heading 2" onClick={() => exec('formatBlock', 'H2')}>H2</ToolbarButton>
-        <ToolbarButton title="Heading 3" onClick={() => exec('formatBlock', 'H3')}>H3</ToolbarButton>
-        <ToolbarButton title="Paragraph" onClick={() => exec('formatBlock', 'P')}>¶</ToolbarButton>
+        <ToolbarButton title="Heading 2" onClick={() => exec("formatBlock", "H2")}>
+          H2
+        </ToolbarButton>
+        <ToolbarButton title="Heading 3" onClick={() => exec("formatBlock", "H3")}>
+          H3
+        </ToolbarButton>
+        <ToolbarButton title="Paragraph" onClick={() => exec("formatBlock", "P")}>
+          ¶
+        </ToolbarButton>
         <div className="w-px h-5 bg-gray-300 dark:bg-slate-600 mx-1" />
-        <ToolbarButton title="Bullet List" onClick={() => exec('insertUnorderedList')}>• List</ToolbarButton>
-        <ToolbarButton title="Numbered List" onClick={() => exec('insertOrderedList')}>1. List</ToolbarButton>
+        <ToolbarButton title="Bullet List" onClick={() => exec("insertUnorderedList")}>
+          • List
+        </ToolbarButton>
+        <ToolbarButton title="Numbered List" onClick={() => exec("insertOrderedList")}>
+          1. List
+        </ToolbarButton>
         <div className="w-px h-5 bg-gray-300 dark:bg-slate-600 mx-1" />
-        <ToolbarButton title="Insert Link" onClick={insertLink}>🔗</ToolbarButton>
-        <ToolbarButton title="Horizontal Rule" onClick={() => exec('insertHorizontalRule')}>─</ToolbarButton>
-        <ToolbarButton title="Remove Formatting" onClick={() => exec('removeFormat')}>✕ fmt</ToolbarButton>
+        <ToolbarButton title="Insert Link" onClick={insertLink}>
+          🔗
+        </ToolbarButton>
+        <ToolbarButton title="Horizontal Rule" onClick={() => exec("insertHorizontalRule")}>
+          ─
+        </ToolbarButton>
+        <ToolbarButton title="Remove Formatting" onClick={() => exec("removeFormat")}>
+          ✕ fmt
+        </ToolbarButton>
         <div className="flex-1" />
         <span className="text-xs text-gray-400 dark:text-gray-600">Rich Text</span>
       </div>
@@ -523,7 +570,7 @@ function SimpleRichEditor({ value, onChange }: { value: string; onChange: (html:
         suppressContentEditableWarning
         onInput={handleInput}
         className="min-h-[320px] p-4 text-sm text-gray-900 dark:text-white focus:outline-none leading-relaxed prose prose-sm max-w-none dark:prose-invert"
-        style={{ whiteSpace: 'pre-wrap' }}
+        style={{ whiteSpace: "pre-wrap" }}
       />
     </div>
   );
@@ -539,10 +586,10 @@ interface EditorProps {
 
 function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
   const { currentUser } = useAppStore();
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [category, setCategory] = useState<KBCategory>(initial?.category ?? 'Getting Started');
-  const [content, setContent] = useState(initial?.content ?? '');
-  const [tags, setTags] = useState((initial?.tags ?? []).join(', '));
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [category, setCategory] = useState<KBCategory>(initial?.category ?? "Getting Started");
+  const [content, setContent] = useState(initial?.content ?? "");
+  const [tags, setTags] = useState((initial?.tags ?? []).join(", "));
   const [pinned, setPinned] = useState(initial?.pinned ?? false);
 
   const handleSave = () => {
@@ -553,38 +600,45 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
       title: title.trim(),
       category,
       content,
-      tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       pinned,
       createdAt: initial?.createdAt ?? now,
-      createdBy: initial?.createdBy ?? currentUser?.name ?? 'Admin',
+      createdBy: initial?.createdBy ?? currentUser?.name ?? "Admin",
       updatedAt: now,
       views: initial?.views ?? 0,
     };
     onSave(article);
   };
 
-  const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition';
+  const inp =
+    "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {initial?.id ? 'Edit Article' : 'New Article'}
+          {initial?.id ? "Edit Article" : "New Article"}
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPinned((p) => !p)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
               pinned
-                ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
-                : 'border-gray-300 dark:border-slate-600 text-gray-500 hover:border-amber-300'
+                ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                : "border-gray-300 dark:border-slate-600 text-gray-500 hover:border-amber-300"
             }`}
           >
-            <Pin size={12} className={pinned ? 'fill-amber-500 text-amber-500' : ''} />
-            {pinned ? 'Pinned' : 'Pin'}
+            <Pin size={12} className={pinned ? "fill-amber-500 text-amber-500" : ""} />
+            {pinned ? "Pinned" : "Pin"}
           </button>
-          <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400">
+          <button
+            onClick={onCancel}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400"
+          >
             <X size={16} />
           </button>
         </div>
@@ -593,7 +647,12 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
       {/* Title */}
       <div>
         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title *</label>
-        <input className={inp} placeholder="e.g. How to add a new lead" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input
+          className={inp}
+          placeholder="e.g. How to add a new lead"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
       </div>
 
       {/* Category + Tags */}
@@ -601,12 +660,23 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Category</label>
           <select className={inp} value={category} onChange={(e) => setCategory(e.target.value as KBCategory)}>
-            {KB_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
+            {KB_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_ICONS[c]} {c}
+              </option>
+            ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tags (comma separated)</label>
-          <input className={inp} placeholder="leads, import, tips" value={tags} onChange={(e) => setTags(e.target.value)} />
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            Tags (comma separated)
+          </label>
+          <input
+            className={inp}
+            placeholder="leads, import, tips"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+          />
         </div>
       </div>
 
@@ -625,7 +695,10 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
         >
           <Save size={14} /> Save Article
         </button>
-        <button onClick={onCancel} className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+        <button
+          onClick={onCancel}
+          className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+        >
           Cancel
         </button>
       </div>
@@ -635,7 +708,12 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
 
 // ── Article Viewer ──────────────────────────────────────────────────────────
 
-function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
+function ArticleViewer({
+  article,
+  isAdmin,
+  onEdit,
+  onDelete,
+}: {
   article: KBArticle;
   isAdmin: boolean;
   onEdit: () => void;
@@ -644,8 +722,28 @@ function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const clean = DOMPurify.sanitize(article.content, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'a', 'hr', 'blockquote', 'code', 'pre', 'span', 'div'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "em",
+      "u",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "ul",
+      "ol",
+      "li",
+      "a",
+      "hr",
+      "blockquote",
+      "code",
+      "pre",
+      "span",
+      "div",
+    ],
+    ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
   });
 
   return (
@@ -660,7 +758,10 @@ function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
                 {CATEGORY_ICONS[article.category]} {article.category}
               </span>
               {article.tags.map((tag) => (
-                <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400">
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400"
+                >
                   #{tag}
                 </span>
               ))}
@@ -669,27 +770,52 @@ function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
           </div>
           {isAdmin && (
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              >
                 <Edit3 size={12} /> Edit
               </button>
               {!confirmDelete ? (
-                <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                >
                   <Trash2 size={12} /> Delete
                 </button>
               ) : (
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-red-500">Confirm?</span>
-                  <button onClick={onDelete} className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-400">Yes</button>
-                  <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800">No</button>
+                  <button
+                    onClick={onDelete}
+                    className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-400"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800"
+                  >
+                    No
+                  </button>
                 </div>
               )}
             </div>
           )}
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><Clock size={11} /> Updated {new Date(article.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <span className="flex items-center gap-1">
+            <Clock size={11} /> Updated{" "}
+            {new Date(article.updatedAt).toLocaleDateString("en-AU", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
           <span>By {article.createdBy}</span>
-          <span className="flex items-center gap-1"><Eye size={11} /> {article.views} view{article.views !== 1 ? 's' : ''}</span>
+          <span className="flex items-center gap-1">
+            <Eye size={11} /> {article.views} view{article.views !== 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
@@ -702,7 +828,7 @@ function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
           dangerouslySetInnerHTML={{ __html: clean }}
         />
       ) : (
-        <p className="text-gray-400 italic text-sm">No content yet. {isAdmin && 'Click Edit to add content.'}</p>
+        <p className="text-gray-400 italic text-sm">No content yet. {isAdmin && "Click Edit to add content."}</p>
       )}
     </div>
   );
@@ -711,7 +837,10 @@ function ArticleViewer({ article, isAdmin, onEdit, onDelete }: {
 // ── Search helpers ──────────────────────────────────────────────────────────
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
@@ -737,13 +866,13 @@ export function KnowledgeBasePage() {
   const { increment: incrementViews } = useIncrementKBViews();
   const { showToast } = useToast();
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === "admin";
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [newArticle, setNewArticle] = useState(false);
-  const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState<KBCategory | 'all'>('all');
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState<KBCategory | "all">("all");
 
   const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 
@@ -751,8 +880,14 @@ export function KnowledgeBasePage() {
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
     return articles.filter((a) => {
-      if (filterCategory !== 'all' && a.category !== filterCategory) return false;
-      if (term && !a.title.toLowerCase().includes(term) && !stripHtml(a.content).toLowerCase().includes(term) && !a.tags.some((t) => t.toLowerCase().includes(term))) return false;
+      if (filterCategory !== "all" && a.category !== filterCategory) return false;
+      if (
+        term &&
+        !a.title.toLowerCase().includes(term) &&
+        !stripHtml(a.content).toLowerCase().includes(term) &&
+        !a.tags.some((t) => t.toLowerCase().includes(term))
+      )
+        return false;
       return true;
     });
   }, [articles, search, filterCategory]);
@@ -785,12 +920,12 @@ export function KnowledgeBasePage() {
   const handleSave = async (article: KBArticle) => {
     const ok = await save(article);
     if (ok) {
-      showToast(`✅ Article "${article.title}" saved`, 'success');
+      showToast(`✅ Article "${article.title}" saved`, "success");
       setSelectedId(article.id);
       setEditing(false);
       setNewArticle(false);
     } else {
-      showToast('❌ Failed to save article', 'error');
+      showToast("❌ Failed to save article", "error");
     }
   };
 
@@ -798,11 +933,11 @@ export function KnowledgeBasePage() {
     if (!selectedArticle) return;
     const ok = await remove(selectedArticle.id);
     if (ok) {
-      showToast('🗑️ Article deleted', 'success');
+      showToast("🗑️ Article deleted", "success");
       setSelectedId(null);
       setEditing(false);
     } else {
-      showToast('❌ Failed to delete article', 'error');
+      showToast("❌ Failed to delete article", "error");
     }
   };
 
@@ -815,27 +950,25 @@ export function KnowledgeBasePage() {
     for (const a of DEFAULT_ARTICLES) {
       const article: KBArticle = {
         ...a,
-        id: `kb_default_${a.title.toLowerCase().replace(/\W+/g, '_')}_${now}`,
+        id: `kb_default_${a.title.toLowerCase().replace(/\W+/g, "_")}_${now}`,
         createdAt: now,
         updatedAt: now,
         views: 0,
-        createdBy: currentUser?.name ?? 'Admin',
+        createdBy: currentUser?.name ?? "Admin",
       };
       const ok = await save(article);
       if (ok) count++;
       // small delay to avoid Firestore rate limiting
       await new Promise((r) => setTimeout(r, 60));
     }
-    showToast(`✅ Seeded ${count} default articles`, 'success');
+    showToast(`✅ Seeded ${count} default articles`, "success");
     setSeeding(false);
   };
 
   return (
     <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-slate-950">
-
       {/* ── Left panel ── */}
       <div className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-
         {/* Search + New button */}
         <div className="p-3 border-b border-gray-200 dark:border-slate-700 space-y-2">
           {/* Prominent full-text search */}
@@ -850,7 +983,7 @@ export function KnowledgeBasePage() {
             />
             {search && (
               <button
-                onClick={() => setSearch('')}
+                onClick={() => setSearch("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X size={14} />
@@ -861,7 +994,7 @@ export function KnowledgeBasePage() {
           {/* Result count when searching */}
           {search && (
             <p className="text-xs text-gray-500 dark:text-gray-400 px-0.5">
-              {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
+              {filtered.length} result{filtered.length !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
             </p>
           )}
 
@@ -870,15 +1003,23 @@ export function KnowledgeBasePage() {
             <select
               className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value as KBCategory | 'all')}
+              onChange={(e) => setFilterCategory(e.target.value as KBCategory | "all")}
             >
               <option value="all">All Categories</option>
-              {KB_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
+              {KB_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_ICONS[c]} {c}
+                </option>
+              ))}
             </select>
             {isAdmin && (
               <>
                 <button
-                  onClick={() => { setNewArticle(true); setEditing(false); setSelectedId(null); }}
+                  onClick={() => {
+                    setNewArticle(true);
+                    setEditing(false);
+                    setSelectedId(null);
+                  }}
                   className="flex-shrink-0 w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center hover:bg-amber-400 transition"
                   title="New Article"
                 >
@@ -891,7 +1032,7 @@ export function KnowledgeBasePage() {
                     className="flex-shrink-0 px-2 py-1 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-500 disabled:opacity-50 transition whitespace-nowrap"
                     title="Populate with default articles for all features"
                   >
-                    {seeding ? 'Seeding…' : '✨ Seed'}
+                    {seeding ? "Seeding…" : "✨ Seed"}
                   </button>
                 )}
               </>
@@ -906,11 +1047,16 @@ export function KnowledgeBasePage() {
           ) : filtered.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <BookOpen size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-              <p className="text-xs text-gray-400">
-                {search ? 'No articles match your search' : 'No articles yet'}
-              </p>
+              <p className="text-xs text-gray-400">{search ? "No articles match your search" : "No articles yet"}</p>
               {isAdmin && !search && (
-                <button onClick={() => { setNewArticle(true); setEditing(false); setSelectedId(null); }} className="mt-2 text-xs text-amber-600 dark:text-amber-400 hover:underline">
+                <button
+                  onClick={() => {
+                    setNewArticle(true);
+                    setEditing(false);
+                    setSelectedId(null);
+                  }}
+                  className="mt-2 text-xs text-amber-600 dark:text-amber-400 hover:underline"
+                >
                   Create your first article
                 </button>
               )}
@@ -927,18 +1073,22 @@ export function KnowledgeBasePage() {
                     onClick={() => handleSelect(article)}
                     className={`w-full text-left px-3 py-2 flex items-start gap-2 transition ${
                       selectedId === article.id
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-r-2 border-amber-500'
-                        : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                        ? "bg-amber-50 dark:bg-amber-900/20 border-r-2 border-amber-500"
+                        : "hover:bg-gray-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     {article.pinned && <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📌</span>}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${selectedId === article.id ? 'text-amber-700 dark:text-amber-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <p
+                        className={`text-xs font-medium truncate ${selectedId === article.id ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}
+                      >
                         <HighlightMatch text={article.title} query={search} />
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">{article.views} views</p>
                     </div>
-                    {selectedId === article.id && <ChevronRight size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />}
+                    {selectedId === article.id && (
+                      <ChevronRight size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -948,7 +1098,8 @@ export function KnowledgeBasePage() {
 
         {/* Stats footer */}
         <div className="px-3 py-2 border-t border-gray-200 dark:border-slate-700 text-xs text-gray-400">
-          {articles.length} article{articles.length !== 1 ? 's' : ''} · {KB_CATEGORIES.filter((c) => articles.some((a) => a.category === c)).length} categories
+          {articles.length} article{articles.length !== 1 ? "s" : ""} ·{" "}
+          {KB_CATEGORIES.filter((c) => articles.some((a) => a.category === c)).length} categories
         </div>
       </div>
 
@@ -958,7 +1109,10 @@ export function KnowledgeBasePage() {
           <ArticleEditor
             initial={newArticle ? null : selectedArticle}
             onSave={handleSave}
-            onCancel={() => { setNewArticle(false); setEditing(false); }}
+            onCancel={() => {
+              setNewArticle(false);
+              setEditing(false);
+            }}
           />
         ) : selectedArticle ? (
           <ArticleViewer
@@ -973,7 +1127,7 @@ export function KnowledgeBasePage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Knowledge Base</h3>
             <p className="text-sm text-gray-400 max-w-sm">
               Step-by-step guides and SOPs to help reps use the platform effectively.
-              {isAdmin && ' Select an article to read it, or click + to create a new one.'}
+              {isAdmin && " Select an article to read it, or click + to create a new one."}
             </p>
             {isAdmin && articles.length === 0 && (
               <button
