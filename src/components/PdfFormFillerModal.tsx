@@ -199,7 +199,7 @@ function SignatureCanvas({ label, onSign }: { label: string; onSign: (d: string 
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
-        className="w-full border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl touch-none cursor-crosshair bg-white"
+        className="w-full border-2 border-dashed border-gray-300 dark:border-white/[0.08] rounded-xl touch-none cursor-crosshair bg-white"
         style={{ touchAction: "none" }}
       />
       <p className="text-xs text-gray-400 text-center">Draw signature above</p>
@@ -243,7 +243,7 @@ function FieldConfigPopup({
   return (
     <>
       <div className="fixed inset-0 z-[60] bg-black/30" onClick={onCancel} />
-      <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-5 w-80 border border-gray-200 dark:border-slate-700">
+      <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl p-5 w-80 border border-gray-200 dark:border-white/[0.06]">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
           {config.editingId ? "Edit Field" : "New Field"}
         </h3>
@@ -255,7 +255,7 @@ function FieldConfigPopup({
             value={config.label}
             onChange={(e) => onChange({ ...config, label: e.target.value })}
             placeholder="e.g. Appointment Date"
-            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
@@ -265,7 +265,7 @@ function FieldConfigPopup({
           <select
             value={config.type}
             onChange={(e) => onChange({ ...config, type: e.target.value as CustomFieldType })}
-            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             {FIELD_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -281,7 +281,7 @@ function FieldConfigPopup({
           <select
             value={config.fontSize}
             onChange={(e) => onChange({ ...config, fontSize: Number(e.target.value) })}
-            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             {FONT_SIZES.map((s) => (
               <option key={s} value={s}>
@@ -300,7 +300,7 @@ function FieldConfigPopup({
               onChange={(e) => onChange({ ...config, optionsText: e.target.value })}
               rows={4}
               placeholder={"Option 1\nOption 2\nOption 3"}
-              className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
             />
           </div>
         )}
@@ -308,7 +308,7 @@ function FieldConfigPopup({
         <div className="flex gap-2 mt-4">
           <button
             onClick={onCancel}
-            className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition flex-1"
+            className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition flex-1"
           >
             Cancel
           </button>
@@ -1373,9 +1373,9 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
     <>
       <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[96vh] flex flex-col">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[96vh] flex flex-col">
           {/* ── Header ────────────────────────────────────────────────── */}
-          <div className="border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap gap-y-2">
               <FileText size={16} className="text-blue-500 flex-shrink-0" />
 
@@ -1398,13 +1398,13 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                   type="date"
                   value={documentDate}
                   onChange={(e) => setDocumentDate(e.target.value)}
-                  className="text-xs text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="text-xs text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-white/[0.06] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
 
               {/* Global font size control */}
               <div
-                className="flex items-center gap-0.5 flex-shrink-0 bg-gray-100 dark:bg-slate-800 rounded-lg px-2 py-1"
+                className="flex items-center gap-0.5 flex-shrink-0 bg-gray-100 dark:bg-[var(--surface)] rounded-lg px-2 py-1"
                 title="Default font size for all form fields. Per-field overrides still available on hover."
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Font:</span>
@@ -1456,7 +1456,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
 
               <button
                 onClick={onClose}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition flex-shrink-0"
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition flex-shrink-0"
               >
                 <X size={16} className="text-gray-500" />
               </button>
@@ -1490,7 +1490,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                     <div key={pageIndex} className="mx-auto">
                       {/* Outer: display dimensions */}
                       <div
-                        className={`relative shadow-lg rounded overflow-hidden border border-gray-200 dark:border-slate-700 mx-auto select-none ${addFieldMode ? "cursor-crosshair" : ""}`}
+                        className={`relative shadow-lg rounded overflow-hidden border border-gray-200 dark:border-white/[0.06] mx-auto select-none ${addFieldMode ? "cursor-crosshair" : ""}`}
                         style={{
                           width: Math.floor(page.width * displayScale),
                           height: Math.floor(page.height * displayScale),
@@ -1585,7 +1585,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                 )}
 
                 {/* ── Signatures ──────────────────────────────────────── */}
-                <div className="bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-4">
+                <div className="bg-gray-50 dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-4">
                   <SignatureCanvas label="Client 1 Signature" onSign={setSig1DataUrl} />
                   {/* Name + date for Client 1 */}
                   <div className="grid grid-cols-2 gap-3">
@@ -1595,7 +1595,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                         value={sig1Name}
                         onChange={(e) => setSig1Name(e.target.value)}
                         placeholder="Full name"
-                        className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                     </div>
                     <div>
@@ -1604,7 +1604,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                         type="date"
                         value={sig1Date}
                         onChange={(e) => setSig1Date(e.target.value)}
-                        className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                     </div>
                   </div>
@@ -1612,12 +1612,12 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                   {!showSig2 ? (
                     <button
                       onClick={() => setShowSig2(true)}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 text-gray-400 hover:text-purple-500 hover:border-purple-400 text-sm font-medium transition"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-white/[0.08] text-gray-400 hover:text-purple-500 hover:border-purple-400 text-sm font-medium transition"
                     >
                       <UserPlus size={15} /> Add Client 2 Signature
                     </button>
                   ) : (
-                    <div className="border-t border-gray-200 dark:border-slate-700 pt-4 space-y-3">
+                    <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Client 2</span>
                         <button
@@ -1641,7 +1641,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                             value={sig2Name}
                             onChange={(e) => setSig2Name(e.target.value)}
                             placeholder="Full name"
-                            className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                           />
                         </div>
                         <div>
@@ -1650,7 +1650,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                             type="date"
                             value={sig2Date}
                             onChange={(e) => setSig2Date(e.target.value)}
-                            className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                           />
                         </div>
                       </div>
@@ -1663,7 +1663,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
 
           {/* ── Save options ──────────────────────────────────────────── */}
           {saveMode && (
-            <div className="border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 space-y-3 flex-shrink-0">
+            <div className="border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] px-4 py-3 space-y-3 flex-shrink-0">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Save as:</label>
                 <div className="flex items-center gap-2">
@@ -1671,7 +1671,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                     value={filename}
                     onChange={(e) => setFilename(e.target.value)}
                     placeholder={templateSnap.current.name}
-                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                   <span className="text-xs text-gray-400 flex-shrink-0">.pdf</span>
                 </div>
@@ -1685,7 +1685,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                     </button>
                     <button
                       onClick={() => setFilename(originalFilename)}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-300 dark:hover:bg-slate-600 transition"
+                      className="text-xs px-2.5 py-1 rounded-lg bg-gray-200 dark:bg-[var(--hover)] text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-300 dark:hover:bg-[var(--hover)] transition"
                     >
                       📄 Keep original: "{originalFilename}"
                     </button>
@@ -1704,7 +1704,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                       }}
                       onFocus={() => setShowLeadSearch(true)}
                       placeholder="Search lead by name, phone, or suburb…"
-                      className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
                   </div>
                   {selectedLead && (
@@ -1724,7 +1724,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                     </div>
                   )}
                   {showLeadSearch && filteredLeads.length > 0 && !selectedLead && (
-                    <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg divide-y divide-gray-100 dark:divide-slate-800">
+                    <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] shadow-lg divide-y divide-gray-100 dark:divide-slate-800">
                       {filteredLeads.map((l) => (
                         <button
                           key={l.id}
@@ -1752,7 +1752,7 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
                     setSelectedLead(null);
                     setLeadSearch("");
                   }}
-                  className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                  className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
                 >
                   Cancel
                 </button>
@@ -1781,10 +1781,10 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
 
           {/* ── Footer ────────────────────────────────────────────────── */}
           {!saveMode && !loading && !loadError && (
-            <div className="border-t border-gray-200 dark:border-slate-700 px-4 py-3 flex gap-2 flex-shrink-0">
+            <div className="border-t border-gray-200 dark:border-white/[0.06] px-4 py-3 flex gap-2 flex-shrink-0">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
               >
                 Cancel
               </button>

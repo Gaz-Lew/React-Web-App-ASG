@@ -1,29 +1,50 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Lead } from '../types';
-import { useLeads, useSaveLead, useDeleteLead } from '../hooks/useFirebase';
-import { useCallbackReminders } from '../hooks/useCallbackReminders';
-import { useToast } from '../context/ToastContext';
-import { useAppStore } from '../stores/appStore';
-import DataTable from '../components/DataTable';
-import CallLogger from '../components/CallLogger';
-import { LeadSidebar } from '../components/LeadSidebar';
-import { AddLeadModal } from '../components/AddLeadModal';
-import { Loader } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { Lead } from "../types";
+import { useLeads, useSaveLead, useDeleteLead } from "../hooks/useFirebase";
+import { useCallbackReminders } from "../hooks/useCallbackReminders";
+import { useToast } from "../context/ToastContext";
+import { useAppStore } from "../stores/appStore";
+import DataTable from "../components/DataTable";
+import CallLogger from "../components/CallLogger";
+import { LeadSidebar } from "../components/LeadSidebar";
+import { AddLeadModal } from "../components/AddLeadModal";
+import { Loader } from "lucide-react";
 
 interface LeadsPageProps {
   addLeadOpen?: boolean;
   onAddLeadOpenChange?: (open: boolean) => void;
   pendingCallLeadId?: number | null;
   onPendingCallLeadConsumed?: () => void;
+  initialFilter?: string | null;
+  onFilterCleared?: () => void;
 }
 
-export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCallLeadId, onPendingCallLeadConsumed }: LeadsPageProps) {
+export function LeadsPage({
+  addLeadOpen = false,
+  onAddLeadOpenChange,
+  pendingCallLeadId,
+  onPendingCallLeadConsumed,
+  initialFilter,
+  onFilterCleared,
+}: LeadsPageProps) {
   const { leads, loading: leadsLoading, error: leadsError } = useLeads();
   const { save: saveLead, loading: saveLoading, error: saveError } = useSaveLead();
   const { remove: deleteLead, loading: deleteLoading } = useDeleteLead();
   const { showToast } = useToast();
   const { currentUser } = useAppStore();
   useCallbackReminders(leads);
+
+  // Apply filter from Dashboard navigation
+  const filteredLeads = useMemo(() => {
+    if (!initialFilter) return leads;
+    if (initialFilter === "no-contact") {
+      return leads.filter((l) => !l.callHistory || l.callHistory.length === 0);
+    }
+    if (initialFilter === "clients-no-fc") {
+      return leads.filter((l) => l.status === "Booked" && !l.fcAppt?.date);
+    }
+    return leads;
+  }, [leads, initialFilter]);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showCallLogger, setShowCallLogger] = useState(false);
@@ -35,8 +56,10 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
 
   // Sync external addLeadOpen → internal close handler
   const setShowAddLead = useCallback(
-    (open: boolean) => { onAddLeadOpenChange?.(open); },
-    [onAddLeadOpenChange]
+    (open: boolean) => {
+      onAddLeadOpenChange?.(open);
+    },
+    [onAddLeadOpenChange],
   );
   const showAddLead = addLeadOpen;
 
@@ -50,7 +73,7 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
       setShowSidebar(false);
       onPendingCallLeadConsumed?.();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCallLeadId, leads]);
 
   // ── Lead selection ──────────────────────────────────────────────────────────
@@ -76,14 +99,14 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
       if (ok) {
-        showToast(`✅ Call logged for ${updatedLead.name}`, 'success');
+        showToast(`✅ Call logged for ${updatedLead.name}`, "success");
         setShowCallLogger(false);
         setSelectedLead(null);
       } else {
-        showToast('❌ Failed to save call. Please try again.', 'error');
+        showToast("❌ Failed to save call. Please try again.", "error");
       }
     },
-    [saveLead, showToast]
+    [saveLead, showToast],
   );
 
   // ── Sidebar save ────────────────────────────────────────────────────────────
@@ -91,20 +114,23 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
       if (ok) {
-        showToast(`✅ ${updatedLead.name} saved`, 'success');
+        showToast(`✅ ${updatedLead.name} saved`, "success");
       } else {
-        showToast('❌ Failed to save. Please try again.', 'error');
+        showToast("❌ Failed to save. Please try again.", "error");
       }
     },
-    [saveLead, showToast]
+    [saveLead, showToast],
   );
 
   // ── Delete ──────────────────────────────────────────────────────────────────
   const handleDeleteLead = useCallback(
     async (lead: Lead) => {
       // Step 1: Mark as _deleted (instant visual removal)
-      const ok = await saveLead({ ...lead, status: '_deleted' as Lead['status'] });
-      if (!ok) { showToast('❌ Failed to delete. Please try again.', 'error'); return; }
+      const ok = await saveLead({ ...lead, status: "_deleted" as Lead["status"] });
+      if (!ok) {
+        showToast("❌ Failed to delete. Please try again.", "error");
+        return;
+      }
 
       setShowSidebar(false);
       setSelectedLead(null);
@@ -118,7 +144,7 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
         setUndoLead(null);
       }, 5000);
     },
-    [saveLead, deleteLead, showToast]
+    [saveLead, deleteLead, showToast],
   );
 
   const handleUndoDelete = useCallback(async () => {
@@ -127,16 +153,16 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
     // Restore original status
     await saveLead(undoLead);
     setUndoLead(null);
-    showToast(`↩️ ${undoLead.name} restored`, 'success');
+    showToast(`↩️ ${undoLead.name} restored`, "success");
   }, [undoLead, saveLead, showToast]);
 
   // ── Inline cell edit from DataTable ─────────────────────────────────────────
   const handleUpdateLead = useCallback(
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
-      if (!ok) showToast('❌ Failed to save. Please try again.', 'error');
+      if (!ok) showToast("❌ Failed to save. Please try again.", "error");
     },
-    [saveLead, showToast]
+    [saveLead, showToast],
   );
 
   // ── Add lead ────────────────────────────────────────────────────────────────
@@ -144,18 +170,18 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
     async (newLead: Lead) => {
       const ok = await saveLead(newLead);
       if (ok) {
-        showToast(`✅ ${newLead.name} added`, 'success');
+        showToast(`✅ ${newLead.name} added`, "success");
       } else {
-        showToast('❌ Failed to add lead.', 'error');
+        showToast("❌ Failed to add lead.", "error");
       }
     },
-    [saveLead, showToast]
+    [saveLead, showToast],
   );
 
   // ── Loading / Error ─────────────────────────────────────────────────────────
   if (leadsLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-[var(--surface)]">
         <div className="text-center">
           <Loader size={40} className="animate-spin mx-auto mb-3 text-amber-500" />
           <p className="text-gray-500 dark:text-gray-400 text-sm">Loading leads...</p>
@@ -166,12 +192,15 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
 
   if (leadsError) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-[var(--surface)]">
         <div className="text-center max-w-md px-6">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Failed to load leads</h2>
           <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">{leadsError}</p>
-          <button onClick={() => window.location.reload()} className="px-5 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 transition font-medium">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 transition font-medium"
+          >
             Retry
           </button>
         </div>
@@ -181,13 +210,34 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
 
   // ── Main layout ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
-
+    <div className="flex-1 flex flex-col bg-white dark:bg-[var(--surface)] overflow-hidden">
       {/* Notification permission hint */}
-      {'Notification' in window && Notification.permission === 'denied' && (
+      {"Notification" in window && Notification.permission === "denied" && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
           <span>🔔</span>
-          <span>Browser notifications are blocked — callback reminders won't fire. To enable: open your browser settings → Site Settings → Notifications → allow this site.</span>
+          <span>
+            Browser notifications are blocked — callback reminders won't fire. To enable: open your browser settings →
+            Site Settings → Notifications → allow this site.
+          </span>
+        </div>
+      )}
+
+      {/* Filter indicator banner */}
+      {initialFilter && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
+          <span className="font-semibold">
+            {initialFilter === "no-contact" && "📞 Filter: Leads with no contact yet"}
+            {initialFilter === "clients-no-fc" && "📋 Filter: Clients needing FC booking"}
+          </span>
+          <button
+            onClick={onFilterCleared}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
+          >
+            <span>Clear filter</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -196,20 +246,20 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
         {/* Table — fills space; sidebar sits beside it on lg+ */}
         <div className="flex-1 overflow-hidden min-w-0 transition-all duration-200">
           <DataTable
-            leads={leads}
+            leads={filteredLeads}
             loading={leadsLoading}
             onSelectLead={handleSelectLead}
             onAddCall={handleAddCall}
             onDeleteLead={handleDeleteLead}
             onUpdateLead={handleUpdateLead}
             currentUserId={currentUser?.id}
-            isAdmin={currentUser?.role === 'admin'}
+            isAdmin={currentUser?.role === "admin"}
           />
         </div>
 
         {/* Inline sidebar panel — desktop only (lg+) */}
         {showSidebar && selectedLead && (
-          <div className="hidden lg:flex w-[480px] flex-shrink-0 border-l border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div className="hidden lg:flex w-[480px] flex-shrink-0 border-l border-gray-200 dark:border-white/[0.06] overflow-hidden">
             <LeadSidebar
               lead={selectedLead}
               onClose={handleCloseSidebar}
@@ -240,26 +290,24 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
         <CallLogger
           lead={selectedLead}
           isOpen={showCallLogger}
-          onClose={() => { setShowCallLogger(false); setSelectedLead(null); }}
+          onClose={() => {
+            setShowCallLogger(false);
+            setSelectedLead(null);
+          }}
           onSave={handleSaveCall}
         />
       )}
 
       {/* Add Lead Modal */}
-      {showAddLead && (
-        <AddLeadModal
-          onClose={() => setShowAddLead(false)}
-          onSave={handleAddLead}
-        />
-      )}
+      {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} onSave={handleAddLead} />}
 
       {/* Saving overlay */}
       {(saveLoading || deleteLoading) && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]">
-          <div className="bg-white dark:bg-slate-900 rounded-xl px-6 py-4 flex items-center gap-3 shadow-xl">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl px-6 py-4 flex items-center gap-3 shadow-xl">
             <Loader size={20} className="animate-spin text-amber-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {saveLoading ? 'Saving...' : 'Deleting...'}
+              {saveLoading ? "Saving..." : "Deleting..."}
             </span>
           </div>
         </div>
@@ -274,7 +322,9 @@ export function LeadsPage({ addLeadOpen = false, onAddLeadOpenChange, pendingCal
       {/* Undo delete toast — bottom-left so it doesn't clash with regular toasts */}
       {undoLead && (
         <div className="fixed bottom-4 left-4 z-[9998] flex items-center gap-3 bg-gray-900 dark:bg-slate-700 text-white px-4 py-3 rounded-xl shadow-xl text-sm animate-in slide-in-from-left-4 fade-in duration-300">
-          <span>🗑️ <strong>{undoLead.name}</strong> deleted</span>
+          <span>
+            🗑️ <strong>{undoLead.name}</strong> deleted
+          </span>
           <button
             onClick={handleUndoDelete}
             className="ml-1 px-3 py-1 bg-[#b8933a] hover:bg-[#d4aa55] text-white rounded-lg font-semibold text-xs transition"

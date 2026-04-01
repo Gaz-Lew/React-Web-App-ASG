@@ -292,17 +292,17 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
+          <div className="sticky top-0 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Log Call</h2>
-            <button onClick={handleClose} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition">
+            <button onClick={handleClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition">
               <X size={20} />
             </button>
           </div>
 
           {/* Lead Info */}
-          <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+          <div className="px-6 py-4 bg-gray-50 dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06]">
             <p className="font-semibold text-gray-900 dark:text-white">{lead.name}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">{lead.phone}</p>
             {lead.lastCall && (
@@ -320,7 +320,7 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
               <select
                 value={result}
                 onChange={(e) => setResult(e.target.value as CallResult)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
               >
                 {Object.entries(callResultsMap).map(([key, config]) => (
                   <option key={key} value={key}>
@@ -343,8 +343,8 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                     result === "booked" ? setBookingDate(e.target.value) : setCallbackDate(e.target.value)
                   }
                   className={`w-full px-3 py-2 rounded-lg border ${
-                    errors.date ? "border-red-500" : "border-gray-300 dark:border-slate-600"
-                  } bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
+                    errors.date ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
+                  } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
                 />
                 {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date}</p>}
               </div>
@@ -369,8 +369,8 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                     else setCallbackTime(e.target.value);
                   }}
                   className={`w-full px-3 py-2 rounded-lg border ${
-                    errors.time ? "border-red-500" : "border-gray-300 dark:border-slate-600"
-                  } bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
+                    errors.time ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
+                  } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
                 />
                 {errors.time && <p className="text-sm text-red-500 mt-1">{errors.time}</p>}
               </div>
@@ -383,7 +383,7 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                 <select
                   value={callingRep}
                   onChange={(e) => setCallingRep(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
                 >
                   {activeReps.map((rep) => (
                     <option key={rep.id} value={rep.id}>
@@ -413,7 +413,7 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                       <select
                         value={apptServiceTypeId}
                         onChange={(e) => setApptServiceTypeId(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                       >
                         {serviceTypes.length === 0 && <option value="">— No types configured —</option>}
                         {Array.from(new Set(serviceTypes.map((s) => s.category))).map((cat) => (
@@ -434,7 +434,7 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                       <select
                         value={apptRepId}
                         onChange={(e) => setApptRepId(e.target.value ? Number(e.target.value) : "")}
-                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                       >
                         {reps
                           .filter((r) => r.active && r.availableForBookings !== false)
@@ -459,8 +459,8 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                 placeholder="Any extra Notes?"
                 rows={4}
                 className={`w-full px-3 py-2 rounded-lg border ${
-                  errors.notes ? "border-red-500" : "border-gray-300 dark:border-slate-600"
-                } bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold resize-none`}
+                  errors.notes ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
+                } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold resize-none`}
               />
               {errors.notes && <p className="text-sm text-red-500 mt-1">{errors.notes}</p>}
             </div>
@@ -471,7 +471,7 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Recent Call History</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {lead.callHistory.slice(-3).map((call, idx) => (
-                    <div key={idx} className="p-2 bg-gray-50 dark:bg-slate-800 rounded text-xs">
+                    <div key={idx} className="p-2 bg-gray-50 dark:bg-[var(--surface)] rounded text-xs">
                       <div className="font-semibold text-gray-900 dark:text-white">
                         {call.result} - {call.rep}
                       </div>
@@ -487,10 +487,10 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 px-6 py-4 flex gap-3">
+          <div className="sticky bottom-0 bg-gray-50 dark:bg-[var(--surface)] border-t border-gray-200 dark:border-white/[0.06] px-6 py-4 flex gap-3">
             <button
               onClick={handleClose}
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition font-medium"
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition font-medium"
             >
               Cancel
             </button>

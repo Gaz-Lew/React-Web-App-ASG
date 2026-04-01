@@ -484,7 +484,7 @@ function ToolbarButton({ title, onClick, children, active }: ToolbarButtonProps)
       className={`px-2 py-1 rounded text-sm font-medium transition ${
         active
           ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700"
+          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)]"
       }`}
     >
       {children}
@@ -518,12 +518,12 @@ function SimpleRichEditor({ value, onChange }: { value: string; onChange: (html:
   };
 
   const inp =
-    "px-2 py-1 rounded text-sm font-medium transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700";
+    "px-2 py-1 rounded text-sm font-medium transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)]";
 
   return (
-    <div className="border border-gray-300 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+    <div className="border border-gray-300 dark:border-white/[0.08] rounded-xl overflow-hidden bg-white dark:bg-[var(--surface)]">
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-slate-700 flex-wrap bg-gray-50 dark:bg-slate-800">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-white/[0.06] flex-wrap bg-gray-50 dark:bg-[var(--surface)]">
         <ToolbarButton title="Bold" onClick={() => exec("bold")}>
           <strong>B</strong>
         </ToolbarButton>
@@ -614,7 +614,7 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
   };
 
   const inp =
-    "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
+    "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -629,7 +629,7 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
               pinned
                 ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                : "border-gray-300 dark:border-slate-600 text-gray-500 hover:border-amber-300"
+                : "border-gray-300 dark:border-white/[0.08] text-gray-500 hover:border-amber-300"
             }`}
           >
             <Pin size={12} className={pinned ? "fill-amber-500 text-amber-500" : ""} />
@@ -637,7 +637,7 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
           </button>
           <button
             onClick={onCancel}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400"
           >
             <X size={16} />
           </button>
@@ -697,7 +697,7 @@ function ArticleEditor({ initial, onSave, onCancel }: EditorProps) {
         </button>
         <button
           onClick={onCancel}
-          className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+          className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
         >
           Cancel
         </button>
@@ -760,7 +760,7 @@ function ArticleViewer({
               {article.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400"
+                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-[var(--surface)] text-gray-500 dark:text-gray-400"
                 >
                   #{tag}
                 </span>
@@ -772,7 +772,7 @@ function ArticleViewer({
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={onEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
               >
                 <Edit3 size={12} /> Edit
               </button>
@@ -794,7 +794,7 @@ function ArticleViewer({
                   </button>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800"
+                    className="px-2 py-1 rounded-lg border border-gray-300 dark:border-white/[0.08] text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                   >
                     No
                   </button>
@@ -819,7 +819,7 @@ function ArticleViewer({
         </div>
       </div>
 
-      <hr className="border-gray-200 dark:border-slate-700 mb-6" />
+      <hr className="border-gray-200 dark:border-white/[0.06] mb-6" />
 
       {/* Article content */}
       {article.content ? (
@@ -966,11 +966,11 @@ export function KnowledgeBasePage() {
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-slate-950">
+    <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
       {/* ── Left panel ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)]">
         {/* Search + New button */}
-        <div className="p-3 border-b border-gray-200 dark:border-slate-700 space-y-2">
+        <div className="p-3 border-b border-gray-200 dark:border-white/[0.06] space-y-2">
           {/* Prominent full-text search */}
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -979,7 +979,7 @@ export function KnowledgeBasePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search articles by title, content or tag…"
-              className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
             {search && (
               <button
@@ -1001,7 +1001,7 @@ export function KnowledgeBasePage() {
           {/* Category filter + New button */}
           <div className="flex items-center gap-2">
             <select
-              className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value as KBCategory | "all")}
             >
@@ -1074,7 +1074,7 @@ export function KnowledgeBasePage() {
                     className={`w-full text-left px-3 py-2 flex items-start gap-2 transition ${
                       selectedId === article.id
                         ? "bg-amber-50 dark:bg-amber-900/20 border-r-2 border-amber-500"
-                        : "hover:bg-gray-50 dark:hover:bg-slate-800"
+                        : "hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                     }`}
                   >
                     {article.pinned && <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📌</span>}
@@ -1097,7 +1097,7 @@ export function KnowledgeBasePage() {
         </div>
 
         {/* Stats footer */}
-        <div className="px-3 py-2 border-t border-gray-200 dark:border-slate-700 text-xs text-gray-400">
+        <div className="px-3 py-2 border-t border-gray-200 dark:border-white/[0.06] text-xs text-gray-400">
           {articles.length} article{articles.length !== 1 ? "s" : ""} ·{" "}
           {KB_CATEGORIES.filter((c) => articles.some((a) => a.category === c)).length} categories
         </div>

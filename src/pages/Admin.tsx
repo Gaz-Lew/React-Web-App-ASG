@@ -178,7 +178,7 @@ function SummaryCard({
   suffix?: string;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
       <div className="text-2xl font-bold text-gray-900 dark:text-white">
         {value}
         {suffix}
@@ -258,8 +258,8 @@ function TodayBriefingStrip({ data }: { data: BriefingData }) {
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+      <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
         <Zap size={15} className="text-amber-500" />
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Today's Briefing</h3>
         <span className="text-xs text-gray-400 ml-1">— live snapshot as of now</span>
@@ -333,7 +333,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
           <BarChart2 size={15} className="text-amber-500" /> Lead Status Breakdown
         </h3>
@@ -344,7 +344,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
             return (
               <div key={s} className="flex items-center gap-3">
                 <span className="w-28 text-xs text-gray-600 dark:text-gray-400 flex-shrink-0 truncate">{s}</span>
-                <div className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden">
+                <div className="flex-1 bg-gray-100 dark:bg-[var(--surface)] rounded-full h-4 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
@@ -365,7 +365,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Leads Assigned per Rep</h3>
           {leadsByRep.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">No reps found</p>
@@ -377,7 +377,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
                   <span className="w-20 truncate text-gray-700 dark:text-gray-300 flex-shrink-0 text-xs">
                     {rep.name}
                   </span>
-                  <div className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-full h-2">
+                  <div className="flex-1 bg-gray-100 dark:bg-[var(--surface)] rounded-full h-2">
                     <div
                       className="h-2 rounded-full bg-amber-500"
                       style={{ width: `${(count / maxLeadCount) * 100}%` }}
@@ -390,7 +390,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Suburbs</h3>
           {suburbCounts.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">No suburb data</p>
@@ -400,7 +400,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
                 <div key={suburb} className="flex items-center gap-3 text-sm">
                   <span className="w-5 text-xs text-gray-400 font-medium flex-shrink-0">{i + 1}</span>
                   <span className="flex-1 text-gray-700 dark:text-gray-300 text-xs truncate">{suburb}</span>
-                  <div className="w-20 bg-gray-100 dark:bg-slate-800 rounded-full h-2">
+                  <div className="w-20 bg-gray-100 dark:bg-[var(--surface)] rounded-full h-2">
                     <div
                       className="h-2 rounded-full bg-gray-500"
                       style={{ width: `${(count / (suburbCounts[0]?.[1] ?? 1)) * 100}%` }}
@@ -414,7 +414,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Recently Added (Last 7 Days)</h3>
         {recentLeads.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No leads added in last 7 days</p>
@@ -422,7 +422,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-slate-800">
+                <tr className="border-b border-gray-100 dark:border-white/[0.06]">
                   {["Name", "Status", "Suburb", "Rep", "Added"].map((h) => (
                     <th key={h} className="pb-2 text-left text-gray-500 dark:text-gray-400 font-medium pr-4">
                       {h}
@@ -437,7 +437,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
                     ? new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })
                     : "—";
                   return (
-                    <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                       <td className="py-1.5 pr-4 font-medium text-gray-900 dark:text-white">{l.name}</td>
                       <td className="py-1.5 pr-4">
                         <StatusBadge status={l.status} />
@@ -569,15 +569,15 @@ function RepPerformanceSection({
         />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
           <TrendingUp size={15} className="text-amber-500" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Rep Leaderboard</h3>
           <span className="text-xs text-gray-400 ml-1">— click column to sort · click rep name to drill down</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-slate-800">
+            <thead className="bg-gray-50 dark:bg-[var(--surface)]">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-8">
                   #
@@ -606,7 +606,7 @@ function RepPerformanceSection({
                 return (
                   <tr
                     key={s.rep.id}
-                    className={`hover:bg-gray-50 dark:hover:bg-slate-800/50 ${i < 3 ? "bg-amber-50/30 dark:bg-amber-900/5" : ""}`}
+                    className={`hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50 ${i < 3 ? "bg-amber-50/30 dark:bg-amber-900/5" : ""}`}
                   >
                     <td className="px-3 py-3 text-sm">{medal}</td>
                     <td className="px-3 py-3">
@@ -829,8 +829,8 @@ function OperationsSection({
   return (
     <div className="space-y-6">
       {/* Live Rep Activity */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
           <Activity size={15} className="text-green-500" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Live Rep Activity</h3>
           <span className="text-xs text-gray-400 ml-1">— most recent action per rep</span>
@@ -842,7 +842,7 @@ function OperationsSection({
             return (
               <div
                 key={rep.id}
-                className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/40 transition"
+                className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-[var(--hover)]/40 transition"
               >
                 {/* Avatar + pulse */}
                 <div className="relative flex-shrink-0">
@@ -878,8 +878,8 @@ function OperationsSection({
       </div>
 
       {/* Overdue Callbacks */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
           <Phone size={15} className="text-red-500" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Overdue Callbacks</h3>
           {overdueCallbacks.length > 0 && (
@@ -893,7 +893,7 @@ function OperationsSection({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800">
+              <thead className="bg-gray-50 dark:bg-[var(--surface)]">
                 <tr>
                   {["Rep", "Lead Name", "Phone", "Suburb", "Scheduled", "Days Overdue"].map((h) => (
                     <th
@@ -907,7 +907,7 @@ function OperationsSection({
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {overdueCallbacks.map(({ lead, daysOverdue }) => (
-                  <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                  <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                     <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap">
                       {getRepName(leads, reps, lead.dqRep)}
                     </td>
@@ -929,8 +929,8 @@ function OperationsSection({
       </div>
 
       {/* Upcoming Bookings / Appointments */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
           <AlertCircle size={15} className="text-amber-500" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Upcoming Appointments & Bookings</h3>
           {upcoming.length > 0 && (
@@ -945,7 +945,7 @@ function OperationsSection({
           <div className="divide-y divide-gray-100 dark:divide-slate-800">
             {upcomingBuckets.map(({ bucket, items }) => (
               <div key={bucket}>
-                <div className="px-5 py-2 bg-gray-50 dark:bg-slate-800/60 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <div className="px-5 py-2 bg-gray-50 dark:bg-[var(--surface)]/60 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   {bucket} — {items.length} {items.length === 1 ? "event" : "events"}
                 </div>
                 <table className="w-full text-sm">
@@ -953,7 +953,7 @@ function OperationsSection({
                     {items.map(({ lead, date, type }) => {
                       const daysAway = daysBetween(today, date);
                       return (
-                        <tr key={`${lead.id}-${type}`} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                        <tr key={`${lead.id}-${type}`} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                           <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
                             {date}
                           </td>
@@ -988,8 +988,8 @@ function OperationsSection({
       </div>
 
       {/* Stale Leads */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
           <AlertCircle size={15} className="text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             Stale Leads <span className="font-normal text-gray-400">(no contact in {staleThresholdDays}+ days)</span>
@@ -1012,7 +1012,7 @@ function OperationsSection({
                 <div key={repId}>
                   <button
                     onClick={() => toggleStaleRep(repId)}
-                    className="w-full px-5 py-2.5 bg-gray-50 dark:bg-slate-800/60 flex items-center gap-2 text-left hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                    className="w-full px-5 py-2.5 bg-gray-50 dark:bg-[var(--surface)]/60 flex items-center gap-2 text-left hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
                   >
                     {collapsed ? (
                       <ChevronRight size={13} className="text-gray-400" />
@@ -1033,7 +1033,7 @@ function OperationsSection({
                     <table className="w-full text-sm">
                       <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
                         {items.map(({ lead, lastContact, daysSince }) => (
-                          <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                          <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                             <td className="px-5 py-2.5 font-medium text-gray-900 dark:text-white">{lead.name}</td>
                             <td className="px-3 py-2.5">
                               <StatusBadge status={lead.status} />
@@ -1154,13 +1154,13 @@ function SettingsSection({
   };
 
   const inputCls =
-    "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
+    "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
   const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1";
 
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Commission rate defaults */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Commission Rate Defaults</h3>
         <p className="text-xs text-gray-400 mb-4">
           Reference percentages shown in Comms Calculator. Informational only.
@@ -1197,7 +1197,7 @@ function SettingsSection({
       </div>
 
       {/* Stale leads threshold */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Stale Leads Threshold</h3>
         <p className="text-xs text-gray-400 mb-4">Flag leads in active statuses with no contact in this many days.</p>
         <div className="flex items-center gap-3">
@@ -1207,7 +1207,7 @@ function SettingsSection({
             max="365"
             value={stale}
             onChange={(e) => setStale(e.target.value)}
-            className="w-28 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-28 px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
           <span className="text-sm text-gray-500 dark:text-gray-400">days without contact</span>
         </div>
@@ -1223,7 +1223,7 @@ function SettingsSection({
       </div>
 
       {/* Rep targets */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Rep Targets</h3>
         <p className="text-xs text-gray-400 mb-4">
           Set weekly and monthly DQ + booking targets per rep. Progress shown in Rep Performance tab.
@@ -1231,7 +1231,7 @@ function SettingsSection({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 dark:border-slate-800">
+              <tr className="border-b border-gray-100 dark:border-white/[0.06]">
                 <th className="pb-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 pr-4">Rep</th>
                 <th className="pb-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 pr-3">
                   Weekly DQ
@@ -1265,7 +1265,7 @@ function SettingsSection({
                             placeholder="—"
                             value={t[field] ?? ""}
                             onChange={(e) => updateTarget(rep.id, field, e.target.value)}
-                            className="w-20 px-2 py-1 rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            className="w-20 px-2 py-1 rounded border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
                           />
                         </td>
                       ),
@@ -1288,7 +1288,7 @@ function SettingsSection({
       </div>
 
       {/* Status pin colours */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Status Pin Colours</h3>
         <p className="text-xs text-gray-400 mb-4">
           Customise the colour used for each status on map pins, table badges, and charts.
@@ -1302,7 +1302,7 @@ function SettingsSection({
                   type="color"
                   value={hex}
                   onChange={(e) => setLocalColors((prev) => ({ ...prev, [status]: e.target.value }))}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200 dark:border-slate-700 p-0.5 bg-white dark:bg-slate-800"
+                  className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200 dark:border-white/[0.06] p-0.5 bg-white dark:bg-[var(--surface)]"
                   title={status}
                 />
                 <div>
@@ -1327,7 +1327,7 @@ function SettingsSection({
           </button>
           <button
             onClick={() => setLocalColors({ ...DEFAULT_STATUS_COLORS })}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
           >
             Reset to Defaults
           </button>
@@ -1376,9 +1376,9 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-4 p-5 border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-4 p-5 border-b border-gray-100 dark:border-white/[0.06] flex-shrink-0">
           <RepAvatar rep={rep} size="lg" />
           <div>
             <div className="flex items-center gap-2">
@@ -1402,7 +1402,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
           </div>
           <button
             onClick={onClose}
-            className="ml-auto p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 transition"
+            className="ml-auto p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] hover:text-gray-600 transition"
           >
             <X size={18} />
           </button>
@@ -1419,8 +1419,8 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
           </div>
 
           {/* Their leads */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06] flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mr-2">Their Leads</h3>
               {statusChips.map((s) => (
                 <button
@@ -1429,7 +1429,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
                   className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition ${
                     statusFilter === s
                       ? "bg-amber-500 text-white"
-                      : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700"
+                      : "bg-gray-100 dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[var(--hover)]"
                   }`}
                 >
                   {s === "all" ? `All (${repLeads.length})` : s}
@@ -1441,7 +1441,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
             ) : (
               <div className="overflow-x-auto max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800">
+                  <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)]">
                     <tr>
                       {["Status", "Name", "Suburb", "Last Call"].map((h) => (
                         <th
@@ -1455,7 +1455,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                     {filteredLeads.map((l) => (
-                      <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                      <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                         <td className="px-3 py-2">
                           <StatusBadge status={l.status} />
                         </td>
@@ -1471,8 +1471,8 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
           </div>
 
           {/* Recent calls */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Recent Calls by {rep.name}</h3>
               <p className="text-xs text-gray-400">Latest 50 calls logged across all leads</p>
             </div>
@@ -1481,7 +1481,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
             ) : (
               <div className="overflow-x-auto max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800">
+                  <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)]">
                     <tr>
                       {["Date", "Lead", "Result", "Notes"].map((h) => (
                         <th
@@ -1495,7 +1495,7 @@ function RepDrillDownModal({ rep, leads, onClose }: { rep: Rep; leads: Lead[]; o
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                     {recentCalls.map((c, i) => (
-                      <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                      <tr key={i} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                         <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
                           {c.date} {c.time}
                         </td>
@@ -1646,8 +1646,8 @@ function RepRow({
     <div
       className={`rounded-lg border transition ${
         rep.active
-          ? "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          : "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 opacity-60"
+          ? "border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)]"
+          : "border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50 opacity-60"
       }`}
     >
       <div className="flex items-center gap-3 p-3">
@@ -1672,7 +1672,7 @@ function RepRow({
         {editing ? (
           <div className="flex-1 flex items-center gap-2 flex-wrap">
             <input
-              className="flex-1 min-w-[120px] px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="flex-1 min-w-[120px] px-2 py-1 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
@@ -1682,7 +1682,7 @@ function RepRow({
               autoFocus
             />
             <select
-              className="px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="px-2 py-1 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={role}
               onChange={(e) => setRole(e.target.value as Rep["role"])}
             >
@@ -1737,7 +1737,7 @@ function RepRow({
               </button>
               <button
                 onClick={handleCancel}
-                className="p-1.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200 transition"
+                className="p-1.5 rounded-lg bg-gray-100 dark:bg-[var(--surface)] text-gray-500 hover:bg-gray-200 transition"
                 title="Cancel"
               >
                 <X size={14} />
@@ -1747,7 +1747,7 @@ function RepRow({
             <>
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 transition"
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] hover:text-gray-600 transition"
                 title="Edit details"
               >
                 {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -1757,7 +1757,7 @@ function RepRow({
                   setEditing(true);
                   setExpanded(true);
                 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 transition"
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] hover:text-gray-600 transition"
                 title="Quick edit name"
               >
                 <Pencil size={14} />
@@ -1781,7 +1781,7 @@ function RepRow({
                   </button>
                   <button
                     onClick={() => setConfirmRemove(false)}
-                    className="p-1.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200 transition"
+                    className="p-1.5 rounded-lg bg-gray-100 dark:bg-[var(--surface)] text-gray-500 hover:bg-gray-200 transition"
                     title="Cancel"
                   >
                     <X size={14} />
@@ -1802,7 +1802,7 @@ function RepRow({
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-white/[0.06] grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { label: "Email", val: email, set: setEmail, placeholder: "rep@example.com" },
             { label: "Phone", val: phone, set: setPhone, placeholder: "04xx xxx xxx" },
@@ -1813,7 +1813,7 @@ function RepRow({
             <div key={label}>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</label>
               <input
-                className="w-full px-2 py-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full px-2 py-1 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 value={val}
                 onChange={(e) => set(e.target.value)}
                 placeholder={placeholder}
@@ -1829,7 +1829,7 @@ function RepRow({
                 type="color"
                 value={repColor || "#9ca3af"}
                 onChange={(e) => setRepColor(e.target.value)}
-                className="h-9 w-16 rounded border border-gray-200 dark:border-slate-700 cursor-pointer"
+                className="h-9 w-16 rounded border border-gray-200 dark:border-white/[0.06] cursor-pointer"
               />
               <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{repColor || "not set"}</span>
               {repColor && (
@@ -1872,7 +1872,7 @@ function RepRow({
           </div>
 
           {/* ── Login credentials (admin-visible) ── */}
-          <div className="col-span-full border-t border-gray-100 dark:border-slate-800 pt-3 mt-1">
+          <div className="col-span-full border-t border-gray-100 dark:border-white/[0.06] pt-3 mt-1">
             <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
               🔐 Login Credentials
             </p>
@@ -1930,7 +1930,7 @@ function RepRow({
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
                   disabled={photoUploading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50"
                 >
                   <Camera size={12} />
                   {photoUploading ? "Uploading…" : photoUrl || rep.photo ? "Change Photo" : "Upload Photo"}
@@ -1974,7 +1974,7 @@ function RepRow({
                 </button>
               </div>
             </div>
-            <div className="p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+            <div className="p-3 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50">
               {permissions.length === 0 ? (
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-2">
                   ✓ Full access — can see all pages
@@ -1991,7 +1991,7 @@ function RepRow({
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer select-none text-xs font-medium transition ${
                       permissions.includes(key)
                         ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                        : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700"
+                        : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/[0.06]"
                     } ${permissions.length === 0 ? "opacity-40" : ""}`}
                   >
                     <input
@@ -2022,7 +2022,7 @@ function RepRow({
                 {allowedServiceTypes.length === 0 ? "(all allowed)" : `(${allowedServiceTypes.length} selected)`}
               </button>
               {showApptTypes && (
-                <div className="p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50">
                   <div className="flex gap-3 mb-2">
                     <button
                       type="button"
@@ -2077,8 +2077,8 @@ function RepRow({
           )}
 
           {/* ── Login & Access ── */}
-          <div className="col-span-full mt-1 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
-            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+          <div className="col-span-full mt-1 p-4 rounded-xl bg-slate-50 dark:bg-[var(--surface)]/50 border border-slate-200 dark:border-white/[0.06]/50">
+            <h5 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">
               Login &amp; Access
             </h5>
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -2114,7 +2114,7 @@ function RepRow({
               )}
             </div>
             {!email.trim() && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+              <p className="text-xs text-slate-400 dark:text-gray-500 mt-2">
                 Set this rep's email in the Email field above, click Save, then use "Send Password Reset Email" to let
                 them create their own password.
               </p>
@@ -2130,7 +2130,7 @@ function RepRow({
             </button>
             <button
               onClick={handleCancel}
-              className="px-4 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              className="px-4 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
             >
               Cancel
             </button>
@@ -2186,7 +2186,7 @@ function AuditLogSection() {
         <select
           value={filterUser}
           onChange={(e) => setFilterUser(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm focus:outline-none"
+          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none"
         >
           <option value="">All Users</option>
           {reps.map((r) => (
@@ -2198,7 +2198,7 @@ function AuditLogSection() {
         <select
           value={filterAction}
           onChange={(e) => setFilterAction(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm focus:outline-none"
+          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none"
         >
           <option value="">All Actions</option>
           <option value="created">Created</option>
@@ -2208,7 +2208,7 @@ function AuditLogSection() {
         </select>
         <button
           onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
         >
           <Download size={13} /> Export CSV
         </button>
@@ -2220,10 +2220,10 @@ function AuditLogSection() {
       ) : filtered.length === 0 ? (
         <div className="py-8 text-center text-gray-400 dark:text-gray-500 text-sm">No audit entries found</div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800">
+              <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)]">
                 <tr>
                   {["Date", "Time", "User", "Action", "Detail"].map((h) => (
                     <th
@@ -2237,7 +2237,7 @@ function AuditLogSection() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {filtered.map((e) => (
-                  <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                  <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap text-xs">{e.date}</td>
                     <td className="px-3 py-2 text-gray-400 whitespace-nowrap text-xs">{e.time}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 dark:text-white whitespace-nowrap">{e.user}</td>
@@ -2286,7 +2286,7 @@ function CalendarSettingsSection() {
   const [addError, setAddError] = useState("");
 
   const inputCls =
-    "w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500";
+    "w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500";
 
   // Derive categories dynamically from existing service types (+ fallback defaults)
   const defaultCatOrder = [
@@ -2438,10 +2438,10 @@ function CalendarSettingsSection() {
       {grouped.map(({ cat, types }) => (
         <div
           key={cat}
-          className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden"
+          className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden"
         >
           {/* Category header — click to rename */}
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 bg-amber-50 dark:bg-amber-900/10 flex items-center gap-2">
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-white/[0.06] bg-amber-50 dark:bg-amber-900/10 flex items-center gap-2">
             {editingCatName === cat ? (
               <div className="flex items-center gap-2 flex-1">
                 <input
@@ -2452,7 +2452,7 @@ function CalendarSettingsSection() {
                     if (e.key === "Enter") handleRenameCategory(cat, editCatValue);
                     if (e.key === "Escape") setEditingCatName(null);
                   }}
-                  className="flex-1 px-2 py-1 text-sm rounded border border-amber-300 dark:border-amber-600 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="flex-1 px-2 py-1 text-sm rounded border border-amber-300 dark:border-amber-600 bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
                 <button
                   onClick={() => handleRenameCategory(cat, editCatValue)}
@@ -2463,7 +2463,7 @@ function CalendarSettingsSection() {
                 </button>
                 <button
                   onClick={() => setEditingCatName(null)}
-                  className="text-xs px-2 py-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"
+                  className="text-xs px-2 py-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded"
                 >
                   ✕
                 </button>
@@ -2519,7 +2519,7 @@ function CalendarSettingsSection() {
                               type="color"
                               value={editColor}
                               onChange={(e) => setEditColor(e.target.value)}
-                              className="h-8 w-12 rounded border border-gray-200 dark:border-slate-700 cursor-pointer"
+                              className="h-8 w-12 rounded border border-gray-200 dark:border-white/[0.06] cursor-pointer"
                             />
                             <span className="text-xs text-gray-500 font-mono">{editColor}</span>
                           </div>
@@ -2549,7 +2549,7 @@ function CalendarSettingsSection() {
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="px-3 py-1 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800"
+                          className="px-3 py-1 text-xs border border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                         >
                           Cancel
                         </button>
@@ -2593,7 +2593,7 @@ function CalendarSettingsSection() {
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-xs px-2 py-1 border border-gray-200 dark:border-slate-600 rounded text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-700"
+                            className="text-xs px-2 py-1 border border-gray-200 dark:border-white/[0.08] rounded text-gray-500 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                           >
                             No
                           </button>
@@ -2633,7 +2633,7 @@ function CalendarSettingsSection() {
       ))}
 
       {/* Add new service type */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Add Service Type</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -2645,7 +2645,7 @@ function CalendarSettingsSection() {
                 setAddError("");
               }}
               placeholder="e.g. Finance Run"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             {addError && <p className="text-xs text-red-500 mt-1">{addError}</p>}
           </div>
@@ -2655,7 +2655,7 @@ function CalendarSettingsSection() {
               list="new-cat-list"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <datalist id="new-cat-list">
               {categories.map((c) => (
@@ -2670,7 +2670,7 @@ function CalendarSettingsSection() {
                 type="color"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                className="h-9 w-16 rounded border border-gray-200 dark:border-slate-700 cursor-pointer"
+                className="h-9 w-16 rounded border border-gray-200 dark:border-white/[0.06] cursor-pointer"
               />
               <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{newColor}</span>
             </div>
@@ -2680,7 +2680,7 @@ function CalendarSettingsSection() {
             <select
               value={newDuration}
               onChange={(e) => setNewDuration(Number(e.target.value))}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value={20}>20 minutes</option>
               <option value={30}>30 minutes</option>
@@ -2766,7 +2766,7 @@ function SyncSection({
 
       {/* Sync Status */}
       {sync?.lastSyncAt && (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[var(--surface)]/50 border border-gray-200 dark:border-white/[0.06]">
           <div
             className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
               sync.lastSyncResult === "success"
@@ -2807,7 +2807,7 @@ function SyncSection({
       )}
 
       {/* Configuration */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5 space-y-4">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
           <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-bold">
             1
@@ -2819,7 +2819,7 @@ function SyncSection({
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Google Sheet URL</label>
             <input
               type="text"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
               placeholder="https://docs.google.com/spreadsheets/d/..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -2829,7 +2829,7 @@ function SyncSection({
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tab / Sheet Name</label>
             <input
               type="text"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
               placeholder="Sheet1"
               value={tab}
               onChange={(e) => setTab(e.target.value)}
@@ -2859,7 +2859,7 @@ function SyncSection({
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-500 dark:text-gray-400">Interval</label>
             <select
-              className="px-2 py-1 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none"
+              className="px-2 py-1 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
               value={intervalMins}
               onChange={(e) => setIntervalMins(Number(e.target.value))}
               disabled={!autoEnabled}
@@ -2881,7 +2881,7 @@ function SyncSection({
           </button>
           <button
             onClick={onOpenSyncModal}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
+            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5"
           >
             <span>Open Sync Modal</span>
             <ExternalLink size={13} />
@@ -2891,7 +2891,7 @@ function SyncSection({
 
       {/* Quick Actions */}
       {sync?.url && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Quick Actions</h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
             These open the Sheets Sync modal pre-configured. You will need to authenticate with Google once per session.
@@ -3048,7 +3048,7 @@ function DataToolsSection({
       </div>
 
       {/* Lead counts */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Lead Counts by Status</h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {ALL_STATUSES_DT.map((s) => (
@@ -3065,12 +3065,12 @@ function DataToolsSection({
       </div>
 
       {/* Bulk Status Change */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5 space-y-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bulk Status Change</h4>
         <p className="text-xs text-gray-500 dark:text-gray-400">Move all leads with one status to another status.</p>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none"
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
             value={bulkFrom}
             onChange={(e) => {
               setBulkFrom(e.target.value);
@@ -3086,7 +3086,7 @@ function DataToolsSection({
           </select>
           <span className="text-gray-400 text-sm">→</span>
           <select
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none"
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
             value={bulkTo}
             onChange={(e) => {
               setBulkTo(e.target.value);
@@ -3114,7 +3114,7 @@ function DataToolsSection({
                 </button>
                 <button
                   onClick={() => setConfirmBulk(false)}
-                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 >
                   Cancel
                 </button>
@@ -3131,14 +3131,14 @@ function DataToolsSection({
       </div>
 
       {/* Bulk Reassign */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5 space-y-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bulk Reassign Leads</h4>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Transfer all leads assigned to one rep to another rep.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none"
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
             value={assignFrom}
             onChange={(e) => {
               setAssignFrom(Number(e.target.value) || "");
@@ -3154,7 +3154,7 @@ function DataToolsSection({
           </select>
           <span className="text-gray-400 text-sm">→</span>
           <select
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none"
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
             value={assignTo}
             onChange={(e) => {
               setAssignTo(Number(e.target.value) || "");
@@ -3183,7 +3183,7 @@ function DataToolsSection({
                 </button>
                 <button
                   onClick={() => setConfirmAssign(false)}
-                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 >
                   Cancel
                 </button>
@@ -3200,7 +3200,7 @@ function DataToolsSection({
       </div>
 
       {/* Archive stale DQs */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5 space-y-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Archive Stale DQ Leads</h4>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Permanently delete DQ leads that have never been called and were added more than N days ago.
@@ -3211,7 +3211,7 @@ function DataToolsSection({
             type="number"
             min={7}
             max={365}
-            className="w-20 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none text-center"
+            className="w-20 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none text-center"
             value={archiveDays}
             onChange={(e) => {
               setArchiveDays(Number(e.target.value));
@@ -3234,7 +3234,7 @@ function DataToolsSection({
                 </button>
                 <button
                   onClick={() => setConfirmArchive(false)}
-                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 >
                   Cancel
                 </button>
@@ -3251,18 +3251,18 @@ function DataToolsSection({
       </div>
 
       {/* Export Tools */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5 space-y-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Export Data</h4>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => onExport("leads")}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-[var(--hover)] transition"
           >
             <Download size={14} /> Export All Leads (CSV)
           </button>
           <button
             onClick={() => onExport("calls")}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-[var(--hover)] transition"
           >
             <Download size={14} /> Export Call History (CSV)
           </button>
@@ -3409,7 +3409,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950 p-6 space-y-6">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-6 space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <SummaryCard label="Total Reps" value={reps.length} sub={`${activeCount} active`} />
@@ -3421,7 +3421,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
       <TodayBriefingStrip data={briefingData} />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-slate-700 overflow-x-auto">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-white/[0.06] overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -3446,7 +3446,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
       {/* Reps tab */}
       {activeTab === "reps" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
               Rep Roster <span className="text-gray-400 font-normal">({reps.length})</span>
             </h3>
@@ -3490,7 +3490,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
           </div>
 
           <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
                 <UserPlus size={15} className="text-amber-500" /> Add Rep
               </h3>
@@ -3498,7 +3498,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Name *</label>
                   <input
-                    className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 ${addError ? "border-red-400" : "border-gray-300 dark:border-slate-600"}`}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 ${addError ? "border-red-400" : "border-gray-300 dark:border-white/[0.08]"}`}
                     placeholder="Full name"
                     value={newName}
                     onChange={(e) => {
@@ -3514,7 +3514,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Role</label>
                   <select
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as Rep["role"])}
                   >
@@ -3532,7 +3532,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
             </div>
 
             {/* Former Staff placeholder card */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
                 <Users size={15} className="text-gray-400" /> Add Former Staff Member
               </h3>
@@ -3544,7 +3544,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Name *</label>
                   <input
-                    className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 ${addFormerError ? "border-red-400" : "border-gray-300 dark:border-slate-600"}`}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 ${addFormerError ? "border-red-400" : "border-gray-300 dark:border-white/[0.08]"}`}
                     placeholder="e.g. Sarah (Former)"
                     value={newFormerName}
                     onChange={(e) => {
@@ -3559,14 +3559,14 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
                 </div>
                 <button
                   onClick={handleAddFormerStaff}
-                  className="w-full py-2 rounded-lg bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition text-sm flex items-center justify-center gap-2"
+                  className="w-full py-2 rounded-lg bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-300 dark:hover:bg-[var(--hover)] transition text-sm flex items-center justify-center gap-2"
                 >
                   <UserPlus size={15} /> Add Former Staff
                 </button>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Calls per Rep</h3>
               {totalCalls === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No calls logged yet</p>
@@ -3584,7 +3584,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
                           <span className="w-16 truncate text-gray-700 dark:text-gray-300 flex-shrink-0">
                             {rep.name}
                           </span>
-                          <div className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-full h-1.5">
+                          <div className="flex-1 bg-gray-100 dark:bg-[var(--surface)] rounded-full h-1.5">
                             <div className="h-1.5 rounded-full bg-amber-500" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="w-8 text-right font-semibold text-gray-900 dark:text-white">{count}</span>

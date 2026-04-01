@@ -369,8 +369,8 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2">
               <FileText size={16} className="text-amber-500" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Generate Invoice PDF</h2>
@@ -379,13 +379,13 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
               {/* Load drafts button */}
               <button
                 onClick={() => setShowDrafts((v) => !v)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
               >
                 <FolderOpen size={13} /> Drafts {drafts.length > 0 && `(${drafts.length})`}
               </button>
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition text-gray-500"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition text-gray-500"
               >
                 <X size={16} />
               </button>
@@ -394,7 +394,7 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
 
           {/* Drafts panel */}
           {showDrafts && (
-            <div className="border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 px-6 py-3 max-h-48 overflow-y-auto">
+            <div className="border-b border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] px-6 py-3 max-h-48 overflow-y-auto">
               {drafts.length === 0 ? (
                 <p className="text-xs text-gray-400 italic">No saved drafts yet</p>
               ) : (
@@ -451,13 +451,13 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
               <div className="flex gap-2 mb-2">
                 <button
                   onClick={() => setInvoiceToType("fixed")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${invoiceToType === "fixed" ? "bg-amber-500 text-white border-amber-500" : "border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${invoiceToType === "fixed" ? "bg-amber-500 text-white border-amber-500" : "border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"}`}
                 >
                   Company
                 </button>
                 <button
                   onClick={() => setInvoiceToType("rep")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${invoiceToType === "rep" ? "bg-amber-500 text-white border-amber-500" : "border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${invoiceToType === "rep" ? "bg-amber-500 text-white border-amber-500" : "border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"}`}
                 >
                   Rep
                 </button>
@@ -572,7 +572,7 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
                 ))}
               </select>
               {selectedRep && (
-                <div className="mt-2 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                <div className="mt-2 p-3 bg-gray-50 dark:bg-[var(--surface)] rounded-lg text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                   {selectedRep.abn ? (
                     <p>ABN: {selectedRep.abn}</p>
                   ) : (
@@ -593,18 +593,18 @@ function InvoiceModal({ entries, onClose }: { entries: CommissionEntry[]; onClos
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <button
               onClick={handleSaveDraft}
               disabled={savingDraft}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] disabled:opacity-50 transition"
             >
               <Save size={14} /> {savingDraft ? "Saving…" : "Save for Later"}
             </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
               >
                 Cancel
               </button>
@@ -753,15 +753,15 @@ function NewCommissionModal({
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-amber-500" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">New Settlement</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition text-gray-500"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition text-gray-500"
             >
               <X size={16} />
             </button>
@@ -878,7 +878,7 @@ function NewCommissionModal({
                 className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   reminderEnabled
                     ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400"
-                    : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"
+                    : "border-gray-200 dark:border-white/[0.06] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 }`}
               >
                 {reminderEnabled ? <Bell size={14} /> : <BellOff size={14} />}
@@ -917,7 +917,7 @@ function NewCommissionModal({
                     </span>
                     {/* Rep dropdown */}
                     <select
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                       value={repId}
                       onChange={(e) => {
                         setRepId(e.target.value === "" ? "" : Number(e.target.value));
@@ -940,7 +940,7 @@ function NewCommissionModal({
                         type="number"
                         min={0}
                         step={0.01}
-                        className="pl-6 pr-2 py-1.5 w-32 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="pl-6 pr-2 py-1.5 w-32 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="0.00"
@@ -952,10 +952,10 @@ function NewCommissionModal({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
             >
               Cancel
             </button>
@@ -995,7 +995,7 @@ function CommissionCard({
     entry.entity === "Perth" ? "ASG Perth" : entry.entity === "Brisbane" ? "ASG Brisbane" : (entry.entity as string);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
       <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -1055,7 +1055,7 @@ function CommissionCard({
                   e.stopPropagation();
                   setConfirmDelete(false);
                 }}
-                className="p-1.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200 transition"
+                className="p-1.5 rounded bg-gray-100 dark:bg-[var(--surface)] text-gray-500 hover:bg-gray-200 transition"
               >
                 <X size={13} />
               </button>
@@ -1080,7 +1080,7 @@ function CommissionCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-4 pb-4 pt-3">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] px-4 pb-4 pt-3">
           {entry.repAllocations.length === 0 ? (
             <p className="text-xs text-gray-400 italic">No rep allocations</p>
           ) : (
@@ -1123,7 +1123,7 @@ function CommissionCard({
                   </button>
                 </div>
               ))}
-              <div className="flex justify-between text-xs text-gray-400 pt-1 border-t border-gray-100 dark:border-slate-800 mt-2">
+              <div className="flex justify-between text-xs text-gray-400 pt-1 border-t border-gray-100 dark:border-white/[0.06] mt-2">
                 <span>Allocated: {formatCurrency(totalAllocated)}</span>
                 <span>Remaining: {formatCurrency(entry.total - totalAllocated)}</span>
               </div>
@@ -1332,7 +1332,7 @@ export function CommissionsPage() {
       {showNew && <NewCommissionModal onClose={() => setShowNew(false)} onSave={handleSave} />}
       {showInvoice && <InvoiceModal entries={entries} onClose={() => setShowInvoice(false)} />}
 
-      <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950 p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -1343,7 +1343,7 @@ export function CommissionsPage() {
             <button
               onClick={handleMonthlyReport}
               disabled={generatingReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50"
             >
               📊 {generatingReport ? "Generating…" : "Monthly Report"}
             </button>
@@ -1364,15 +1364,15 @@ export function CommissionsPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
             <div className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalSettlements)}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total Settlements</div>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
             <div className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalPaid)}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Paid to Reps</div>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
             <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
               {formatCurrency(totalAllocated - totalPaid)}
             </div>
@@ -1382,7 +1382,7 @@ export function CommissionsPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div className="flex rounded-lg border border-gray-200 dark:border-white/[0.06] overflow-hidden">
             {(
               [
                 ["all", "All"],
@@ -1393,13 +1393,13 @@ export function CommissionsPage() {
               <button
                 key={val}
                 onClick={() => setFilterEntity(val as "all" | Entity)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${filterEntity === val ? "bg-amber-500 text-white" : "bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}
+                className={`px-3 py-1.5 text-xs font-medium transition ${filterEntity === val ? "bg-amber-500 text-white" : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div className="flex rounded-lg border border-gray-200 dark:border-white/[0.06] overflow-hidden">
             {(
               [
                 ["all", "All"],
@@ -1410,7 +1410,7 @@ export function CommissionsPage() {
               <button
                 key={val}
                 onClick={() => setFilterPaid(val)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${filterPaid === val ? "bg-amber-500 text-white" : "bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}
+                className={`px-3 py-1.5 text-xs font-medium transition ${filterPaid === val ? "bg-amber-500 text-white" : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"}`}
               >
                 {label}
               </button>
@@ -1447,7 +1447,7 @@ export function CommissionsPage() {
 
 // helpers
 const inp =
-  "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
+  "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

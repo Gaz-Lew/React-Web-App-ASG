@@ -66,12 +66,12 @@ export function SuburbInput({ value, onChange, className, placeholder = 'Suburb'
         className={className}
       />
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-[70] left-0 right-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-xl mt-0.5 max-h-48 overflow-y-auto">
+        <ul className="absolute z-[70] left-0 right-0 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-xl mt-0.5 max-h-48 overflow-y-auto">
           {suggestions.map(s => (
             <li
               key={s}
               onMouseDown={() => handleSelect(s)}
-              className="px-3 py-2 text-sm cursor-pointer hover:bg-amber-50 dark:hover:bg-slate-700 text-gray-800 dark:text-gray-200"
+              className="px-3 py-2 text-sm cursor-pointer hover:bg-amber-50 dark:hover:bg-[var(--hover)] text-gray-800 dark:text-gray-200"
             >
               {s}
             </li>

@@ -325,7 +325,7 @@ interface SheetsSyncModalProps {
 
 // ── Shared input class ────────────────────────────────────────────────────────
 const inp =
-  "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
+  "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
@@ -1612,20 +1612,20 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2">
               <ArrowLeftRight size={18} className="text-amber-500" />
               <span className="font-bold text-gray-900 dark:text-white text-lg">Google Sheets Sync</span>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition">
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition">
               <X size={18} />
             </button>
           </div>
 
           {/* Step tabs */}
-          <div className="flex border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             {(["configure", "mapping", "sync"] as Step[]).map((s, i) => (
               <button
                 key={s}
@@ -1666,7 +1666,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                         href={sheetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border border-gray-300 dark:border-slate-600 rounded-lg transition"
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border border-gray-300 dark:border-white/[0.08] rounded-lg transition"
                         title="Open sheet"
                       >
                         <ExternalLink size={16} />
@@ -1780,7 +1780,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                       <select
                         value={mapping[key] ?? ""}
                         onChange={(e) => setMapping((m) => ({ ...m, [key]: e.target.value }))}
-                        className="flex-1 px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="flex-1 px-2 py-1 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
                       >
                         <option value="">(not mapped)</option>
                         {headers.map((h) => (
@@ -1822,7 +1822,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                     <select
                       value={defaultStatus}
                       onChange={(e) => setDefaultStatus(e.target.value as LeadStatus)}
-                      className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     >
                       {IMPORT_STATUSES.map((s) => (
                         <option key={s} value={s}>
@@ -1892,7 +1892,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                         {tabScans.length} tab{tabScans.length !== 1 ? "s" : ""} found — review and confirm:
                       </p>
 
-                      <div className="rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900">
+                      <div className="rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700 bg-white dark:bg-[var(--surface)]">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-slate-700/50 text-left">
@@ -1907,9 +1907,9 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                             {tabScans.map((scan, i) => (
                               <tr
                                 key={scan.tabName}
-                                className={`border-t border-gray-100 dark:border-slate-700 ${
+                                className={`border-t border-gray-100 dark:border-white/[0.06] ${
                                   !scan.included ? "opacity-50" : ""
-                                } ${i % 2 === 1 ? "bg-gray-50 dark:bg-slate-800/30" : ""}`}
+                                } ${i % 2 === 1 ? "bg-gray-50 dark:bg-[var(--surface)]/30" : ""}`}
                               >
                                 {/* Tab name */}
                                 <td className="px-3 py-2">
@@ -1928,7 +1928,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                                         ),
                                       )
                                     }
-                                    className="w-full px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                                   >
                                     {IMPORT_STATUSES.map((s) => (
                                       <option key={s} value={s}>
@@ -1974,7 +1974,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                             ))}
                           </tbody>
                           <tfoot>
-                            <tr className="border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+                            <tr className="border-t border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50">
                               <td className="px-3 py-2 text-xs text-gray-500 font-medium">
                                 {tabScans.filter((s) => s.included).length} of {tabScans.length} included
                               </td>
@@ -2286,10 +2286,10 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0 gap-3">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] flex-shrink-0 gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
             >
               Close
             </button>
@@ -2316,7 +2316,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
                 <>
                   <button
                     onClick={() => setStep("configure")}
-                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                   >
                     ← Back
                   </button>
@@ -2332,7 +2332,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
               {step === "sync" && (
                 <button
                   onClick={() => setStep("mapping")}
-                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                 >
                   ← Back
                 </button>

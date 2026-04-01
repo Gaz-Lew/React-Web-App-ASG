@@ -35,7 +35,7 @@ export function DonutChart({
           fill="none"
           stroke="currentColor"
           strokeWidth={thickness}
-          className="text-gray-200 dark:text-slate-700"
+          className="text-gray-200 dark:text-gray-400"
         />
         {centerLabel && (
           <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="middle"
@@ -69,7 +69,7 @@ export function DonutChart({
         fill="none"
         stroke="currentColor"
         strokeWidth={thickness}
-        className="text-gray-100 dark:text-slate-800"
+        className="text-gray-100 dark:text-gray-300"
       />
       {renderedSegments.map((s, i) => (
         <circle

@@ -94,7 +94,7 @@ function SignatureCanvas({ onSign }: SignatureCanvasProps) {
     <div className="space-y-2">
       <canvas
         ref={canvasRef}
-        className="w-full rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-500 bg-white touch-none"
+        className="w-full rounded-xl border-2 border-dashed border-gray-300 dark:border-white/[0.08] bg-white touch-none"
         style={{ height: 140 }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -297,16 +297,16 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
     }
   };
 
-  const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition';
+  const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition';
 
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-[58]" onClick={onClose} />
       <div className="fixed inset-0 z-[59] flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[92vh]">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[92vh]">
 
           {/* Header */}
-          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <FileText size={16} className="text-amber-500" /> {template.name}
@@ -315,7 +315,7 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
                 <p className="text-xs text-gray-400 mt-0.5">for {selectedLead.name}</p>
               )}
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 ml-3">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400 ml-3">
               <X size={16} />
             </button>
           </div>
@@ -341,13 +341,13 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                       placeholder="Search by name, phone or suburb…"
                       value={leadSearch}
                       onChange={(e) => setLeadSearch(e.target.value)}
                     />
                     {leadSearch && (
-                      <div className="absolute top-full left-0 right-0 mt-1 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800 shadow-lg z-10">
+                      <div className="absolute top-full left-0 right-0 mt-1 border border-gray-200 dark:border-white/[0.06] rounded-lg overflow-hidden bg-white dark:bg-[var(--surface)] shadow-lg z-10">
                         {filteredLeads.length === 0 ? (
                           <div className="px-3 py-2 text-xs text-gray-400">No leads found</div>
                         ) : filteredLeads.map((l) => (
@@ -408,7 +408,7 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={Boolean(formValues[field.id])}
                         onChange={(e) => setFormValues((p) => ({ ...p, [field.id]: e.target.checked }))}
-                        className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-amber-500 focus:ring-amber-400" />
+                        className="w-4 h-4 rounded border-gray-300 dark:border-white/[0.08] text-amber-500 focus:ring-amber-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">Yes</span>
                     </label>
                   )}
@@ -418,7 +418,7 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 flex-shrink-0">
+          <div className="px-5 py-4 border-t border-gray-200 dark:border-white/[0.06] flex gap-3 flex-shrink-0">
             <button
               onClick={handleGenerate}
               disabled={!selectedLead || saving}
@@ -428,7 +428,7 @@ export function FormFillerModal({ template, lead: initialLead, currentUser, onCl
               {saving ? 'Generating PDF…' : 'Generate & Save to Lead'}
             </button>
             <button onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+              className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition">
               Cancel
             </button>
           </div>

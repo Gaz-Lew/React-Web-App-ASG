@@ -165,9 +165,9 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-3">
               <FileText size={18} className="text-amber-500" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Import CSV</h2>
@@ -187,7 +187,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition text-gray-500"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition text-gray-500"
             >
               <X size={18} />
             </button>
@@ -198,12 +198,12 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
             {/* Step 1: Upload */}
             {step === "upload" && (
               <div
-                className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-12 text-center cursor-pointer hover:border-amber-400 dark:hover:border-amber-500 transition"
+                className="border-2 border-dashed border-gray-300 dark:border-white/[0.08] rounded-xl p-12 text-center cursor-pointer hover:border-amber-400 dark:hover:border-amber-500 transition"
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload size={40} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
+                <Upload size={40} className="mx-auto text-gray-300 dark:text-gray-500 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
                   Drop CSV file here or click to browse
                 </p>
@@ -232,7 +232,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                     <select
                       value={defaultRep}
                       onChange={(e) => setDefaultRep(Number(e.target.value))}
-                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none"
                     >
                       <option value={0}>— Unassigned —</option>
                       {activeReps.map((r) => (
@@ -249,7 +249,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                     <select
                       value={defaultStatus}
                       onChange={(e) => setDefaultStatus(e.target.value as LeadStatus)}
-                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none"
                     >
                       {["DQ", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"].map((s) => (
                         <option key={s} value={s}>
@@ -263,9 +263,9 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-slate-700">
+                    <thead className="bg-gray-50 dark:bg-[var(--hover)]">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           CSV Column
@@ -286,7 +286,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                             <select
                               value={mapping[h] ?? ""}
                               onChange={(e) => setMapping((p) => ({ ...p, [h]: e.target.value as keyof Lead | "" }))}
-                              className="w-full px-2 py-1 rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
+                              className="w-full px-2 py-1 rounded border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
                             >
                               {LEAD_FIELDS.map((f) => (
                                 <option key={f.key} value={f.key}>
@@ -317,9 +317,9 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                 <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
                   <Check size={16} /> {previewLeads.length} leads ready to import
                 </div>
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden max-h-[400px] overflow-y-auto">
+                <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden max-h-[400px] overflow-y-auto">
                   <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-gray-50 dark:bg-slate-700">
+                    <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--hover)]">
                       <tr>
                         {["#", "Name", "Phone", "Suburb", "Status", "Rep"].map((h) => (
                           <th
@@ -333,7 +333,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-600">
                       {previewLeads.map((l, i) => (
-                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50">
                           <td className="px-3 py-2 text-gray-400 text-xs">{i + 1}</td>
                           <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{l.name}</td>
                           <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{l.phone}</td>
@@ -356,10 +356,10 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0 bg-gray-50 dark:bg-slate-800">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] flex-shrink-0 bg-gray-50 dark:bg-[var(--surface)]">
             <button
               onClick={step === "upload" ? onClose : () => setStep(step === "preview" ? "map" : "upload")}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition text-sm"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition text-sm"
             >
               {step === "upload" ? "Cancel" : "← Back"}
             </button>

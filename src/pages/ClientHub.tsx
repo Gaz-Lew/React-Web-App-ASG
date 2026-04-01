@@ -130,33 +130,25 @@ function getDealStage(lead: Lead): DealStageInfo {
       bgClass: "bg-green-100 dark:bg-green-900/30",
       textClass: "text-green-700 dark:text-green-400",
     };
+  // Fallback for leads with appointments but no FC/FR data
   return {
-    label: "FC Pending",
-    bgClass: "bg-gray-100 dark:bg-slate-700",
-    textClass: "text-gray-600 dark:text-gray-400",
+    label: "Active",
+    bgClass: "bg-blue-100 dark:bg-blue-900/30",
+    textClass: "text-blue-700 dark:text-blue-400",
   };
 }
 
 const CALL_RESULT_COLORS: Record<string, string> = {
   booked: "text-green-600 bg-green-50 dark:bg-green-900/30",
-  "no-answer": "text-gray-500 bg-gray-50 dark:bg-slate-800",
+  "no-answer": "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]",
   "not-interested": "text-red-500 bg-red-50 dark:bg-red-900/30",
-  "wrong-number": "text-gray-400 bg-gray-50 dark:bg-slate-800",
+  "wrong-number": "text-gray-400 bg-gray-50 dark:bg-[var(--surface)]",
   callback: "text-orange-500 bg-orange-50 dark:bg-orange-900/30",
   "callback-today": "text-gray-500 bg-gray-50 dark:bg-gray-800/30",
-  "back-to-dq": "text-gray-500 bg-gray-50 dark:bg-slate-800",
+  "back-to-dq": "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]",
 };
 
-const STAGE_FILTERS = [
-  "All",
-  "FC Pending",
-  "FC Booked",
-  "FC Done",
-  "FR Booked",
-  "FR Done",
-  "Settlement",
-  "DNQ",
-] as const;
+const STAGE_FILTERS = ["All", "FC Booked", "FC Done", "FR Booked", "FR Done", "Settlement", "DNQ"] as const;
 type StageFilter = (typeof STAGE_FILTERS)[number];
 
 // ── Details Tab ──────────────────────────────────────────────────────────────
@@ -168,7 +160,7 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
 
   const row = (label: string, value: string | undefined | null) =>
     value ? (
-      <div key={label} className="flex gap-2 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
+      <div key={label} className="flex gap-2 py-2 border-b border-gray-100 dark:border-white/[0.06] last:border-0">
         <span className="text-xs text-gray-500 dark:text-gray-400 w-28 flex-shrink-0">{label}</span>
         <span className="text-xs text-gray-800 dark:text-gray-200 flex-1">{value}</span>
       </div>
@@ -177,7 +169,7 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
   return (
     <div className="p-4 space-y-4">
       {/* Contact info */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-1">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-1">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Contact</p>
         {lead.phone && (
           <a
@@ -208,7 +200,7 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
       </div>
 
       {/* Lead details */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Lead Info</p>
         {row("Ownership", lead.ownership)}
         {row("Superannuation", lead.superannuation)}
@@ -219,7 +211,7 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
       </div>
 
       {/* Deal pipeline */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-3">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Deal Pipeline</p>
 
         {/* FC */}
@@ -296,7 +288,7 @@ function DocumentsTab({ lead }: { lead: Lead }) {
             {catFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
+                className="flex items-center gap-3 p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06] hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
               >
                 <FileText size={16} className="text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -366,7 +358,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
               return (
                 <div
                   key={appt.id}
-                  className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700"
+                  className="p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06]"
                 >
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
@@ -428,7 +420,8 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
             <div className="absolute left-3.5 top-4 bottom-4 w-px bg-gray-200 dark:bg-slate-700" />
             <div className="space-y-2">
               {callHistory.map((call, idx) => {
-                const colorClass = CALL_RESULT_COLORS[call.result] ?? "text-gray-500 bg-gray-50 dark:bg-slate-800";
+                const colorClass =
+                  CALL_RESULT_COLORS[call.result] ?? "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]";
                 const [bgClass] = colorClass.split(" text-");
                 return (
                   <div key={idx} className="relative pl-8">
@@ -436,7 +429,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                     <div
                       className={`absolute left-2 top-3 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${bgClass}`}
                     />
-                    <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <div className="p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06]">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${colorClass}`}>
                           {call.result?.replace(/-/g, " ") ?? "unknown"}
@@ -488,9 +481,9 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
   ];
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+    <div className="flex flex-col h-full bg-white dark:bg-[var(--surface)]">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+      <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{lead.name}</h2>
@@ -509,7 +502,7 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           >
             <X size={16} />
           </button>
@@ -525,14 +518,14 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
           </button>
           <button
             onClick={() => onCall(lead)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold hover:bg-gray-200 dark:hover:bg-[var(--hover)] transition-colors"
           >
             <Phone size={13} /> Log Call
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0.5 mt-3 bg-gray-100 dark:bg-slate-800 rounded-lg p-0.5">
+        <div className="flex gap-0.5 mt-3 bg-gray-100 dark:bg-[var(--surface)] rounded-lg p-0.5">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -568,7 +561,12 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export function ClientHubPage() {
+interface ClientHubPageProps {
+  initialFilter?: string | null;
+  onFilterCleared?: () => void;
+}
+
+export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageProps) {
   const { leads, loading } = useLeads();
   const { reps, currentUser } = useAppStore();
   const { save: saveLead } = useSaveLead();
@@ -580,6 +578,15 @@ export function ClientHubPage() {
   // Active reps only — former/inactive staff excluded from booking dropdowns
   const activeReps = useMemo(() => reps.filter((r) => r.active), [reps]);
 
+  // Apply filter from Dashboard navigation
+  const filterModifier = useMemo(() => {
+    if (!initialFilter) return null;
+    if (initialFilter === "fc-completed-no-fr") {
+      return (l: Lead) => l.fcAppt?.result === "Completed" && !l.frAppt?.date;
+    }
+    return null;
+  }, [initialFilter]);
+
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showPanel, setShowPanel] = useState(false);
   const [showCallLogger, setShowCallLogger] = useState(false);
@@ -589,18 +596,20 @@ export function ClientHubPage() {
   const [stageFilter, setStageFilter] = useState<StageFilter>("All");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // All booked leads with at least one appointment = clients
+  // Leads with at least one appointment = clients
   const clients = useMemo(() => {
-    const bookedLeads = leads.filter((l) => l.status === "Booked");
     const leadIdsWithAppointments = new Set(appointments.map((a) => a.linkedLeadId).filter(Boolean));
-    return bookedLeads.filter((l) => leadIdsWithAppointments.has(l.id));
-  }, [leads, appointments]);
+    let result = leads.filter((l) => leadIdsWithAppointments.has(l.id));
+    if (filterModifier) {
+      result = result.filter(filterModifier);
+    }
+    return result;
+  }, [leads, appointments, filterModifier]);
 
   // Stat counts
   const stats = useMemo(() => {
     const counts = {
       total: clients.length,
-      fcPending: 0,
       fcBooked: 0,
       fcDone: 0,
       frBooked: 0,
@@ -610,8 +619,7 @@ export function ClientHubPage() {
     };
     clients.forEach((l) => {
       const s = getDealStage(l).label;
-      if (s === "FC Pending") counts.fcPending++;
-      else if (s === "FC Booked") counts.fcBooked++;
+      if (s === "FC Booked") counts.fcBooked++;
       else if (s === "FC Done") counts.fcDone++;
       else if (s === "FR Booked") counts.frBooked++;
       else if (s === "FR Done") counts.frDone++;
@@ -700,9 +708,9 @@ export function ClientHubPage() {
   const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "—";
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-slate-950">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-4 sm:px-6 py-4">
+      <div className="bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3 mb-4">
           <Briefcase size={20} className="text-amber-500" />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Client Hub</h1>
@@ -711,10 +719,25 @@ export function ClientHubPage() {
           </span>
         </div>
 
+        {/* Filter indicator banner */}
+        {initialFilter && (
+          <div className="flex items-center justify-between gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg text-xs text-orange-700 dark:text-orange-300 mb-4">
+            <span className="font-semibold">📋 Filter: FC completed, needs FR booking</span>
+            <button
+              onClick={onFilterCleared}
+              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/30 transition"
+            >
+              <span>Clear filter</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Stats bar */}
         <div className="flex flex-wrap gap-2 mb-4">
           {[
-            { label: "FC Pending", count: stats.fcPending },
             { label: "FC Booked", count: stats.fcBooked },
             { label: "FC Done", count: stats.fcDone },
             { label: "FR Booked", count: stats.frBooked },
@@ -732,7 +755,7 @@ export function ClientHubPage() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
                   stageFilter === s.label
                     ? "bg-amber-500 border-amber-500 text-white"
-                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-amber-300"
+                    : "bg-white dark:bg-[var(--surface)] border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:border-amber-300"
                 }`}
               >
                 <span className="font-semibold">{s.count}</span>
@@ -749,14 +772,14 @@ export function ClientHubPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search clients..."
-              className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 w-48 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 w-48 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           {/* Active reps only in filter */}
           <select
             value={repFilter === "all" ? "all" : String(repFilter)}
             onChange={(e) => setRepFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <option value="all">All Reps</option>
             {activeReps.map((r) => (
@@ -774,7 +797,7 @@ export function ClientHubPage() {
                 className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors ${
                   stageFilter === sf
                     ? "bg-amber-500 text-white"
-                    : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                    : "bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 }`}
               >
                 {sf}
@@ -801,7 +824,7 @@ export function ClientHubPage() {
               {/* Desktop table */}
               <div className="hidden sm:block">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
+                  <thead className="sticky top-0 z-10 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06]">
                     <tr>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Client
@@ -831,7 +854,7 @@ export function ClientHubPage() {
                     {groupedClients.map(({ dateKey, label, leads: groupLeads }) => (
                       <React.Fragment key={dateKey}>
                         {/* Group header */}
-                        <tr className="bg-gray-50 dark:bg-slate-800/50">
+                        <tr className="bg-gray-50 dark:bg-[var(--surface)]/50">
                           <td colSpan={8} className="px-4 py-2">
                             <button
                               onClick={() => toggleGroup(dateKey)}
@@ -855,7 +878,7 @@ export function ClientHubPage() {
                             return (
                               <tr
                                 key={lead.id}
-                                className={`border-b border-gray-100 dark:border-slate-800 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer transition-colors group ${isSelected ? "bg-amber-50 dark:bg-amber-900/20" : "bg-white dark:bg-slate-900"}`}
+                                className={`border-b border-gray-100 dark:border-white/[0.06] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer transition-colors group ${isSelected ? "bg-amber-50 dark:bg-amber-900/20" : "bg-white dark:bg-[var(--surface)]"}`}
                                 onClick={() => handleSelectLead(lead)}
                               >
                                 <td className="px-4 py-3">
@@ -945,7 +968,7 @@ export function ClientHubPage() {
                   <div key={dateKey}>
                     <button
                       onClick={() => toggleGroup(dateKey)}
-                      className="w-full flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-slate-800/50 text-xs font-semibold text-gray-600 dark:text-gray-400"
+                      className="w-full flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-[var(--surface)]/50 text-xs font-semibold text-gray-600 dark:text-gray-400"
                     >
                       {collapsedGroups.has(dateKey) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                       {label} · {groupLeads.length}
@@ -959,7 +982,7 @@ export function ClientHubPage() {
                           <div
                             key={lead.id}
                             onClick={() => handleSelectLead(lead)}
-                            className="px-4 py-3 bg-white dark:bg-slate-900 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer"
+                            className="px-4 py-3 bg-white dark:bg-[var(--surface)] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer"
                           >
                             <div className="flex items-start justify-between gap-2 mb-1.5">
                               <span className="font-medium text-gray-900 dark:text-white">{lead.name || "—"}</span>
@@ -1015,7 +1038,7 @@ export function ClientHubPage() {
 
         {/* Desktop split-pane: Client Detail Panel */}
         {showPanel && selectedLead && (
-          <div className="hidden lg:flex w-[420px] flex-shrink-0 border-l border-gray-200 dark:border-slate-700 overflow-hidden flex-col">
+          <div className="hidden lg:flex w-[420px] flex-shrink-0 border-l border-gray-200 dark:border-white/[0.06] overflow-hidden flex-col">
             <ClientDetailPanel
               lead={selectedLead}
               reps={reps}
@@ -1041,7 +1064,7 @@ export function ClientHubPage() {
               setSelectedLead(null);
             }}
           />
-          <div className="relative w-full bg-white dark:bg-slate-900 rounded-t-2xl max-h-[90vh] flex flex-col z-10">
+          <div className="relative w-full bg-white dark:bg-[var(--surface)] rounded-t-2xl max-h-[90vh] flex flex-col z-10">
             <ClientDetailPanel
               lead={selectedLead}
               reps={reps}

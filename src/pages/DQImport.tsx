@@ -215,10 +215,10 @@ export function DQImportPage() {
   const dupCount = rows.filter((r) => r.name.trim() && isDuplicateAddress(r)).length;
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white dark:bg-[var(--surface)] overflow-hidden">
 
       {/* Page header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0 gap-4 flex-wrap">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0 gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <ClipboardList size={18} className="text-amber-500" />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">DQ Lead Import</h1>
@@ -237,7 +237,7 @@ export function DQImportPage() {
             type="date"
             value={batchDate}
             onChange={(e) => setBatchDate(e.target.value)}
-            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
@@ -250,7 +250,7 @@ export function DQImportPage() {
           <select
             value={batchStatus}
             onChange={(e) => setBatchStatus(e.target.value as LeadStatus)}
-            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             {IMPORT_STATUSES.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -267,7 +267,7 @@ export function DQImportPage() {
           <select
             value={batchRep}
             onChange={(e) => handleBatchRepChange(e.target.value === '' ? '' : Number(e.target.value))}
-            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             <option value="">— Select rep —</option>
             {activeReps.map((r) => (
@@ -285,7 +285,7 @@ export function DQImportPage() {
 
         <button
           onClick={resetAll}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/[0.06] rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
         >
           <RotateCcw size={14} />
           Clear All
@@ -295,7 +295,7 @@ export function DQImportPage() {
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-sm border-collapse" style={{ minWidth: '1400px' }}>
-          <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 z-10">
+          <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)] z-10">
             <tr>
               <th className={thCls} style={{ width: 36 }}>#</th>
               <th className={thCls} style={{ minWidth: 150 }}>Full Name *</th>
@@ -319,12 +319,12 @@ export function DQImportPage() {
               return (
                 <tr
                   key={i}
-                  className={`border-b border-gray-100 dark:border-slate-800 ${
+                  className={`border-b border-gray-100 dark:border-white/[0.06] ${
                     rowError
                       ? 'bg-red-50 dark:bg-red-900/10'
                       : isDup
                       ? 'bg-amber-50/60 dark:bg-amber-900/10'
-                      : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                      : 'hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50'
                   }`}
                 >
                   {/* Row # / Duplicate indicator */}
@@ -486,11 +486,11 @@ export function DQImportPage() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 gap-4">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] flex-shrink-0 gap-4">
         <button
           onClick={addRow}
           disabled={rows.length >= MAX_ROWS}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-white/[0.08] rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] disabled:opacity-40 disabled:cursor-not-allowed transition"
         >
           <Plus size={14} />
           Add Row
@@ -527,11 +527,11 @@ export function DQImportPage() {
   );
 }
 
-const thCls = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap';
+const thCls = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-white/[0.06] whitespace-nowrap';
 const inputCls = (hasError: boolean) =>
-  `w-full px-2 py-1 rounded border text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400 ${
-    hasError ? 'border-red-400' : 'border-gray-200 dark:border-slate-700'
+  `w-full px-2 py-1 rounded border text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400 ${
+    hasError ? 'border-red-400' : 'border-gray-200 dark:border-white/[0.06]'
   }`;
-const selectCls = 'w-full px-2 py-1 rounded border border-gray-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400';
+const selectCls = 'w-full px-2 py-1 rounded border border-gray-200 dark:border-white/[0.06] text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400';
 
 export default DQImportPage;

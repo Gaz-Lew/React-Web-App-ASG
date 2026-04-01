@@ -281,7 +281,7 @@ export function DashboardPage({
   onNavigate,
 }: {
   onCallLead?: (lead: Lead) => void;
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, filter?: { type: "leads" | "clients"; value: string }) => void;
 }) {
   const { leads, loading } = useLeads();
   const { currentUser, reps, statusColors } = useAppStore();
@@ -600,19 +600,28 @@ export function DashboardPage({
       <div className="bg-white dark:bg-[var(--surface)] rounded-2xl border border-gray-100 dark:border-slate-700 p-4 sm:p-5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-150">
         <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">Action Required</h3>
         <div className="space-y-2">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30">
+          <div
+            className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            onClick={() => onNavigate?.("leads", { type: "leads", value: "clients-no-fc" })}
+          >
             <span className="text-sm text-amber-800 dark:text-amber-200">Clients needing FC booking</span>
             <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
               {actionRequired.noAppointment}
             </span>
           </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30">
+          <div
+            className="flex items-center justify-between p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+            onClick={() => onNavigate?.("client-hub", { type: "clients", value: "fc-completed-no-fr" })}
+          >
             <span className="text-sm text-orange-800 dark:text-orange-200">FC completed, needs FR booking</span>
             <span className="text-sm font-semibold text-orange-800 dark:text-orange-200">
               {actionRequired.fcCompletedNoFr}
             </span>
           </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30">
+          <div
+            className="flex items-center justify-between p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            onClick={() => onNavigate?.("leads", { type: "leads", value: "no-contact" })}
+          >
             <span className="text-sm text-red-800 dark:text-red-200">Leads with no contact yet</span>
             <span className="text-sm font-semibold text-red-800 dark:text-red-200">{actionRequired.noContact}</span>
           </div>

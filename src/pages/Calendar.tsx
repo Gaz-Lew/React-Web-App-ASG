@@ -207,7 +207,7 @@ const STATUS_BADGE_COLORS: Record<AppointmentStatus, string> = {
   "fc-complete-fr-booked": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   "stopped-at-door": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   "presented-no-sale": "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-  "did-not-qualify": "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400",
+  "did-not-qualify": "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-gray-400",
 };
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   "pencilled-in": "Pencilled In",
@@ -357,10 +357,10 @@ function CalendarToolbar({
   const btnBase = "px-3 py-1.5 text-sm rounded-lg font-medium transition-colors";
   const btnActive = "bg-amber-500 text-white";
   const btnInactive =
-    "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700";
+    "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-[var(--hover)]";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+    <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)]">
       {/* View toggle */}
       <div className="flex gap-1">
         {(["day", "week", "agenda"] as CalendarView[]).map((v) => (
@@ -378,7 +378,7 @@ function CalendarToolbar({
       <div className="flex items-center gap-1 flex-1 min-w-0">
         <button
           onClick={() => onFocusDateChange(navigateDate(focusDate, view, -1))}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)]"
         >
           <ChevronLeft size={16} />
         </button>
@@ -387,7 +387,7 @@ function CalendarToolbar({
         </span>
         <button
           onClick={() => onFocusDateChange(navigateDate(focusDate, view, 1))}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)]"
         >
           <ChevronRight size={16} />
         </button>
@@ -401,7 +401,7 @@ function CalendarToolbar({
         <select
           value={repFilter}
           onChange={(e) => onRepFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-          className="text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300"
+          className="text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300"
         >
           <option value="all">All Staff</option>
           {reps.map((r) => (
@@ -412,7 +412,7 @@ function CalendarToolbar({
         </select>
         <button
           onClick={() => onLegendToggle?.()}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${showLegend ? "bg-slate-700 text-white" : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"}`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${showLegend ? "bg-slate-700 text-white" : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-[var(--hover)]"}`}
         >
           🎨 <span className="hidden sm:inline">Legend</span>
         </button>
@@ -512,7 +512,7 @@ function DayView({
   return (
     <div className="flex-1 flex overflow-hidden h-full">
       {/* Time labels column */}
-      <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
+      <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-white/[0.06] overflow-y-auto">
         {/* Spacer matching column header height */}
         <div style={{ height: 48 }} />
         <div className="relative" style={{ height: gridHeight + 32 }}>
@@ -538,11 +538,11 @@ function DayView({
             return (
               <div
                 key={col.key}
-                className="border-r border-gray-200 dark:border-slate-700 flex-1"
+                className="border-r border-gray-200 dark:border-white/[0.06] flex-1"
                 style={{ minWidth: 160 }}
               >
                 {/* Column header */}
-                <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
+                <div className="sticky top-0 z-10 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06]">
                   {/* Colour accent bar */}
                   <div className="h-1 w-full" style={{ backgroundColor: col.headerColor }} />
                   <div className="px-2 py-2 flex items-center justify-between gap-1">
@@ -571,8 +571,8 @@ function DayView({
                         onClick={() => onSlotClick({ date: focusDate, time: timeStr })}
                         className={`absolute w-full cursor-pointer hover:bg-amber-50/60 dark:hover:bg-amber-900/10 transition-colors ${
                           i % 2 === 0
-                            ? "border-t border-gray-200 dark:border-slate-700"
-                            : "border-t border-gray-100 dark:border-slate-800/60"
+                            ? "border-t border-gray-200 dark:border-white/[0.06]"
+                            : "border-t border-gray-100 dark:border-white/[0.06]/60"
                         }`}
                         style={{ top: i * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
                       />
@@ -710,11 +710,11 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
           const isToday = date === today;
 
           return (
-            <div key={date} className="border-r border-b border-gray-200 dark:border-slate-700 min-h-[120px]">
+            <div key={date} className="border-r border-b border-gray-200 dark:border-white/[0.06] min-h-[120px]">
               {/* Day header */}
               <div
                 onClick={() => onDayClick(date)}
-                className={`px-2 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 border-b border-gray-200 dark:border-slate-700 ${isToday ? "bg-amber-50 dark:bg-amber-900/10" : "bg-white dark:bg-slate-900"}`}
+                className={`px-2 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] border-b border-gray-200 dark:border-white/[0.06] ${isToday ? "bg-amber-50 dark:bg-amber-900/10" : "bg-white dark:bg-[var(--surface)]"}`}
               >
                 <div className="text-xs text-gray-500 dark:text-gray-400">{DAY_NAMES[idx]}</div>
                 <div className={`text-lg font-bold ${isToday ? "text-amber-600" : "text-gray-800 dark:text-gray-200"}`}>
@@ -849,7 +849,7 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
       {groupedEvents.map((group) => (
         <div key={group.date}>
           <div
-            className={`px-4 py-2 flex items-center gap-2 sticky top-0 z-10 ${group.date === today ? "bg-amber-50 dark:bg-amber-900/10" : "bg-gray-50 dark:bg-slate-800/50"} border-b border-gray-200 dark:border-slate-700`}
+            className={`px-4 py-2 flex items-center gap-2 sticky top-0 z-10 ${group.date === today ? "bg-amber-50 dark:bg-amber-900/10" : "bg-gray-50 dark:bg-[var(--surface)]/50"} border-b border-gray-200 dark:border-white/[0.06]`}
           >
             <span
               className={`text-sm font-semibold ${group.date === today ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}
@@ -877,7 +877,7 @@ function AgendaView({ events, focusDate, leads, reps, serviceTypes, onEventClick
                     onEventClick(ev);
                   }
                 }}
-                className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
+                className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-[var(--hover)] cursor-pointer"
               >
                 <div className="w-16 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                   {ev.startTime ? formatTime(ev.startTime) : "All day"}
@@ -1142,10 +1142,10 @@ function CalendarLegend({
   });
 
   return (
-    <div className="absolute top-14 right-4 z-30 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 p-4 max-h-[75vh] overflow-y-auto">
+    <div className="absolute top-14 right-4 z-30 w-64 bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl border border-gray-200 dark:border-white/[0.06] p-4 max-h-[75vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Legend & Filters</h3>
-        <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700">
+        <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[var(--hover)]">
           <X size={14} />
         </button>
       </div>
@@ -1156,7 +1156,7 @@ function CalendarLegend({
         {reps.map((rep) => (
           <label
             key={rep.id}
-            className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+            className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
           >
             <input
               type="checkbox"
@@ -1181,7 +1181,7 @@ function CalendarLegend({
               .map((st) => (
                 <label
                   key={st.id}
-                  className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                  className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 >
                   <input
                     type="checkbox"
@@ -1198,7 +1198,7 @@ function CalendarLegend({
       ))}
 
       {/* Jump to date */}
-      <div className="mt-3 border-t border-gray-200 dark:border-slate-700 pt-3">
+      <div className="mt-3 border-t border-gray-200 dark:border-white/[0.06] pt-3">
         <p className="text-xs text-gray-500 dark:text-gray-500 mb-1.5">Jump to date</p>
         <input
           type="date"
@@ -1210,12 +1210,12 @@ function CalendarLegend({
               onClose();
             }
           }}
-          className="w-full text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200"
+          className="w-full text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200"
         />
       </div>
 
       {/* Column Order */}
-      <div className="mt-3 border-t border-gray-200 dark:border-slate-700 pt-3">
+      <div className="mt-3 border-t border-gray-200 dark:border-white/[0.06] pt-3">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Column Order</p>
         <div className="space-y-0.5">
           {columnOrder.map((key, idx) => {
@@ -1224,7 +1224,7 @@ function CalendarLegend({
             return (
               <div
                 key={key}
-                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
               >
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.headerColor }} />
                 <span className="text-xs text-gray-700 dark:text-gray-300 flex-1">{col.label}</span>
@@ -1312,15 +1312,15 @@ function CalendarClientPanel({
 
   return (
     <div
-      className={`hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-[var(--surface)] hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 ${relatedAppointments.length === 0 ? "bg-amber-50 dark:bg-amber-900/20" : ""}`}
+      className={`hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 ${relatedAppointments.length === 0 ? "bg-amber-50 dark:bg-amber-900/20" : ""}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 truncate">{lead.name}</h3>
           {firstAppointment && <BookingStatusBadge status={firstAppointment.status} />}
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)]">
           <X size={16} />
         </button>
       </div>
@@ -1361,7 +1361,7 @@ function CalendarClientPanel({
                 return (
                   <div
                     key={appt.id}
-                    className="p-2.5 rounded-lg bg-gray-50 dark:bg-[var(--surface)] border border-gray-200 dark:border-slate-700"
+                    className="p-2.5 rounded-lg bg-gray-50 dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06]"
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -1425,7 +1425,7 @@ function CalendarClientPanel({
       </div>
 
       {/* Compact Profile Snippet */}
-      <div className="px-4 py-2 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-[var(--surface)]">
+      <div className="px-4 py-2 border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]">
         <div className="grid grid-cols-2 gap-2 text-sm">
           {lead.name && <div className="font-medium text-gray-800 dark:text-gray-200">{lead.name}</div>}
           {lead.phone && (
@@ -1443,7 +1443,7 @@ function CalendarClientPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700">
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-white/[0.06]">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{nextText}</p>
         <div className="flex flex-col gap-2 mb-2">
           <button
@@ -1745,7 +1745,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
   );
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-slate-900">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-[var(--surface)]">
       <div className="relative">
         <CalendarToolbar
           view={view}

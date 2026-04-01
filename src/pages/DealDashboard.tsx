@@ -25,7 +25,7 @@ const FC_RESULTS = ['Completed', 'No Show', 'Rescheduled', 'Referred to SMSF - M
 const FR_RESULTS = ['Completed', 'No Show', 'Rescheduled', 'Referred to SMSF - Mike', 'Declined'];
 const PS_RESULTS = ['Application Submitted', 'Approved', 'Declined', 'Pending'];
 
-const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400';
+const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400';
 const sel = inp;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ function DealChatSection({ leadId, currentUser }: { leadId: number; currentUser:
                   <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{u.repName}</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">{formatTs(u.timestamp)}</span>
                 </div>
-                <div className="mt-0.5 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap bg-gray-50 dark:bg-slate-800 rounded-xl rounded-tl-sm px-3 py-2 leading-relaxed">
+                <div className="mt-0.5 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap bg-gray-50 dark:bg-[var(--surface)] rounded-xl rounded-tl-sm px-3 py-2 leading-relaxed">
                   {u.text}
                 </div>
               </div>
@@ -136,9 +136,9 @@ function DealChatSection({ leadId, currentUser }: { leadId: number; currentUser:
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
+      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/[0.06]">
         <textarea
-          className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
           rows={2}
           placeholder="Add a deal update… (Enter to send, Shift+Enter for newline)"
           value={text}
@@ -166,7 +166,7 @@ function ApptDocsList({ docs, onDelete, canDelete }: { docs: ApptDoc[]; onDelete
   return (
     <div className="mt-2 space-y-1">
       {docs.map((d, i) => (
-        <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-800 rounded-lg px-3 py-1.5">
+        <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-[var(--surface)] rounded-lg px-3 py-1.5">
           <FileText size={12} className="flex-shrink-0 text-amber-500" />
           <span className="flex-1 truncate">{d.name}</span>
           <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{d.uploadedBy} · {formatDate(new Date(d.uploadedAt).toISOString().split('T')[0])}</span>
@@ -250,9 +250,9 @@ function AppointmentSection({ title, data, reps, results, onSave, currentUserNam
   };
 
   return (
-    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-slate-700' : 'border-gray-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-white/[0.06]' : 'border-gray-200 dark:border-white/[0.06]'}`}>
       <button
-        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-left"
+        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] rounded-xl text-left"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
@@ -375,9 +375,9 @@ function PSAppointmentSection({
   };
 
   return (
-    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-slate-700' : 'border-gray-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-white/[0.06]' : 'border-gray-200 dark:border-white/[0.06]'}`}>
       <button
-        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-left"
+        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] rounded-xl text-left"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
@@ -472,9 +472,9 @@ function SettlementSection({ settlementDate, onSave }: { settlementDate?: string
   };
 
   return (
-    <div className={`rounded-xl border ${settlementDate ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-slate-700' : 'border-gray-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border ${settlementDate ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-white/[0.06]' : 'border-gray-200 dark:border-white/[0.06]'}`}>
       <button
-        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-left"
+        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] rounded-xl text-left"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
@@ -567,9 +567,9 @@ function CommissionsSection({
   const canComplete = !dealComplete && !!settlementDate && totalNum > 0;
 
   return (
-    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-slate-700' : 'border-gray-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border ${hasData ? 'border-l-4 border-l-green-400 border-gray-200 dark:border-white/[0.06]' : 'border-gray-200 dark:border-white/[0.06]'}`}>
       <button
-        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-left"
+        className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] rounded-xl text-left"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
@@ -620,7 +620,7 @@ function CommissionsSection({
                       updatePayment(i, 'repId', Number(e.target.value));
                       if (rep) updatePayment(i, 'repName', rep.name);
                     }}
-                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
                   >
                     <option value="">— Rep —</option>
                     {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -631,7 +631,7 @@ function CommissionsSection({
                       type="number"
                       value={p.amountOwed || ''}
                       onChange={(e) => updatePayment(i, 'amountOwed', parseFloat(e.target.value) || 0)}
-                      className="w-full pl-7 pr-2 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      className="w-full pl-7 pr-2 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
                       placeholder="0.00"
                     />
                   </div>
@@ -732,7 +732,7 @@ function ActiveDealCard({
   };
 
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 transition-shadow ${expanded ? 'shadow-md border-amber-300 dark:border-amber-700' : 'hover:shadow-sm'} ${lead.dnqFellOver ? 'border-l-4 border-l-red-400' : ''}`}>
+    <div className={`bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] transition-shadow ${expanded ? 'shadow-md border-amber-300 dark:border-amber-700' : 'hover:shadow-sm'} ${lead.dnqFellOver ? 'border-l-4 border-l-red-400' : ''}`}>
       {/* Header */}
       <div
         className="flex items-start gap-3 px-4 py-3 cursor-pointer select-none"
@@ -766,7 +766,7 @@ function ActiveDealCard({
               setDnqToggle(newVal);
               onSave({ ...lead, dnqFellOver: newVal, dnqNotes: newVal ? dnqNotes : '' });
             }}
-            className={`text-xs px-2 py-1 rounded-lg border font-medium transition ${dnqToggle ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700' : 'text-gray-400 border-gray-200 dark:border-slate-700 hover:border-red-300'}`}
+            className={`text-xs px-2 py-1 rounded-lg border font-medium transition ${dnqToggle ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700' : 'text-gray-400 border-gray-200 dark:border-white/[0.06] hover:border-red-300'}`}
             title="Toggle DNQ / Fell Over"
           >
             DNQ
@@ -777,7 +777,7 @@ function ActiveDealCard({
 
       {/* Expanded body */}
       {expanded && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-4 pb-4 pt-3 space-y-3">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] px-4 pb-4 pt-3 space-y-3">
           {/* DNQ notes */}
           {dnqToggle && (
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 space-y-2">
@@ -786,7 +786,7 @@ function ActiveDealCard({
                 rows={2}
                 value={dnqNotes}
                 onChange={(e) => setDnqNotes(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm resize-none focus:outline-none focus:ring-1 focus:ring-red-400"
+                className="w-full px-3 py-2 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm resize-none focus:outline-none focus:ring-1 focus:ring-red-400"
                 placeholder="Why did this deal fall over?"
               />
               <button onClick={handleSaveDnq} disabled={savingDnq} className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 disabled:opacity-50 transition">
@@ -844,9 +844,9 @@ function ActiveDealCard({
           />
 
           {/* Deal Chat */}
-          <div className="rounded-xl border border-gray-200 dark:border-slate-700">
+          <div className="rounded-xl border border-gray-200 dark:border-white/[0.06]">
             <button
-              className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-left"
+              className="w-full px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--hover)] rounded-xl text-left"
               onClick={() => toggleSection('chat')}
             >
               {openSections['chat'] ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
@@ -916,7 +916,7 @@ function CompletedDealCard({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 hover:shadow-sm transition-shadow">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-3 px-4 py-3 cursor-pointer select-none" onClick={() => setExpanded((e) => !e)}>
         <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
@@ -932,11 +932,11 @@ function CompletedDealCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-4 pb-4 pt-3 space-y-3">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] px-4 pb-4 pt-3 space-y-3">
           <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Payments</div>
           <div className="space-y-2">
             {payments.map((p) => (
-              <div key={p.repId} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800 flex-wrap">
+              <div key={p.repId} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[var(--surface)] flex-wrap">
                 <RepAvatar name={p.repName} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{p.repName}</div>
@@ -964,11 +964,11 @@ function CompletedDealCard({
                           type="date"
                           value={paidDates[p.repId] ?? ''}
                           onChange={(e) => setPaidDates((d) => ({ ...d, [p.repId]: e.target.value }))}
-                          className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
                         />
                         <button
                           onClick={() => handleTogglePaid(p.repId, p.paid ?? false)}
-                          className={`text-xs px-2 py-1 rounded-lg border font-medium transition ${p.paid ? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-slate-600' : 'bg-green-500 text-white border-transparent hover:bg-green-400'}`}
+                          className={`text-xs px-2 py-1 rounded-lg border font-medium transition ${p.paid ? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-white/[0.08]' : 'bg-green-500 text-white border-transparent hover:bg-green-400'}`}
                         >
                           {p.paid ? 'Undo' : '✓ Mark Paid'}
                         </button>
@@ -1016,7 +1016,7 @@ function CompletedDealCard({
           </div>
 
           {dc?.notes && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 italic bg-gray-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+            <div className="text-xs text-gray-500 dark:text-gray-400 italic bg-gray-50 dark:bg-[var(--surface)] rounded-lg px-3 py-2">
               {dc.notes}
             </div>
           )}
@@ -1086,7 +1086,7 @@ export function DealDashboardPage() {
   if (!currentUser) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)]">
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-5 space-y-5">
 
         {/* Header */}
@@ -1104,7 +1104,7 @@ export function DealDashboardPage() {
               { icon: <Home size={13} />, label: 'Settlement Set', value: counts.settlement, color: 'text-purple-600 dark:text-purple-400' },
               { icon: <CheckCircle2 size={13} />, label: 'Completed', value: counts.completed, color: 'text-green-600 dark:text-green-400' },
             ].map(({ icon, label, value, color }) => (
-              <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700">
+              <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06]">
                 <span className={color}>{icon}</span>
                 <span className={`text-base font-bold ${color}`}>{value}</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
@@ -1114,7 +1114,7 @@ export function DealDashboardPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-slate-700">
+        <div className="flex border-b border-gray-200 dark:border-white/[0.06]">
           {([['active', 'Active Deals'], ['completed', 'Completed Settlements']] as const).map(([key, label]) => (
             <button
               key={key}
@@ -1139,19 +1139,19 @@ export function DealDashboardPage() {
               placeholder="Search name or suburb…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
             />
           </div>
           <select
             value={filterRep}
             onChange={(e) => setFilterRep(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
           >
             <option value="all">All Reps</option>
             {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
           {(search || filterRep !== 'all') && (
-            <button onClick={() => { setSearch(''); setFilterRep('all'); }} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-500 border border-gray-200 dark:border-slate-700 hover:border-gray-300 transition">
+            <button onClick={() => { setSearch(''); setFilterRep('all'); }} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-500 border border-gray-200 dark:border-white/[0.06] hover:border-gray-300 transition">
               <X size={12} /> Clear
             </button>
           )}

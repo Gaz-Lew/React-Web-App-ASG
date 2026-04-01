@@ -256,16 +256,16 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
       {/* Card wrapper */}
       <div className={isPanel
-        ? "flex flex-col h-full w-full bg-white dark:bg-slate-900"
+        ? "flex flex-col h-full w-full bg-white dark:bg-[var(--surface)]"
         : "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
       }>
         <div className={isPanel
           ? "flex flex-col h-full w-full"
-          : "bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col"
+          : "bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col"
         }>
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">{lead.name}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -307,7 +307,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
               </button>
               <button
                 onClick={handleClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition text-gray-500"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition text-gray-500"
               >
                 <X size={18} />
               </button>
@@ -419,7 +419,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                     <div className="grid grid-cols-2 gap-3">
                       {/* DQ Rep — read-only */}
                       <Field label="DQ Rep">
-                        <div className="px-3 py-2 text-sm rounded-lg bg-white/70 dark:bg-slate-800/70 border border-green-200 dark:border-green-700 text-gray-700 dark:text-gray-300 font-medium">
+                        <div className="px-3 py-2 text-sm rounded-lg bg-white/70 dark:bg-[var(--surface)]/70 border border-green-200 dark:border-green-700 text-gray-700 dark:text-gray-300 font-medium">
                           {dqRepName}
                         </div>
                       </Field>
@@ -490,7 +490,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                           form.dnqFellOver
                             ? 'bg-red-500'
-                            : 'bg-gray-300 dark:bg-slate-600'
+                            : 'bg-gray-300 dark:bg-[var(--surface)]'
                         }`}
                       >
                         <span
@@ -511,7 +511,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                           Reason / Notes *
                         </label>
                         <textarea
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
                           rows={3}
                           placeholder="Why did this fall over? e.g. Client changed mind, couldn't verify super, no show…"
                           value={form.dnqNotes || ''}
@@ -547,7 +547,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                           className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
                             !form.knockResult
                               ? 'bg-gray-700 text-white border-gray-700 dark:bg-gray-500 dark:border-gray-500'
-                              : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+                              : 'border-gray-300 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]'
                           }`}
                         >
                           None
@@ -590,7 +590,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 <div className="col-span-2">
                   <Field label="Notes">
                     <textarea
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
                       rows={3}
                       placeholder="Add notes about this lead…"
                       value={form.notes || ''}
@@ -603,10 +603,10 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
               {/* Save / Discard footer — only when dirty */}
               {dirty && (
-                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
                   <button
                     onClick={() => { setForm(lead); setAddressStr(buildAddress(lead)); setDirty(false); }}
-                    className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                    className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                   >
                     Discard
                   </button>
@@ -620,11 +620,11 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
               )}
 
               {/* Files & Forms button — compact single-line button */}
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowFilesPanel(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                 >
                   <Paperclip size={14} />
                   Files &amp; Forms
@@ -637,7 +637,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
               {/* ── Call History — kept in main column ───────────────────── */}
               {callCount > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
                   <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                     <Phone size={12} /> Call History ({callCount})
                   </div>
@@ -652,7 +652,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                             call.result === 'no-answer' ? 'bg-gray-400' :
                             'bg-amber-400'
                           }`} />
-                          {i < arr.length - 1 && <div className="w-0.5 bg-gray-200 dark:bg-slate-700 flex-1 mt-1 mb-1 min-h-[12px]" />}
+                          {i < arr.length - 1 && <div className="w-0.5 bg-gray-200 dark:bg-[var(--hover)] flex-1 mt-1 mb-1 min-h-[12px]" />}
                         </div>
                         <div className="pb-3 flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
@@ -672,7 +672,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                             })()}
                           </div>
                           {call.notes && (
-                            <p className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 leading-relaxed">
+                            <p className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-[var(--surface)] rounded-lg px-2 py-1.5 leading-relaxed">
                               {call.notes}
                             </p>
                           )}
@@ -692,9 +692,9 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
         <>
           <div className="fixed inset-0 bg-black/60 z-[60]" onClick={() => setShowFilesPanel(false)} />
           <div className="fixed inset-0 z-[61] flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[90vh]">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[90vh]">
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Paperclip size={15} className="text-amber-500" />
                   <h3 className="text-base font-semibold text-gray-900 dark:text-white">
@@ -705,7 +705,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                   )}
                 </div>
                 <button onClick={() => setShowFilesPanel(false)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition">
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400 transition">
                   <X size={16} />
                 </button>
               </div>
@@ -732,15 +732,15 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Attach Files</p>
                   <div className="flex gap-2 flex-wrap">
                     <button type="button" onClick={() => docInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50">
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
                       <FileText size={13} /> Document
                     </button>
                     <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50">
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
                       <Image size={13} /> Photo
                     </button>
                     <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50">
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
                       <File size={13} /> File
                     </button>
                     <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}
@@ -786,7 +786,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                     </div>
                     <div className="flex gap-2">
                       <button type="button" onClick={handleDiscardAllStaged} disabled={uploading}
-                        className="flex-1 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50 flex items-center justify-center gap-1">
+                        className="flex-1 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50 flex items-center justify-center gap-1">
                         <XCircle size={11} /> Discard
                       </button>
                       <button type="button" onClick={handleUploadStaged} disabled={uploading}
@@ -808,7 +808,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                   ) : (
                     <div className="space-y-2">
                       {leadFiles.map((lf) => (
-                        <div key={lf.id} className="p-2.5 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                        <div key={lf.id} className="p-2.5 bg-gray-50 dark:bg-[var(--surface)] rounded-lg">
                           {lf.type === 'photo' && (
                             <img src={lf.downloadUrl} alt={lf.name}
                               className="w-full h-28 object-cover rounded-md mb-2" />
@@ -848,18 +848,18 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
         <>
           <div className="fixed inset-0 bg-black/60 z-[60]" onClick={() => setFormPickerOpen(false)} />
           <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[70vh]">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[70vh]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">Select a Form Template</h3>
                 <button onClick={() => setFormPickerOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400">
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400">
                   <X size={16} />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                 {templates.map((t) => (
                   <button key={t.id} onClick={() => { setSelectedTemplate(t); setFormPickerOpen(false); }}
-                    className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition">
+                    className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-white/[0.06] hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.name}</p>
                     {t.description && <p className="text-xs text-gray-400 mt-0.5">{t.description}</p>}
                     <p className="text-xs text-gray-400 mt-1">{t.fields.length} field{t.fields.length !== 1 ? 's' : ''}</p>
@@ -905,10 +905,10 @@ function timeAgoMs(ms: number): string {
 }
 
 const inputCls =
-  'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400';
+  'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400';
 
 const readOnlyCls =
-  'w-full px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 text-gray-700 dark:text-gray-300 text-sm';
+  'w-full px-3 py-2 rounded-lg border border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50 text-gray-700 dark:text-gray-300 text-sm';
 
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (

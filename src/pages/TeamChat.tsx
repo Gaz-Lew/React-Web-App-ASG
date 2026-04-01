@@ -133,7 +133,7 @@ function MessageBubble({
           <div className={`px-3 py-2 rounded-2xl text-sm leading-snug break-words ${
             isOwn
               ? 'bg-amber-500 text-white rounded-br-sm'
-              : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 rounded-bl-sm'
+              : 'bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white border border-gray-200 dark:border-white/[0.06] rounded-bl-sm'
           }`}>
             {msg.type === 'location' ? (
               <span>
@@ -174,7 +174,7 @@ function MessageBubble({
 
           {/* Hover reaction trigger button */}
           <button
-            className={`absolute -top-2 ${isOwn ? 'left-0' : 'right-0'} opacity-0 group-hover/rx:opacity-100 transition-opacity text-xs bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-full px-1.5 py-0.5 shadow-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 z-10`}
+            className={`absolute -top-2 ${isOwn ? 'left-0' : 'right-0'} opacity-0 group-hover/rx:opacity-100 transition-opacity text-xs bg-white dark:bg-slate-700 border border-gray-200 dark:border-white/[0.08] rounded-full px-1.5 py-0.5 shadow-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 z-10`}
             onClick={(e) => { e.stopPropagation(); setShowPicker((p) => !p); }}
             title="Add reaction"
           >
@@ -184,7 +184,7 @@ function MessageBubble({
           {/* Emoji picker dropdown */}
           {showPicker && (
             <div
-              className={`absolute z-20 bottom-full mb-1 ${isOwn ? 'right-0' : 'left-0'} bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg p-1.5 flex gap-1`}
+              className={`absolute z-20 bottom-full mb-1 ${isOwn ? 'right-0' : 'left-0'} bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg p-1.5 flex gap-1`}
               onClick={(e) => e.stopPropagation()}
             >
               {REACTION_EMOJIS.map((emoji) => (
@@ -218,7 +218,7 @@ function MessageBubble({
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-all ${
                       iReacted
                         ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 font-semibold'
-                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-500'
+                        : 'bg-white dark:bg-[var(--surface)] border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-500'
                     }`}
                     title={`${reactors.length} reaction${reactors.length !== 1 ? 's' : ''}`}
                   >
@@ -361,14 +361,14 @@ function InputBar({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="border-t border-gray-200 dark:border-slate-700 px-3 py-2.5 flex items-center gap-2 flex-shrink-0">
+    <div className="border-t border-gray-200 dark:border-white/[0.06] px-3 py-2.5 flex items-center gap-2 flex-shrink-0">
       <button
         onClick={() => setShowStatus((s) => !s)}
         title="Quick status"
         className={`p-2 rounded-lg transition text-sm ${
           showStatus
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
-            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)]'
         }`}
       >
         {showStatus ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
@@ -377,7 +377,7 @@ function InputBar({
         onClick={onLocation}
         disabled={locLoading}
         title="Share location"
-        className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-blue-500 transition"
+        className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] hover:text-blue-500 transition"
       >
         <MapPin size={16} className={locLoading ? 'animate-pulse text-blue-500' : ''} />
       </button>
@@ -397,7 +397,7 @@ function InputBar({
         onChange={onFileChange}
       />
       <input
-        className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-400"
+        className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-400"
         placeholder={placeholder}
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -552,7 +552,7 @@ function GroupChannel({
 
       {/* Status presets */}
       {showStatus && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-3 py-2 flex flex-wrap gap-1.5">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] px-3 py-2 flex flex-wrap gap-1.5">
           {STATUS_PRESETS.map((p) => (
             <button
               key={p.label}
@@ -732,7 +732,7 @@ function DMChannel({
       />
 
       {showStatus && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-3 py-2 flex flex-wrap gap-1.5">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] px-3 py-2 flex flex-wrap gap-1.5">
           {STATUS_PRESETS.map((p) => (
             <button
               key={p.label}
@@ -785,7 +785,7 @@ function DMSidebarItem({
       className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition ${
         isActive
           ? 'bg-amber-500 text-white'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[var(--hover)]'
       }`}
     >
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 relative ${
@@ -866,14 +866,14 @@ export function TeamChatPage() {
     : null;
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-slate-950">
+    <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
 
       {/* ── Sidebar ── */}
-      <div className={`w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 flex flex-col ${
+      <div className={`w-64 flex-shrink-0 bg-white dark:bg-[var(--surface)] border-r border-gray-200 dark:border-white/[0.06] flex flex-col ${
         mobileSidebarOpen ? 'flex' : 'hidden sm:flex'
       }`}>
         {/* Header */}
-        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-slate-800">
+        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-2">
             <MessageCircle size={16} className="text-amber-500" />
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">Team Chat</h2>
@@ -889,7 +889,7 @@ export function TeamChatPage() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
               activeChannel === 'group'
                 ? 'bg-amber-500 text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[var(--hover)]'
             }`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -935,11 +935,11 @@ export function TeamChatPage() {
       {/* ── Chat panel ── */}
       <div className={`flex-1 flex flex-col min-w-0 ${!mobileSidebarOpen ? 'flex' : 'hidden sm:flex'}`}>
         {/* Channel header */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center gap-3 flex-shrink-0">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] flex items-center gap-3 flex-shrink-0">
           {/* Mobile back button */}
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="sm:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+            className="sm:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
           >
             <ArrowLeft size={16} />
           </button>

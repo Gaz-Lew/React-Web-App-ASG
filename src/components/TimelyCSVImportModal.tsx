@@ -384,25 +384,25 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
 
   // ── UI helpers ──────────────────────────────────────────────────────────────
 
-  const inputCls = 'w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500';
+  const inputCls = 'w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500';
   const unmappedServices = Object.values(serviceMap).filter(v => !v).length;
   const unmappedStaff = Object.values(staffMap).filter(v => !v).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl flex flex-col max-h-[92vh]">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl flex flex-col max-h-[92vh]">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
           <div>
             <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200">📥 Import from Timely</h2>
             <p className="text-xs text-gray-400 mt-0.5">Step {step} of 3 — {step === 1 ? 'Upload CSV' : step === 2 ? 'Map Columns' : 'Match & Import'}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)]"><X size={18} /></button>
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 bg-gray-100 dark:bg-slate-800 flex-shrink-0">
+        <div className="h-1 bg-gray-100 dark:bg-[var(--surface)] flex-shrink-0">
           <div className="h-1 bg-amber-500 transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
         </div>
 
@@ -426,7 +426,7 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
                 onDrop={onDrop}
                 onDragOver={e => e.preventDefault()}
                 onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-colors"
+                className="border-2 border-dashed border-gray-300 dark:border-white/[0.08] rounded-xl p-10 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-colors"
               >
                 <Upload size={28} className="mx-auto mb-2 text-gray-400" />
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Drop your Timely CSV here</p>
@@ -448,10 +448,10 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Found <strong>{rows.length}</strong> rows. Map each CSV column to an appointment field (auto-detected below).
               </p>
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700">
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-white/[0.06]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-slate-800 text-left">
+                    <tr className="bg-gray-50 dark:bg-[var(--surface)] text-left">
                       <th className="px-3 py-2 text-xs font-semibold text-gray-500">CSV Column</th>
                       <th className="px-3 py-2 text-xs font-semibold text-gray-500">Sample Value</th>
                       <th className="px-3 py-2 text-xs font-semibold text-gray-500">Maps To</th>
@@ -461,7 +461,7 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
                     {headers.map((h, i) => {
                       const sample = rows.slice(0, 3).map(r => r[i]).filter(Boolean).join(', ');
                       return (
-                        <tr key={h} className="border-t border-gray-100 dark:border-slate-800">
+                        <tr key={h} className="border-t border-gray-100 dark:border-white/[0.06]">
                           <td className="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">{h}</td>
                           <td className="px-3 py-2 text-xs text-gray-500 truncate max-w-[120px]">{sample || '—'}</td>
                           <td className="px-3 py-2">
@@ -487,7 +487,7 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
                 {(['date', 'startTime', 'serviceName', 'staffName'] as AppointmentField[]).map(f => {
                   const mapped = Object.values(colMap).includes(f);
                   return (
-                    <span key={f} className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${mapped ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-slate-700'}`}>
+                    <span key={f} className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${mapped ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-[var(--hover)]'}`}>
                       {mapped ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
                       {FIELD_LABELS[f]}
                     </span>
@@ -515,9 +515,9 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
                       </span>
                     )}
                   </div>
-                  <div className="space-y-2 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                  <div className="space-y-2 rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
                     {Object.entries(serviceMap).map(([timelyName, stId]) => (
-                      <div key={timelyName} className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
+                      <div key={timelyName} className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 dark:border-white/[0.06] last:border-0">
                         <span className="text-xs text-gray-500 dark:text-gray-400 w-48 flex-shrink-0 truncate italic">"{timelyName}"</span>
                         <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
                         <select
@@ -547,9 +547,9 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
                       </span>
                     )}
                   </div>
-                  <div className="space-y-2 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                  <div className="space-y-2 rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
                     {Object.entries(staffMap).map(([timelyStaff, repId]) => (
-                      <div key={timelyStaff} className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
+                      <div key={timelyStaff} className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 dark:border-white/[0.06] last:border-0">
                         <span className="text-xs text-gray-500 dark:text-gray-400 w-48 flex-shrink-0 truncate italic">"{timelyStaff}"</span>
                         <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
                         <select
@@ -608,7 +608,7 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-200 dark:border-white/[0.06] flex-shrink-0">
           {result ? (
             <>
               <div className="flex-1" />
@@ -621,13 +621,13 @@ export function TimelyCSVImportModal({ onClose }: TimelyCSVImportModalProps) {
               {step > 1 && !importing && (
                 <button
                   onClick={() => setStep(s => (s - 1) as Step)}
-                  className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+                  className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg"
                 >
                   ← Back
                 </button>
               )}
               <div className="flex-1" />
-              <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">
+              <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg">
                 Cancel
               </button>
               {step === 2 && (

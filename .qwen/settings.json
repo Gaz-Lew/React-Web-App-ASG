@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(select-string *)",
+      "Bash(select-object *)",
+      "Bash(do)",
+      "Bash(-replace *)",
+      "Bash(set-content *)",
+      "Bash(write-host *)",
+      "Bash(powershell *)",
+      "Bash(.replace)",
+      "Bash(python *)",
+      "Bash(del *)",
+      "Bash($files *)",
+      "Bash($content *)",
+      "Bash($original *)",
+      "Bash(node *)",
+      "Bash(ren *)"
+    ]
+  },
+  "$version": 3
+}

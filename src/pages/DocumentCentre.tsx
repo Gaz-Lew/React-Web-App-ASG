@@ -101,7 +101,7 @@ function timeAgo(ms: number): string {
 }
 
 const inp =
-  "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
+  "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
 
 // ── PDF Thumbnail ────────────────────────────────────────────────────────────
 
@@ -139,13 +139,13 @@ function PdfThumbnail({ url }: { url: string }) {
 
   if (error)
     return (
-      <div className="w-full h-24 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+      <div className="w-full h-24 bg-gray-100 dark:bg-[var(--surface)] rounded-lg flex items-center justify-center text-gray-400 text-xs">
         Preview unavailable
       </div>
     );
 
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white mb-2">
+    <div className="w-full overflow-hidden rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white mb-2">
       <canvas ref={canvasRef} className="w-full" style={{ display: "block" }} />
     </div>
   );
@@ -211,14 +211,14 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Upload size={16} className="text-amber-500" /> Upload Document
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400"
           >
             <X size={16} />
           </button>
@@ -226,7 +226,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div
             onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 transition"
+            className="border-2 border-dashed border-gray-300 dark:border-white/[0.08] rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 transition"
           >
             <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} />
             {file ? (
@@ -283,15 +283,15 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
               </button>
             </div>
             {formFields.map((field) => (
-              <div key={field.id} className="flex items-center gap-2 p-2 mb-2 rounded-lg bg-gray-50 dark:bg-slate-800">
+              <div key={field.id} className="flex items-center gap-2 p-2 mb-2 rounded-lg bg-gray-50 dark:bg-[var(--surface)]">
                 <input
-                  className="flex-1 px-2 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
+                  className="flex-1 px-2 py-1 text-xs rounded border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
                   placeholder="Field label"
                   value={field.label}
                   onChange={(e) => updateField(field.id, { label: e.target.value })}
                 />
                 <select
-                  className="px-2 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
+                  className="px-2 py-1 text-xs rounded border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
                   value={field.autoFill ?? ""}
                   onChange={(e) =>
                     updateField(field.id, { autoFill: (e.target.value as DocFormField["autoFill"]) || undefined })
@@ -311,7 +311,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
             ))}
           </div>
         </div>
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3">
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-white/[0.06] flex gap-3">
           <button
             onClick={handleUpload}
             disabled={!file || !name.trim() || uploading}
@@ -322,7 +322,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
           >
             Cancel
           </button>
@@ -500,16 +500,16 @@ function UseForLeadModal({ document: libDoc, onClose }: { document: LibraryDocum
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
             <FileText size={16} className="text-amber-500 flex-shrink-0" />
             <span className="truncate">Fill Form: {libDoc.name}</span>
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 flex-shrink-0"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400 flex-shrink-0"
           >
             <X size={16} />
           </button>
@@ -541,7 +541,7 @@ function UseForLeadModal({ document: libDoc, onClose }: { document: LibraryDocum
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-400 bg-gray-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+              <p className="text-xs text-gray-400 bg-gray-50 dark:bg-[var(--surface)] rounded-lg px-3 py-2">
                 This document has no form fields defined. A cover sheet with the document name and date will be
                 generated.
               </p>
@@ -566,7 +566,7 @@ function UseForLeadModal({ document: libDoc, onClose }: { document: LibraryDocum
               onChange={(e) => setLeadSearch(e.target.value)}
             />
             {leadSearch && (
-              <div className="mt-1 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+              <div className="mt-1 border border-gray-200 dark:border-white/[0.06] rounded-lg overflow-hidden bg-white dark:bg-[var(--surface)] shadow-sm">
                 {filteredLeads.length === 0 ? (
                   <div className="px-3 py-2 text-xs text-gray-400">No clients found</div>
                 ) : (
@@ -599,12 +599,12 @@ function UseForLeadModal({ document: libDoc, onClose }: { document: LibraryDocum
         </div>
 
         {/* Footer — two action buttons */}
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3">
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-white/[0.06] flex gap-3">
           {/* Always available — no lead required */}
           <button
             onClick={handleDownload}
             disabled={generating}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] disabled:opacity-50 transition"
           >
             {generating ? <Loader size={14} className="animate-spin" /> : <Download size={14} />}
             Download to Device
@@ -640,7 +640,7 @@ function DocumentCard({
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3 hover:shadow-md transition group">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 flex flex-col gap-3 hover:shadow-md transition group">
         {/* PDF thumbnail preview — shown for PDFs, same as the Forms tab */}
         {libDoc.fileType?.includes("pdf") && libDoc.downloadUrl && <PdfThumbnail url={libDoc.downloadUrl} />}
 
@@ -671,7 +671,7 @@ function DocumentCard({
                   </button>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-slate-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800"
+                    className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-white/[0.08] text-gray-500 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                   >
                     ✕
                   </button>
@@ -681,7 +681,7 @@ function DocumentCard({
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400">
             {libDoc.category}
           </span>
           <span className="text-xs text-gray-400">{formatFileSize(libDoc.fileSize)}</span>
@@ -698,7 +698,7 @@ function DocumentCard({
             target="_blank"
             rel="noopener noreferrer"
             download={libDoc.name}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
           >
             <Download size={12} /> Download
           </a>
@@ -775,15 +775,15 @@ function FormBuilderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <ClipboardList size={16} className="text-amber-500" />
             {template ? "Edit Form Template" : "New Form Template"}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400"
           >
             <X size={16} />
           </button>
@@ -834,19 +834,19 @@ function FormBuilderModal({
               {fields.map((field, idx) => (
                 <div
                   key={field.id}
-                  className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  className="p-3 rounded-xl bg-gray-50 dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06]"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs text-gray-400 w-5 text-center font-mono">{idx + 1}</span>
                     <input
-                      className="flex-1 px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      className="flex-1 px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
                       placeholder={field.type === "signature" ? "Signature" : "Field label"}
                       value={field.label}
                       disabled={field.type === "signature"}
                       onChange={(e) => updateField(field.id, { label: e.target.value })}
                     />
                     <select
-                      className="px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      className="px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
                       value={field.type}
                       onChange={(e) => {
                         const t = e.target.value as FormFieldType;
@@ -877,7 +877,7 @@ function FormBuilderModal({
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-400">Auto-fill:</span>
                         <select
-                          className="px-2 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
+                          className="px-2 py-1 text-xs rounded border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
                           value={field.autoFill ?? ""}
                           onChange={(e) =>
                             updateField(field.id, { autoFill: (e.target.value as FormFieldAutoFill) || undefined })
@@ -899,7 +899,7 @@ function FormBuilderModal({
                           type="checkbox"
                           checked={field.required ?? false}
                           onChange={(e) => updateField(field.id, { required: e.target.checked })}
-                          className="rounded border-gray-300 dark:border-slate-600 text-amber-500 focus:ring-amber-400"
+                          className="rounded border-gray-300 dark:border-white/[0.08] text-amber-500 focus:ring-amber-400"
                         />
                         Required
                       </label>
@@ -909,7 +909,7 @@ function FormBuilderModal({
                       <div className="w-full">
                         <label className="text-xs text-gray-400">Options (comma separated):</label>
                         <input
-                          className="w-full mt-0.5 px-2 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
+                          className="w-full mt-0.5 px-2 py-1 text-xs rounded border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none"
                           placeholder="Yes, No, Maybe"
                           value={(field.options ?? []).join(", ")}
                           onChange={(e) =>
@@ -942,7 +942,7 @@ function FormBuilderModal({
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3">
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-white/[0.06] flex gap-3">
           <button
             onClick={handleSave}
             disabled={!name.trim() || saving}
@@ -953,7 +953,7 @@ function FormBuilderModal({
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
           >
             Cancel
           </button>
@@ -1037,15 +1037,15 @@ function PdfTemplateUploadModal({
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06]">
             <div className="flex items-center gap-2">
               <Upload size={16} className="text-blue-500" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">
                 {existing ? "Edit PDF Template" : "Upload PDF Form"}
               </h2>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition">
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition">
               <X size={16} className="text-gray-500" />
             </button>
           </div>
@@ -1074,7 +1074,7 @@ function PdfTemplateUploadModal({
               </label>
               <div
                 onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition"
+                className="border-2 border-dashed border-gray-300 dark:border-white/[0.08] rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition"
               >
                 <FileText size={28} className={file ? "text-blue-500" : "text-gray-300 dark:text-gray-600"} />
                 {file ? (
@@ -1095,10 +1095,10 @@ function PdfTemplateUploadModal({
               />
             </div>
           </div>
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3">
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
             >
               Cancel
             </button>
@@ -1194,7 +1194,7 @@ function PdfTemplateCard({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3 hover:shadow-md transition group">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 flex flex-col gap-3 hover:shadow-md transition group">
       {/* PDF thumbnail */}
       {t.pdfUrl && <PdfThumbnail url={t.pdfUrl} />}
 
@@ -1236,7 +1236,7 @@ function PdfTemplateCard({
                 </button>
                 <button
                   onClick={onCancelDelete}
-                  className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-slate-600 text-gray-500"
+                  className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-white/[0.08] text-gray-500"
                 >
                   ✕
                 </button>
@@ -1367,7 +1367,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
             {templates.length > 1 && (
               <button
                 onClick={startReorder}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-amber-400 hover:text-amber-600 transition"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-amber-400 hover:text-amber-600 transition"
               >
                 <ArrowUpDown size={13} /> Reorder
               </button>
@@ -1383,7 +1383,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
                 <Plus size={14} /> New Form Template <ChevronDown size={12} />
               </button>
               {showNewMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl z-20 overflow-hidden min-w-[200px]">
+                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] shadow-xl z-20 overflow-hidden min-w-[200px]">
                   <button
                     onClick={() => {
                       setShowNewMenu(false);
@@ -1400,7 +1400,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
                       setEditingTemplate(undefined);
                       setPdfUploadOpen(true);
                     }}
-                    className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/20 transition flex items-center gap-2 border-t border-gray-100 dark:border-slate-800"
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/20 transition flex items-center gap-2 border-t border-gray-100 dark:border-white/[0.06]"
                   >
                     <Upload size={14} className="text-gray-500" /> Upload PDF Form
                   </button>
@@ -1414,7 +1414,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
             <span className="text-xs text-gray-400 dark:text-gray-500">Drag rows to reorder</span>
             <button
               onClick={() => setIsReordering(false)}
-              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
             >
               Cancel
             </button>
@@ -1441,7 +1441,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
               onDragEnd={() => {
                 dragIdxRef.current = null;
               }}
-              className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:border-amber-300 dark:hover:border-amber-600 transition group"
+              className="flex items-center gap-3 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:border-amber-300 dark:hover:border-amber-600 transition group"
             >
               <GripVertical
                 size={16}
@@ -1507,7 +1507,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
             return (
               <div
                 key={t.id}
-                className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3 hover:shadow-md transition group"
+                className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 flex flex-col gap-3 hover:shadow-md transition group"
               >
                 {/* Header */}
                 <div className="flex items-start gap-3">
@@ -1545,7 +1545,7 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
                           </button>
                           <button
                             onClick={() => setConfirmDelete(null)}
-                            className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-slate-600 text-gray-500"
+                            className="px-2 py-0.5 rounded text-xs border border-gray-300 dark:border-white/[0.08] text-gray-500"
                           >
                             ✕
                           </button>
@@ -1570,14 +1570,14 @@ function FormsTab({ isAdmin }: { isAdmin: boolean }) {
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         f.type === "signature"
                           ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
-                          : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400"
+                          : "bg-gray-100 dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400"
                       }`}
                     >
                       {f.type === "signature" ? "✍ Signature" : f.label || FORM_FIELD_TYPE_LABELS[f.type]}
                     </span>
                   ))}
                   {t.fields.length > 4 && (
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-800 text-gray-400">
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-[var(--surface)] text-gray-400">
                       +{t.fields.length - 4} more
                     </span>
                   )}
@@ -1730,7 +1730,7 @@ export function DocumentCentrePage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950 p-6 space-y-5">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-6 space-y-5">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1743,7 +1743,7 @@ export function DocumentCentrePage() {
             {documents.length > 1 && (
               <button
                 onClick={startReorderDocs}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-amber-400 hover:text-amber-600 transition"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-amber-400 hover:text-amber-600 transition"
               >
                 <ArrowUpDown size={13} /> Reorder
               </button>
@@ -1761,7 +1761,7 @@ export function DocumentCentrePage() {
             <span className="text-xs text-gray-400 dark:text-gray-500">Drag rows to reorder</span>
             <button
               onClick={() => setIsReorderingDocs(false)}
-              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition"
             >
               Cancel
             </button>
@@ -1777,7 +1777,7 @@ export function DocumentCentrePage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-slate-700">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-white/[0.06]">
         {(
           [
             ["documents", "📄 Documents"],
@@ -1816,7 +1816,7 @@ export function DocumentCentrePage() {
                   onDragEnd={() => {
                     dragIndexRef.current = null;
                   }}
-                  className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:border-amber-300 dark:hover:border-amber-600 transition group"
+                  className="flex items-center gap-3 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:border-amber-300 dark:hover:border-amber-600 transition group"
                 >
                   <GripVertical
                     size={16}
@@ -1841,7 +1841,7 @@ export function DocumentCentrePage() {
                 <div className="relative flex-1 min-w-48 max-w-sm">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     placeholder="Search documents…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -1855,7 +1855,7 @@ export function DocumentCentrePage() {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                         filterCategory === cat
                           ? "bg-amber-500 text-white"
-                          : "bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-amber-300"
+                          : "bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:border-amber-300"
                       }`}
                     >
                       {cat === "all" ? "All" : cat}

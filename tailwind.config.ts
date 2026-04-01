@@ -12,7 +12,6 @@ export default {
       },
       colors: {
         gold: "#c9a84c",
-        navy: "#1a1a2e",
         brass: {
           DEFAULT: "#b8933a",
           light: "#d4aa55",
@@ -21,12 +20,12 @@ export default {
         panel: "#1A1A1D",
         hover: "#222226",
         sidebar: {
-          bg: "#1A1A1D",
+          bg: "#0B0B0C",
           text: "#c8c8c4",
           muted: "#7a7a74",
           border: "rgba(255,255,255,0.06)",
-          hover: "rgba(255,255,255,0.06)",
-          active: "rgba(184,147,58,0.12)",
+          hover: "#222226",
+          active: "#1A1A1D",
         },
       },
       animation: {

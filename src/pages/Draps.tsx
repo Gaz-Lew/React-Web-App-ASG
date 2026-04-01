@@ -42,11 +42,11 @@ function Counter({ label, value, onChange }: { label: string; value: number; onC
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-semibold text-amber-600 dark:text-amber-400 tracking-wide">{label}</label>
-      <div className="flex items-stretch rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400">
+      <div className="flex items-stretch rounded-lg border border-gray-200 dark:border-white/[0.06] overflow-hidden bg-white dark:bg-[var(--surface)] focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 active:bg-amber-200 transition font-bold text-base select-none border-r border-gray-200 dark:border-slate-700 flex-shrink-0"
+          className="w-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 active:bg-amber-200 transition font-bold text-base select-none border-r border-gray-200 dark:border-white/[0.06] flex-shrink-0"
           tabIndex={-1}
         >
           −
@@ -61,7 +61,7 @@ function Counter({ label, value, onChange }: { label: string; value: number; onC
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="w-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 active:bg-amber-200 transition font-bold text-base select-none border-l border-gray-200 dark:border-slate-700 flex-shrink-0"
+          className="w-9 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 active:bg-amber-200 transition font-bold text-base select-none border-l border-gray-200 dark:border-white/[0.06] flex-shrink-0"
           tabIndex={-1}
         >
           +
@@ -497,12 +497,12 @@ export function DrapsPage() {
   const rankColors = ["text-amber-500", "text-gray-400", "text-orange-600"];
   const rankBg = [
     "bg-amber-50 dark:bg-amber-900/10",
-    "bg-gray-50 dark:bg-slate-800/30",
+    "bg-gray-50 dark:bg-[var(--surface)]/30",
     "bg-orange-50 dark:bg-orange-900/10",
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950 p-6 space-y-6">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -515,7 +515,7 @@ export function DrapsPage() {
         <button
           onClick={() => exportCSV(filteredEntries, exportFilename)}
           disabled={filteredEntries.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] disabled:opacity-40 transition"
           title={`Download: ${exportFilename}`}
         >
           <Download size={13} /> Export CSV
@@ -523,7 +523,7 @@ export function DrapsPage() {
       </div>
 
       {/* Entry form */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
           <Plus size={14} className="text-amber-500" />
           Log Entry
@@ -536,7 +536,7 @@ export function DrapsPage() {
               type="date"
               value={form.date}
               onChange={(e) => setF("date", e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -544,7 +544,7 @@ export function DrapsPage() {
             <select
               value={form.repId}
               onChange={(e) => setF("repId", Number(e.target.value))}
-              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               <option value={0}>— Select Rep —</option>
               {activeReps.map((r) => (
@@ -613,18 +613,18 @@ export function DrapsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-3">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           {/* Date range preset buttons */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden flex-shrink-0">
+          <div className="flex rounded-lg border border-gray-200 dark:border-white/[0.06] overflow-hidden flex-shrink-0">
             {(["week", "month", "quarter", "all", "custom"] as DateRange[]).map((r) => (
               <button
                 key={r}
                 onClick={() => setDateRange(r)}
-                className={`px-3 py-1.5 text-xs font-medium transition border-r last:border-r-0 border-gray-200 dark:border-slate-700 ${
+                className={`px-3 py-1.5 text-xs font-medium transition border-r last:border-r-0 border-gray-200 dark:border-white/[0.06] ${
                   dateRange === r
                     ? "bg-amber-500 text-white"
-                    : "bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"
+                    : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                 }`}
               >
                 {r === "custom" ? "📅 Custom" : rangeLabels[r]}
@@ -636,7 +636,7 @@ export function DrapsPage() {
           <select
             value={filterRep === "all" ? "" : filterRep}
             onChange={(e) => setFilterRep(e.target.value ? Number(e.target.value) : "all")}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             <option value="">All Reps</option>
             {activeReps.map((r) => (
@@ -654,7 +654,7 @@ export function DrapsPage() {
 
         {/* Custom date range pickers — only shown when 'custom' selected */}
         {dateRange === "custom" && (
-          <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100 dark:border-white/[0.06]">
             <Calendar size={14} className="text-amber-500 flex-shrink-0" />
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">From</label>
@@ -662,7 +662,7 @@ export function DrapsPage() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -671,7 +671,7 @@ export function DrapsPage() {
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
             {(customFrom || customTo) && (
@@ -693,7 +693,7 @@ export function DrapsPage() {
       </div>
 
       {/* ── Conversion funnel ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={15} className="text-amber-500" />
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Conversion Funnel</h2>
@@ -731,7 +731,7 @@ export function DrapsPage() {
         </div>
         {/* Overall DQ → Sold conversion */}
         {totals.dq > 0 && (
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span>Overall DQ → Sold conversion:</span>
             <span
               className={`font-bold text-sm ${
@@ -760,7 +760,7 @@ export function DrapsPage() {
         ].map(({ label, value, color }) => (
           <div
             key={label}
-            className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 text-center"
+            className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 text-center"
           >
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">{label}</div>
@@ -784,7 +784,7 @@ export function DrapsPage() {
         ].map(({ label, value, color, sub }) => (
           <div
             key={label}
-            className={`bg-white dark:bg-slate-900 rounded-xl border p-3 text-center ${
+            className={`bg-white dark:bg-[var(--surface)] rounded-xl border p-3 text-center ${
               sub === "FC" ? "border-indigo-200 dark:border-indigo-800/60" : "border-teal-200 dark:border-teal-800/60"
             }`}
           >
@@ -796,15 +796,15 @@ export function DrapsPage() {
 
       {/* ── Per-rep leaderboard ── */}
       {leaderboard.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-white/[0.06] flex items-center gap-2">
             <Trophy size={15} className="text-amber-500" />
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Rep Leaderboard</h2>
             <span className="text-xs text-gray-400 ml-1">— {rangeLabels[dateRange]}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800">
+              <thead className="bg-gray-50 dark:bg-[var(--surface)]">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 w-8">#</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Rep</th>
@@ -842,7 +842,7 @@ export function DrapsPage() {
                   return (
                     <tr
                       key={rep.repId}
-                      className={`transition ${isTop3 ? rankBg[idx] : "hover:bg-gray-50 dark:hover:bg-slate-800/50"}`}
+                      className={`transition ${isTop3 ? rankBg[idx] : "hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50"}`}
                     >
                       <td className="px-3 py-2">
                         <span
@@ -907,8 +907,8 @@ export function DrapsPage() {
       )}
 
       {/* ── History (grouped by date) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-200 dark:border-white/[0.06] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             History <span className="font-normal text-gray-400">({filteredEntries.length})</span>
           </h2>
@@ -926,10 +926,10 @@ export function DrapsPage() {
             {groupedHistory.map(({ date, rows, totals: gt }) => {
               const collapsed = collapsedDates.has(date);
               return (
-                <div key={date} className="border-b border-gray-100 dark:border-slate-800 last:border-b-0">
+                <div key={date} className="border-b border-gray-100 dark:border-white/[0.06] last:border-b-0">
                   {/* Date group header */}
                   <button
-                    className="w-full flex items-center gap-3 px-5 py-2.5 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 transition text-left"
+                    className="w-full flex items-center gap-3 px-5 py-2.5 bg-gray-50 dark:bg-[var(--surface)]/60 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition text-left"
                     onClick={() => toggleDate(date)}
                   >
                     {collapsed ? (
@@ -960,7 +960,7 @@ export function DrapsPage() {
                   {!collapsed && (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
+                        <thead className="bg-white dark:bg-[var(--surface)] border-b border-gray-100 dark:border-white/[0.06]">
                           <tr>
                             {[
                               "Rep",
@@ -988,7 +988,7 @@ export function DrapsPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
                           {rows.map((e) => (
-                            <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition">
+                            <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-[var(--hover)]/40 transition">
                               <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white">
                                 {e.repName}
                               </td>
@@ -1026,7 +1026,7 @@ export function DrapsPage() {
                         {/* Per-day totals row (only if > 1 entry) */}
                         {rows.length > 1 && (
                           <tfoot>
-                            <tr className="bg-gray-50 dark:bg-slate-800/60 font-semibold text-xs">
+                            <tr className="bg-gray-50 dark:bg-[var(--surface)]/60 font-semibold text-xs">
                               <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                                 Day Total
                               </td>

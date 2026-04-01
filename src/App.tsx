@@ -702,9 +702,7 @@ function SidebarItem({
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-left ${
-        active
-          ? "bg-[rgba(184,147,58,0.12)] text-[#b8933a]"
-          : "text-[#c8c8c4] hover:bg-[rgba(255,255,255,0.06)] hover:text-white"
+        active ? "bg-[#1A1A1D] text-[#b8933a]" : "text-[#c8c8c4] hover:bg-[#222226] hover:text-white"
       }`}
       style={
         active ? { borderLeft: "2px solid #b8933a", paddingLeft: "10px" } : { borderLeft: "2px solid transparent" }
@@ -788,6 +786,8 @@ function AppShell() {
   const [sheetsSyncOpen, setSheetsSyncOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [quickPulling, setQuickPulling] = useState(false);
+  const [leadsFilter, setLeadsFilter] = useState<string | null>(null);
+  const [clientsFilter, setClientsFilter] = useState<string | null>(null);
 
   // ── PIN-based auth state (no Firebase Auth) ──────────────────────────────
   // Admin bypass uses a separate ref to survive sign-out without Firebase
@@ -1103,9 +1103,22 @@ function AppShell() {
     setPendingCallLeadId(lead.id);
   }, []);
 
-  const handleNavigateFromDashboard = useCallback((p: string) => {
-    setPage(p as Page);
-  }, []);
+  const handleNavigateFromDashboard = useCallback(
+    (p: string, filter?: { type: "leads" | "clients"; value: string }) => {
+      if (filter) {
+        if (filter.type === "leads") {
+          setLeadsFilter(filter.value);
+        } else if (filter.type === "clients") {
+          setClientsFilter(filter.value);
+        }
+      } else {
+        setLeadsFilter(null);
+        setClientsFilter(null);
+      }
+      setPage(p as Page);
+    },
+    [],
+  );
 
   // ── Safe derived values (must NOT depend on early return) ───────────────────
   const isAdmin = currentUser?.role === "admin";
@@ -1151,7 +1164,7 @@ function AppShell() {
 
   // ── Sidebar nav helpers (shared between desktop + mobile) ────────────────
   const sidebarNav = (onNav: (p: Page) => void) => (
-    <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto scrollbar-none">
+    <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto scrollbar-none bg-[#0B0B0C]">
       {/* Top section (no label) */}
       <div className="space-y-1">
         {canSee("dashboard") && (
@@ -1383,25 +1396,25 @@ function AppShell() {
             title="Display zoom"
             className="text-[10px] bg-transparent text-[#7a7a74] hover:text-[#c8c8c4] border border-white/10 rounded px-1 py-0.5 cursor-pointer outline-none"
           >
-            <option value="auto" className="bg-[#111110]">
+            <option value="auto" className="bg-[#0B0B0C]">
               Auto
             </option>
-            <option value="0.85" className="bg-[#111110]">
+            <option value="0.85" className="bg-[#0B0B0C]">
               85%
             </option>
-            <option value="0.90" className="bg-[#111110]">
+            <option value="0.90" className="bg-[#0B0B0C]">
               90%
             </option>
-            <option value="0.95" className="bg-[#111110]">
+            <option value="0.95" className="bg-[#0B0B0C]">
               95%
             </option>
-            <option value="1" className="bg-[#111110]">
+            <option value="1" className="bg-[#0B0B0C]">
               100%
             </option>
-            <option value="1.1" className="bg-[#111110]">
+            <option value="1.1" className="bg-[#0B0B0C]">
               110%
             </option>
-            <option value="1.2" className="bg-[#111110]">
+            <option value="1.2" className="bg-[#0B0B0C]">
               120%
             </option>
           </select>
@@ -1420,7 +1433,7 @@ function AppShell() {
   return (
     <div className="h-screen flex overflow-hidden">
       {/* ── Desktop Sidebar ───────────────────────────────────────────────── */}
-      <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-[#111110] border-r border-white/[0.06] overflow-hidden">
+      <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-[#0B0B0C] border-r border-white/[0.06] overflow-hidden">
         {/* Brand */}
         <div className="flex items-center gap-3 px-4 h-14 flex-shrink-0 border-b border-white/[0.06]">
           <img
@@ -1442,7 +1455,7 @@ function AppShell() {
       {sidebarOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-[#111110] border-r border-white/[0.06] overflow-hidden lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-[#0B0B0C] border-r border-white/[0.06] overflow-hidden lg:hidden">
             <div className="flex items-center gap-3 px-4 h-14 flex-shrink-0 border-b border-white/[0.06]">
               <img
                 src="/asg-circle.png"
@@ -1558,10 +1571,14 @@ function AppShell() {
               onAddLeadOpenChange={setAddLeadOpen}
               pendingCallLeadId={pendingCallLeadId}
               onPendingCallLeadConsumed={() => setPendingCallLeadId(null)}
+              initialFilter={leadsFilter}
+              onFilterCleared={() => setLeadsFilter(null)}
             />
           )}
           <Suspense fallback={<PageLoader />}>
-            {effectivePage === "client-hub" && <ClientHubPage />}
+            {effectivePage === "client-hub" && (
+              <ClientHubPage initialFilter={clientsFilter} onFilterCleared={() => setClientsFilter(null)} />
+            )}
             {effectivePage === "dashboard" && (
               <DashboardPage onCallLead={handleCallFromDashboard} onNavigate={handleNavigateFromDashboard} />
             )}

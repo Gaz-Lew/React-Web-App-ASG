@@ -224,7 +224,7 @@ export function AppointmentModal({
   };
 
   const inputClass =
-    "w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500";
+    "w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500";
   const labelClass = "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1";
 
   return (
@@ -232,13 +232,13 @@ export function AppointmentModal({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200">
             {isEdit ? "Edit Appointment" : "New Appointment"}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)]">
             <X size={18} />
           </button>
         </div>
@@ -264,7 +264,7 @@ export function AppointmentModal({
             {showSuggestions && (
               <div
                 ref={suggestRef}
-                className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-72 overflow-y-auto"
+                className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-2xl max-h-72 overflow-y-auto"
               >
                 {/* Recent Booked */}
                 {suggestions.recentBooked.length > 0 && (
@@ -276,7 +276,7 @@ export function AppointmentModal({
                       <button
                         key={l.id}
                         onMouseDown={() => pickSuggestion(l)}
-                        className="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-2 border-b border-gray-50 dark:border-slate-800"
+                        className="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex items-center gap-2 border-b border-gray-50 dark:border-white/[0.06]"
                       >
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">
                           {l.name}
@@ -297,7 +297,7 @@ export function AppointmentModal({
                       <button
                         key={l.id}
                         onMouseDown={() => pickSuggestion(l)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/20 flex items-center gap-2 border-b border-gray-50 dark:border-slate-800"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/20 flex items-center gap-2 border-b border-gray-50 dark:border-white/[0.06]"
                       >
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">
                           {l.name}
@@ -318,7 +318,7 @@ export function AppointmentModal({
                       <button
                         key={l.id}
                         onMouseDown={() => pickSuggestion(l)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/20 flex items-center gap-2 border-b border-gray-50 dark:border-slate-800"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/20 flex items-center gap-2 border-b border-gray-50 dark:border-white/[0.06]"
                       >
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">
                           {l.name}
@@ -427,7 +427,7 @@ export function AppointmentModal({
                   className={`px-3 py-1.5 text-xs rounded-lg font-medium border transition-colors ${
                     status === opt.value
                       ? "bg-amber-500 border-amber-500 text-white"
-                      : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                      : "bg-white dark:bg-[var(--surface)] border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                   }`}
                 >
                   {opt.label}
@@ -446,7 +446,7 @@ export function AppointmentModal({
                       className={`px-3 py-1.5 text-xs rounded-lg font-medium border transition-colors ${
                         status === opt.value
                           ? "bg-slate-600 border-slate-600 text-white"
-                          : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700"
+                          : "bg-gray-50 dark:bg-[var(--surface)]/50 border-gray-200 dark:border-white/[0.06] text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-[var(--hover)]"
                       }`}
                     >
                       {opt.label}
@@ -490,7 +490,7 @@ export function AppointmentModal({
                   placeholder="Search by name or phone..."
                 />
                 {leadResults.length > 0 && (
-                  <ul className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <ul className="absolute z-10 w-full mt-1 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {leadResults.map((l) => (
                       <li
                         key={l.id}
@@ -500,7 +500,7 @@ export function AppointmentModal({
                           setClientPhone(l.phone ?? "");
                           setLeadSearch("");
                         }}
-                        className="px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer truncate"
+                        className="px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-[var(--hover)] cursor-pointer truncate"
                       >
                         {l.name} · {l.phone} · {l.suburb}
                       </li>
@@ -513,7 +513,7 @@ export function AppointmentModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-200 dark:border-slate-700">
+        <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-200 dark:border-white/[0.06]">
           {isEdit &&
             (confirmDelete ? (
               <div className="flex items-center gap-2">
@@ -542,7 +542,7 @@ export function AppointmentModal({
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+            className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg"
           >
             Cancel
           </button>

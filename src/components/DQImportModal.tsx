@@ -160,10 +160,10 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-[95vw] max-h-[92vh] flex flex-col">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl w-full max-w-[95vw] max-h-[92vh] flex flex-col">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2">
               <ClipboardList size={18} className="text-amber-500" />
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">DQ Lead Import</h2>
@@ -173,7 +173,7 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition text-gray-500"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition text-gray-500"
             >
               <X size={18} />
             </button>
@@ -182,7 +182,7 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
           {/* Table */}
           <div className="flex-1 overflow-auto">
             <table className="w-full text-sm border-collapse" style={{ minWidth: '1400px' }}>
-              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 z-10">
+              <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)] z-10">
                 <tr>
                   <th className={thCls} style={{ width: 36 }}>#</th>
                   <th className={thCls} style={{ minWidth: 150 }}>Full Name *</th>
@@ -206,12 +206,12 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
                   return (
                     <tr
                       key={i}
-                      className={`border-b border-gray-100 dark:border-slate-800 ${
+                      className={`border-b border-gray-100 dark:border-white/[0.06] ${
                         rowError
                           ? 'bg-red-50 dark:bg-red-900/10'
                           : isDup
                           ? 'bg-amber-50/60 dark:bg-amber-900/10'
-                          : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                          : 'hover:bg-gray-50 dark:hover:bg-[var(--hover)]/50'
                       }`}
                     >
                       {/* Row # / Duplicate indicator */}
@@ -366,11 +366,11 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 gap-4">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] flex-shrink-0 gap-4">
             <button
               onClick={addRow}
               disabled={rows.length >= MAX_ROWS}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-white/[0.08] rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
               <Plus size={14} />
               Add Row
@@ -393,7 +393,7 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
               })()}
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition text-sm"
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition text-sm"
               >
                 Cancel
               </button>
@@ -418,11 +418,11 @@ export function DQImportModal({ onClose, onSave }: DQImportModalProps) {
   );
 }
 
-const thCls = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap';
+const thCls = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-white/[0.06] whitespace-nowrap';
 const inputCls = (hasError: boolean) =>
-  `w-full px-2 py-1 rounded border text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400 ${
-    hasError ? 'border-red-400' : 'border-gray-200 dark:border-slate-700'
+  `w-full px-2 py-1 rounded border text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400 ${
+    hasError ? 'border-red-400' : 'border-gray-200 dark:border-white/[0.06]'
   }`;
-const selectCls = 'w-full px-2 py-1 rounded border border-gray-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400';
+const selectCls = 'w-full px-2 py-1 rounded border border-gray-200 dark:border-white/[0.06] text-sm bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400';
 
 export default DQImportModal;

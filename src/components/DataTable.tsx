@@ -36,7 +36,7 @@ function SkeletonRow({ cols }: { cols: number }) {
 
 function SkeletonCard() {
   return (
-    <div className="p-4 border-b border-gray-100 dark:border-slate-700/50">
+    <div className="p-4 border-b border-gray-100 dark:border-white/[0.06]/50">
       <div className="flex items-center justify-between mb-2">
         <div className="h-4 w-36 rounded skeleton-shimmer" />
         <div className="h-5 w-16 rounded-full skeleton-shimmer" />
@@ -627,9 +627,9 @@ export function DataTable({
     "px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap";
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-slate-900">
+    <div className="w-full h-full flex flex-col bg-white dark:bg-[var(--surface)]">
       {/* ── Toolbar ── */}
-      <div className="border-b border-gray-200 dark:border-slate-700 p-4 space-y-3 flex-shrink-0">
+      <div className="border-b border-gray-200 dark:border-white/[0.06] p-4 space-y-3 flex-shrink-0">
         {/* Search & Filters */}
         <div className="flex gap-2 flex-wrap items-center">
           {/* My Leads / All Leads toggle */}
@@ -638,12 +638,12 @@ export function DataTable({
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all flex-shrink-0 ${
               myLeadsOnly
                 ? "bg-amber-500 text-white border-amber-500"
-                : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-amber-300"
+                : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/[0.06] hover:border-amber-300"
             }`}
           >
             {myLeadsOnly ? "👤 My Leads" : "👥 All Leads"}
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${myLeadsOnly ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-gray-400"}`}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${myLeadsOnly ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-[var(--hover)] text-gray-500 dark:text-gray-400"}`}
             >
               {myLeadsOnly && currentUserId ? leads.filter((l) => l.dqRep === currentUserId).length : leads.length}
             </span>
@@ -659,7 +659,7 @@ export function DataTable({
               if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
               searchDebounceRef.current = setTimeout(() => setSearchTerm(v), 250);
             }}
-            className="flex-1 min-w-[180px] px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="flex-1 min-w-[180px] px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
           <select
             value={filters.repId || ""}
@@ -667,7 +667,7 @@ export function DataTable({
               setFilters((p) => ({ ...p, repId: e.target.value ? parseInt(e.target.value) : undefined }))
             }
             disabled={myLeadsOnly}
-            className={`px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 ${myLeadsOnly ? "opacity-40 cursor-not-allowed" : ""}`}
+            className={`px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 ${myLeadsOnly ? "opacity-40 cursor-not-allowed" : ""}`}
           >
             <option value="">All Reps</option>
             {activeReps.map((r) => (
@@ -679,7 +679,7 @@ export function DataTable({
           <select
             value={filters.suburb || ""}
             onChange={(e) => setFilters((p) => ({ ...p, suburb: e.target.value || undefined }))}
-            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             <option value="">All Suburbs</option>
             {suburbs.map((s) => (
@@ -706,7 +706,7 @@ export function DataTable({
             <button
               onClick={() => setSavingPreset(true)}
               title="Save current filters as preset"
-              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
             >
               <Bookmark size={13} />
               Save Filter
@@ -718,16 +718,16 @@ export function DataTable({
             <div className="relative" ref={presetMenuRef}>
               <button
                 onClick={() => setPresetMenuOpen((o) => !o)}
-                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 whitespace-nowrap"
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
               >
                 📌 Saved ({presets.length})
               </button>
               {presetMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 z-30 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[200px] py-1">
+                <div className="absolute left-0 top-full mt-1 z-30 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg min-w-[200px] py-1">
                   {presets.map((p, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 group"
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-[var(--hover)] group"
                     >
                       <button
                         onClick={() => applyPreset(p)}
@@ -756,7 +756,7 @@ export function DataTable({
           <button
             onClick={() => setGroupSortOrder((o) => (o === "newest" ? "oldest" : "newest"))}
             title="Toggle date sort order"
-            className="ml-auto px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+            className="ml-auto px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
           >
             {groupSortOrder === "newest" ? "↓ Newest First" : "↑ Oldest First"}
           </button>
@@ -766,17 +766,17 @@ export function DataTable({
             <button
               onClick={() => setColMenuOpen((o) => !o)}
               title="Toggle column visibility"
-              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
             >
               <Columns size={13} />
               Columns ▾
             </button>
             {colMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[160px] py-2">
+              <div className="absolute right-0 top-full mt-1 z-30 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg min-w-[160px] py-2">
                 {COLUMNS.map((col) => (
                   <label
                     key={col.key}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[var(--hover)] cursor-pointer text-sm text-gray-700 dark:text-gray-300"
                   >
                     <input
                       type="checkbox"
@@ -809,7 +809,7 @@ export function DataTable({
                   setPresetName("");
                 }
               }}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 w-48"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 w-48"
             />
             <button
               onClick={savePreset}
@@ -845,7 +845,7 @@ export function DataTable({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-medium transition flex-shrink-0 ${
                   isActive
                     ? "bg-amber-500 text-white shadow-sm"
-                    : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700"
+                    : "bg-gray-100 dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[var(--hover)]"
                 }`}
               >
                 {tab.value !== "all" && (
@@ -856,7 +856,7 @@ export function DataTable({
                 )}
                 {tab.label}
                 <span
-                  className={`${isActive ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-gray-400"} px-1.5 py-0.5 rounded-full text-[10px] font-semibold`}
+                  className={`${isActive ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-[var(--hover)] text-gray-500 dark:text-gray-400"} px-1.5 py-0.5 rounded-full text-[10px] font-semibold`}
                 >
                   {tabCounts[tab.value] ?? 0}
                 </span>
@@ -902,7 +902,7 @@ export function DataTable({
           </div>
         ) : (
           <table className="w-full border-collapse" style={{ minWidth: "1000px" }}>
-            <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 z-10">
+            <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] z-10">
               <tr>
                 {/* Checkbox — always visible */}
                 <th className="w-10 px-3 py-3">
@@ -993,7 +993,7 @@ export function DataTable({
                     {/* ── Date group header ── */}
                     <tr
                       onClick={() => toggleGroup(dateKey)}
-                      className="cursor-pointer bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition border-t-2 border-gray-200 dark:border-slate-700"
+                      className="cursor-pointer bg-gray-100 dark:bg-[var(--surface)] hover:bg-gray-200 dark:hover:bg-[var(--hover)] transition border-t-2 border-gray-200 dark:border-white/[0.06]"
                     >
                       <td colSpan={totalCols} className="px-4 py-2">
                         <div className="flex items-center gap-2">
@@ -1027,7 +1027,7 @@ export function DataTable({
                               <tr
                                 key={lead.id}
                                 onClick={() => onSelectLead(lead)}
-                                className="border-b border-gray-100 dark:border-slate-800 hover:bg-amber-50/40 dark:hover:bg-slate-800/60 transition cursor-pointer group"
+                                className="border-b border-gray-100 dark:border-white/[0.06] hover:bg-amber-50/40 dark:hover:bg-[var(--hover)]/60 transition cursor-pointer group"
                               >
                                 {/* Checkbox */}
                                 <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -1155,7 +1155,7 @@ export function DataTable({
                                           ],
                                         });
                                       }}
-                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
                                     >
                                       NA
                                     </button>
@@ -1182,7 +1182,7 @@ export function DataTable({
                                           ],
                                         });
                                       }}
-                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
+                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
                                     >
                                       WN
                                     </button>
@@ -1197,7 +1197,7 @@ export function DataTable({
                                     <button
                                       onClick={() => onSelectLead(lead)}
                                       title="View / edit lead"
-                                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition"
+                                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition"
                                     >
                                       <Eye size={14} />
                                     </button>
@@ -1209,7 +1209,7 @@ export function DataTable({
                               <tr>
                                 <td
                                   colSpan={totalCols}
-                                  className="px-4 py-2 text-center bg-gray-50 dark:bg-slate-800/50"
+                                  className="px-4 py-2 text-center bg-gray-50 dark:bg-[var(--surface)]/50"
                                 >
                                   <button
                                     onClick={(e) => {
@@ -1275,7 +1275,7 @@ export function DataTable({
                   {/* Mobile group header */}
                   <button
                     onClick={() => toggleGroup(dateKey)}
-                    className="w-full flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-left"
+                    className="w-full flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] text-left"
                   >
                     {isCollapsed ? (
                       <ChevronRight size={13} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
@@ -1374,7 +1374,7 @@ export function DataTable({
                                       ],
                                     });
                                   }}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
                                 >
                                   NA
                                 </button>
@@ -1401,7 +1401,7 @@ export function DataTable({
                                       ],
                                     });
                                   }}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
+                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
                                 >
                                   WN
                                 </button>
@@ -1419,7 +1419,7 @@ export function DataTable({
                                     e.stopPropagation();
                                     onSelectLead(lead);
                                   }}
-                                  className="px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
+                                  className="px-3 py-1.5 text-xs bg-slate-100 dark:bg-[var(--hover)] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-[var(--hover)] transition font-medium"
                                 >
                                   <Eye size={12} className="mx-auto" />
                                 </button>
@@ -1427,7 +1427,7 @@ export function DataTable({
                             </li>
                           ))}
                           {hiddenCount > 0 && (
-                            <li className="px-4 py-2.5 text-center bg-gray-50 dark:bg-slate-800/50">
+                            <li className="px-4 py-2.5 text-center bg-gray-50 dark:bg-[var(--surface)]/50">
                               <button
                                 onClick={() => setGroupShowAll((prev) => new Set([...prev, dateKey]))}
                                 className="text-xs text-amber-600 dark:text-amber-400 hover:underline font-medium"
@@ -1447,7 +1447,7 @@ export function DataTable({
       </div>
 
       {/* ── Footer / Bulk Actions ── */}
-      <div className="border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 flex-shrink-0">
+      <div className="border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {selectedLeads.size > 0
@@ -1468,7 +1468,7 @@ export function DataTable({
                   setConfirmingDelete(false);
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
               >
                 {(
                   ["DQ", "Live", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"] as LeadStatus[]
@@ -1485,7 +1485,7 @@ export function DataTable({
                 Apply
               </button>
 
-              <span className="text-gray-300 dark:text-slate-600 text-sm">|</span>
+              <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Rep reassign */}
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Rep:</span>
@@ -1496,7 +1496,7 @@ export function DataTable({
                   setConfirmingDelete(false);
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
               >
                 <option value="">Pick rep…</option>
                 {activeReps.map((r) => (
@@ -1522,7 +1522,7 @@ export function DataTable({
                 Reassign
               </button>
 
-              <span className="text-gray-300 dark:text-slate-600 text-sm">|</span>
+              <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Feature 5: Bulk Date */}
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
@@ -1532,7 +1532,7 @@ export function DataTable({
                 type="date"
                 value={bulkDate}
                 onChange={(e) => setBulkDate(e.target.value)}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none"
+                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
               />
               <button
                 onClick={handleBulkDateUpdate}
@@ -1542,7 +1542,7 @@ export function DataTable({
                 Set Date
               </button>
 
-              <span className="text-gray-300 dark:text-slate-600 text-sm">|</span>
+              <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Feature 5: Bulk Suburb */}
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
@@ -1553,7 +1553,7 @@ export function DataTable({
                 placeholder="New suburb…"
                 value={bulkSuburb}
                 onChange={(e) => setBulkSuburb(e.target.value)}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none w-28"
+                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none w-28"
               />
               <button
                 onClick={handleBulkSuburbUpdate}
@@ -1563,7 +1563,7 @@ export function DataTable({
                 Set Suburb
               </button>
 
-              <span className="text-gray-300 dark:text-slate-600 text-sm">|</span>
+              <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Delete with confirmation */}
               {confirmingDelete ? (
@@ -1579,7 +1579,7 @@ export function DataTable({
                   </button>
                   <button
                     onClick={() => setConfirmingDelete(false)}
-                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 transition font-medium"
+                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-[var(--hover)] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-[var(--hover)] transition font-medium"
                   >
                     Cancel
                   </button>
