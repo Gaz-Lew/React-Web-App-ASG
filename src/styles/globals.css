@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root font-size controlled by useUiScale() hook — default 16px.
+   All Tailwind rem units (text-*, p-*, gap-*, etc.) scale proportionally. */
+html { font-size: 16px; }
+
+@layer base {
+  :root {
+    /* Typography */
+    --font-body:    'Instrument Sans', system-ui, sans-serif;
+    --font-display: 'Syne', system-ui, sans-serif;
+
+    /* Brass accent */
+    --brass:        #b8933a;
+    --brass-light:  #d4aa55;
+    --brass-dark:   #9a7a2e;
+
+    /* Light mode surfaces (warm off-white) */
+    --bg:           #f0f0ee;
+    --surface:      #f4f4f2;
+    --border:       #e2e2de;
+    --text:         #1a1a18;
+    --text-muted:   #6b6b65;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark {
+    --bg:           #0e0e0d;
+    --surface:      #1a1a18;
+    --border:       #2e2e2b;
+    --text:         #f0f0ee;
+    --text-muted:   #8a8a84;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  .dark body {
+    background-color: #0f172a;
+    color: #f8fafc;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Display font utility */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Animate-in utility used by ToastContext */
+  .animate-in {
+    animation-fill-mode: both;
+  }
+
+  .slide-in-from-right-4 {
+    --tw-enter-translate-x: 1rem;
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
+    animation-duration: 300ms;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(1rem); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Animated brass gradient background for login screen */
+  .login-bg {
+    background: radial-gradient(ellipse at 20% 50%, rgba(184, 147, 58, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(184, 147, 58, 0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 60% 80%, rgba(26, 26, 24, 0.8) 0%, transparent 70%);
+    animation: loginPulse 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes loginPulse {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Skeleton shimmer for initial load */
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, #e5e5e3 25%, #f0f0ee 50%, #e5e5e3 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+
+  .dark .skeleton-shimmer {
+    background: linear-gradient(90deg, #2a2a27 25%, #343431 50%, #2a2a27 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}

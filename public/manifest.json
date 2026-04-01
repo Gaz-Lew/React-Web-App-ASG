@@ -1,0 +1,26 @@
+{
+  "name": "ASG - Customer Relations Management",
+  "short_name": "ASG CRM",
+  "description": "Amplify Solutions Group — Customer Relations Management Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/asg-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "View Leads",
+      "url": "/",
+      "description": "Open leads table"
+    }
+  ]
+}

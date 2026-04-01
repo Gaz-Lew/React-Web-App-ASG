@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASG - Customer Relations Management</title>
+    <link rel="icon" type="image/png" href="/asg-logo.png" />
+    <!-- Google Fonts: Instrument Sans (body) + Syne (display headings) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#b8933a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ASG CRM" />
+    <!-- Apply dark class before first paint to avoid flash -->
+    <script>
+      (function() {
+        var stored = localStorage.getItem('asgDarkMode');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'true' || (stored === null && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+    <!-- Apply UI zoom scale before first paint to avoid flash -->
+    <script>
+      (function () {
+        var saved = localStorage.getItem('asgUiScale');
+        var scale;
+        if (!saved || saved === 'auto') {
+          var w = window.innerWidth || 1024;
+          scale = w < 390 ? 0.85 : w < 640 ? 0.90 : w < 1024 ? 0.95 : 1;
+        } else {
+          scale = parseFloat(saved);
+        }
+        if (scale && scale !== 1) {
+          document.documentElement.style.fontSize = (scale * 16) + 'px';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
