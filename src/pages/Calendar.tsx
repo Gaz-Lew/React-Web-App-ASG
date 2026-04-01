@@ -1281,8 +1281,33 @@ function CalendarClientPanel({
     .map((ev) => ev.appointmentData!);
   const firstAppointment = relatedAppointments[0];
 
+  // Find the next upcoming appointment
+  const sortedAppointments = [...relatedAppointments].sort((a, b) => {
+    const aDateTime = new Date(`${a.date}T${a.startTime || "00:00"}`);
+    const bDateTime = new Date(`${b.date}T${b.startTime || "00:00"}`);
+    return aDateTime.getTime() - bDateTime.getTime();
+  });
+  const nextAppointment = sortedAppointments.find((appt) => {
+    const apptDateTime = new Date(`${appt.date}T${appt.startTime || "00:00"}`);
+    return apptDateTime > new Date();
+  });
+
+  const nextText = nextAppointment
+    ? (() => {
+        const today = todayStr();
+        const day =
+          nextAppointment.date === today
+            ? "Today"
+            : new Date(nextAppointment.date).toLocaleDateString("en-AU", { weekday: "short" });
+        const time = formatTime(nextAppointment.startTime);
+        return `Next: ${day} ${time}`;
+      })()
+    : "No appointment scheduled";
+
   return (
-    <div className="hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+    <div
+      className={`hidden lg:flex flex-col w-96 flex-shrink-0 border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 ${relatedAppointments.length === 0 ? "bg-amber-50 dark:bg-amber-900/20" : ""}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
@@ -1400,6 +1425,7 @@ function CalendarClientPanel({
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{nextText}</p>
         <div className="flex flex-col gap-2 mb-2">
           <button
             onClick={() => firstAppointment && onEditAppointment(firstAppointment)}
