@@ -21,6 +21,23 @@ const DocumentCentrePage = lazy(() =>
 const DealDashboardPage = lazy(() => import("./pages/DealDashboard").then((m) => ({ default: m.DealDashboardPage })));
 const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
 const ClientHubPage = lazy(() => import("./pages/ClientHub").then((m) => ({ default: m.ClientHubPage })));
+const ClientProfilePage = lazy(() =>
+  import("./pages/ClientProfilePage").then((m) => ({ default: m.ClientProfilePage })),
+);
+const PIAPage = lazy(() => import("./pages/PIA").then((m) => ({ default: m.PIAPage })));
+const SMSFPage = lazy(() => import("./pages/SMSF").then((m) => ({ default: m.SMSFPage })));
+const ReportsDashboardPage = lazy(() =>
+  import("./pages/ReportsDashboard").then((m) => ({ default: m.ReportsDashboardPage })),
+);
+const TrainingHubPage = lazy(() => import("./pages/TrainingHub").then((m) => ({ default: m.TrainingHubPage })));
+const AdminGuidePage = lazy(() => import("./pages/AdminGuide").then((m) => ({ default: m.AdminGuidePage })));
+const RepDashboardPage = lazy(() =>
+  import("./components/RepDashboard").then((m) => ({ default: m.RepDashboard })),
+);
+const MyDashboardPage = lazy(() => import("./pages/MyDashboard").then((m) => ({ default: m.MyDashboardPage })));
+const RepSettingsPanel = lazy(() =>
+  import("./components/RepSettingsPanel").then((m) => ({ default: m.RepSettingsPanel })),
+);
 
 // ── Lazy-loaded heavy modals ──────────────────────────────────────────────────
 const CSVImportModal = lazy(() => import("./components/CSVImportModal").then((m) => ({ default: m.CSVImportModal })));
@@ -28,60 +45,16 @@ const SheetsSyncModal = lazy(() =>
   import("./components/SheetsSyncModal").then((m) => ({ default: m.SheetsSyncModal })),
 );
 
-// ── Page-level loading fallback ───────────────────────────────────────────────
-function PageLoader() {
-  return (
-    <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
-      <div className="text-center">
-        <div
-          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-2"
-          style={{ borderColor: "#b8933a", borderTopColor: "transparent" }}
-        />
-        <p className="text-sm">Loading…</p>
-      </div>
-    </div>
-  );
-}
-import { useAppStore } from "./stores/appStore";
-import {
-  useSaveLead,
-  useAddAuditEntry,
-  useReps,
-  useSaveRep,
-  useAppSettings,
-  useSaveSettings,
-  useLeads,
-} from "./hooks/useFirebase";
-import { exportLeadsCSV, exportCallHistoryCSV, normalizeAUPhone } from "./lib/utils";
-import {
-  LayoutDashboard,
-  Users,
-  LogOut,
-  Plus,
-  Settings,
-  BarChart3,
-  DollarSign,
-  Download,
-  FileUp,
-  Sun,
-  Moon,
-  MapPin,
-  ArrowLeftRight,
-  ClipboardList,
-  MessageCircle,
-  BookOpen,
-  FolderOpen,
-  TrendingUp,
-  CalendarDays,
-  Briefcase,
-  Menu,
-  X,
-  Shield,
-} from "lucide-react";
+import { FloatingCalculator } from "./components/FloatingCalculator/FloatingCalculator";
+import { FloatingCalendar } from "./components/FloatingCalendar/FloatingCalendar";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
+import { useNotifications } from "./hooks/useNotifications";
+import { useOfflineQueue } from "./hooks/useOfflineQueue";
+import { ConnectionStatus } from "./components/ConnectionStatus";
 
 // ── Google Sheets Quick Pull constants ───────────────────────────────────────
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-const GOOGLE_API_KEY = "AIzaSyCoxDjRMuDT6NO661xzrgYvvnjo7P6isS8";
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY as string;
 
 // ── Dark mode (class-based, persisted) ───────────────────────────────────────
 function useDarkMode(): [boolean, () => void] {
@@ -142,8 +115,15 @@ type Page =
   | "knowledge-base"
   | "document-centre"
   | "deal-dashboard"
+  | "reports"
+  | "training"
   | "calendar"
-  | "settings";
+  | "admin-guide"
+  | "my-dashboard"
+  | "rep-settings"
+  | "pia"
+  | "smsf"
+  | "rep-dashboard";
 
 // ── Login screen ──────────────────────────────────────────────────────────────
 type LoginStep = "select" | "access-code" | "setup" | "pin" | "forgot" | "new-pin" | "admin";
@@ -674,6 +654,8 @@ const PAGE_LABELS: Record<string, string> = {
   "client-hub": "Clients",
   calendar: "Calendar",
   "deal-dashboard": "Deal Dashboard",
+  reports: "Reports",
+  training: "Training Hub",
   "dq-import": "DQ Import",
   map: "Map",
   draps: "DRAPS & Stats",
@@ -682,6 +664,12 @@ const PAGE_LABELS: Record<string, string> = {
   "team-chat": "Team Chat",
   "knowledge-base": "Knowledge Base",
   "document-centre": "Documents",
+  "admin-guide": "Admin Guide",
+  "my-dashboard": "My Dashboard",
+  "rep-settings": "My Settings",
+  pia: "PIA Calculator",
+  smsf: "SMSF Calculator",
+  "rep-dashboard": "Rep Dashboard",
 };
 
 // ── Sidebar item ──────────────────────────────────────────────────────────────
@@ -731,10 +719,44 @@ function SidebarSection({ label, children }: { label: string; children: React.Re
     </div>
   );
 }
+
+// ── Nav tab ───────────────────────────────────────────────────────────────────
+function NavTab({
+  label,
+  active,
+  onClick,
+  icon,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition flex-shrink-0 whitespace-nowrap ${
+        active
+          ? "bg-amber-500 text-white shadow-sm"
+          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-gray-200"
+      }`}
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+// ── Nav divider ───────────────────────────────────────────────────────────────
+function NavDivider() {
+  return <div className="w-px h-6 bg-gray-200 dark:bg-slate-700 flex-shrink-0 self-center mx-0.5" />;
+}
+
 // ── Authenticated app shell ───────────────────────────────────────────────────
 function AppShell() {
   const { currentUser, setCurrentUser, leads, reps } = useAppStore();
   useReps(); // sync Firestore reps → Zustand store (keeps credentials current across devices)
+  useNotifications();
   const { save: migrateRep } = useSaveRep();
   const { save: saveLead } = useSaveLead();
   const { add: addAudit } = useAddAuditEntry();
@@ -742,6 +764,7 @@ function AppShell() {
   const { save: saveSettings } = useSaveSettings();
   const { leads: allLeads } = useLeads();
   const { showToast } = useToast();
+  const { isOnline: queueOnline, isSyncing, queueLength } = useOfflineQueue();
   const [dark, toggleDark] = useDarkMode();
   const [uiScale, setUiScale] = useUiScale();
 
@@ -755,6 +778,9 @@ function AppShell() {
   const [quickPulling, setQuickPulling] = useState(false);
   const [leadsFilter, setLeadsFilter] = useState<string | null>(null);
   const [clientsFilter, setClientsFilter] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [checkedOnboarding, setCheckedOnboarding] = useState(false);
 
   // ── PIN-based auth state (no Firebase Auth) ──────────────────────────────
   // Admin bypass uses a separate ref to survive sign-out without Firebase
@@ -830,6 +856,27 @@ function AppShell() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reps]);
+
+  // ── Onboarding flow trigger ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser) return;
+    const timer = setTimeout(() => {
+      if (!currentUser.hasCompletedOnboarding) {
+        setShowOnboarding(true);
+      }
+      setCheckedOnboarding(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [currentUser]);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+  }, []);
+
+  const handleOnboardingNavigate = useCallback((action: "leads" | "calendar" | "client-hub") => {
+    setPage(action as Page);
+    setShowOnboarding(false);
+  }, []);
 
   const handleSignOut = useCallback(() => {
     localStorage.removeItem("asgCurrentUserId");
@@ -1230,7 +1277,7 @@ function AppShell() {
       )}
 
       {/* DOCUMENTS & TRAINING */}
-      {(canSee("document-centre") || canSee("knowledge-base")) && (
+      {(canSee("document-centre") || canSee("knowledge-base") || canSee("training")) && (
         <SidebarSection label="DOCUMENTS & TRAINING">
           {canSee("document-centre") && (
             <SidebarItem
@@ -1248,23 +1295,85 @@ function AppShell() {
               onClick={() => onNav("knowledge-base")}
             />
           )}
+          {canSee("training") && (
+            <SidebarItem
+              icon={<GraduationCap size={15} />}
+              label="Training Hub"
+              active={effectivePage === "training"}
+              onClick={() => onNav("training")}
+            />
+          )}
+        </SidebarSection>
+      )}
+
+      {/* TOOLS */}
+      {(canSee("pia") || canSee("smsf")) && (
+        <SidebarSection label="TOOLS">
+          {canSee("pia") && (
+            <SidebarItem
+              icon={<Calculator size={15} />}
+              label="PIA Calculator"
+              active={effectivePage === "pia"}
+              onClick={() => onNav("pia")}
+            />
+          )}
+          {canSee("smsf") && (
+            <SidebarItem
+              icon={<Calculator size={15} />}
+              label="SMSF Calculator"
+              active={effectivePage === "smsf"}
+              onClick={() => onNav("smsf")}
+            />
+          )}
+        </SidebarSection>
+      )}
+
+      {/* MY */}
+      {(canSee("my-dashboard") || canSee("rep-dashboard") || canSee("rep-settings")) && (
+        <SidebarSection label="MY">
+          {canSee("my-dashboard") && (
+            <SidebarItem
+              icon={<UserCircle size={15} />}
+              label="My Dashboard"
+              active={effectivePage === "my-dashboard"}
+              onClick={() => onNav("my-dashboard")}
+            />
+          )}
+          {canSee("rep-dashboard") && (
+            <SidebarItem
+              icon={<BarChart2 size={15} />}
+              label="Rep Dashboard"
+              active={effectivePage === "rep-dashboard"}
+              onClick={() => onNav("rep-dashboard")}
+            />
+          )}
+          {canSee("rep-settings") && (
+            <SidebarItem
+              icon={<Settings size={15} />}
+              label="My Settings"
+              active={effectivePage === "rep-settings"}
+              onClick={() => onNav("rep-settings")}
+            />
+          )}
         </SidebarSection>
       )}
 
       {/* SYSTEM */}
       <SidebarSection label="SYSTEM">
-        <SidebarItem
-          icon={<Settings size={15} />}
-          label="Settings"
-          active={effectivePage === "settings"}
-          onClick={() => onNav("settings")}
-        />
         {isAdmin && (
           <SidebarItem
             icon={<Shield size={15} />}
             label="Admin"
             active={effectivePage === "admin"}
             onClick={() => onNav("admin")}
+          />
+        )}
+        {isAdmin && (
+          <SidebarItem
+            icon={<BookOpen size={15} />}
+            label="Admin Guide"
+            active={effectivePage === "admin-guide"}
+            onClick={() => onNav("admin-guide")}
           />
         )}
       </SidebarSection>
@@ -1453,7 +1562,7 @@ function AppShell() {
       {/* ── Right Column ──────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="h-14 flex-shrink-0 flex items-center gap-2 px-4 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-slate-700">
+        <header className="h-14 flex-shrink-0 flex items-center gap-2 px-4 bg-[var(--surface)] border-b border-[var(--border)]">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -1527,11 +1636,12 @@ function AppShell() {
                 <span className="hidden sm:inline">Add Lead</span>
               </button>
             </>
-          )}
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-hidden flex flex-col">
+)}
+         </header>
+ 
+         {/* Page content — flex-1 so it fills height after the 56px topbar */}
+         <div className="app-scale-root flex-1 overflow-hidden flex flex-col">
+           <main className="flex-1 overflow-hidden flex flex-col">
           {effectivePage === "leads" && (
             <LeadsPage
               addLeadOpen={addLeadOpen}
@@ -1544,13 +1654,19 @@ function AppShell() {
           )}
           <Suspense fallback={<PageLoader />}>
             {effectivePage === "client-hub" && (
-              <ClientHubPage initialFilter={clientsFilter} onFilterCleared={() => setClientsFilter(null)} />
+              <ClientHubPage
+                initialFilter={clientsFilter}
+                onFilterCleared={() => setClientsFilter(null)}
+                onOpenProfile={(leadId) => setSelectedClientId(leadId)}
+              />
             )}
             {effectivePage === "dashboard" && (
               <DashboardPage onCallLead={handleCallFromDashboard} onNavigate={handleNavigateFromDashboard} />
             )}
             {effectivePage === "calendar" && <CalendarPage onViewClientProfile={(_lead) => setPage("client-hub")} />}
             {effectivePage === "deal-dashboard" && <DealDashboardPage />}
+            {effectivePage === "reports" && <ReportsDashboardPage />}
+            {effectivePage === "training" && <TrainingHubPage />}
             {effectivePage === "dq-import" && <DQImportPage />}
             {effectivePage === "map" && <MapPage />}
             {effectivePage === "draps" && <DrapsPage />}
@@ -1559,23 +1675,50 @@ function AppShell() {
             {effectivePage === "team-chat" && <TeamChatPage />}
             {effectivePage === "knowledge-base" && <KnowledgeBasePage />}
             {effectivePage === "document-centre" && <DocumentCentrePage />}
-            {effectivePage === "settings" && (
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Settings</h1>
-                <p>Settings page coming soon.</p>
-              </div>
+            {effectivePage === "pia" && <PIAPage />}
+            {effectivePage === "smsf" && <SMSFPage />}
+            {effectivePage === "admin-guide" && isAdmin && <AdminGuidePage />}
+            {effectivePage === "my-dashboard" && <MyDashboardPage />}
+            {effectivePage === "rep-dashboard" && <RepDashboardPage />}
+            {effectivePage === "rep-settings" && (
+              <Suspense fallback={<PageLoader />}>
+                <RepSettingsPanel />
+              </Suspense>
             )}
           </Suspense>
         </main>
       </div>
 
+      {/* ── Client Profile Overlay ────────────────────────────────────────── */}
+      {selectedClientId !== null && (
+        <Suspense fallback={<PageLoader />}>
+          <ClientProfilePage
+            clientId={selectedClientId}
+            onClose={() => setSelectedClientId(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* ── Floating Tools ────────────────────────────────────────────────── */}
+      <FloatingCalculator />
+      <FloatingCalendar />
+
+      {/* ── Onboarding ────────────────────────────────────────────────────── */}
+      {showOnboarding && checkedOnboarding && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onNavigate={handleOnboardingNavigate}
+        />
+      )}
+
       {/* ── Modals ────────────────────────────────────────────────────────── */}
       <Suspense fallback={null}>
         {csvImportOpen && <CSVImportModal onClose={() => setCSVImportOpen(false)} onImport={handleCSVImportSave} />}
         {sheetsSyncOpen && <SheetsSyncModal onClose={() => setSheetsSyncOpen(false)} />}
-      </Suspense>
-    </div>
-  );
+</Suspense>
+     </div>
+     </div>
+   );
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
@@ -1583,7 +1726,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <div className="min-h-screen bg-white dark:bg-[var(--bg)]">
+        <div className="min-h-screen bg-[var(--bg)]">
           <AppShell />
         </div>
       </ToastProvider>

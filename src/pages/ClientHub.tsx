@@ -11,6 +11,7 @@ import {
 import { useAppStore } from "../stores/appStore";
 import { CallLogger } from "../components/CallLogger";
 import { AppointmentModal } from "../components/AppointmentModal";
+import { FinancialReportsTab } from "../components/client/FinancialReportsTab";
 import { useToast } from "../context/ToastContext";
 import { Lead, LeadFile, Rep, ServiceType } from "../types";
 import {
@@ -18,7 +19,6 @@ import {
   ChevronDown,
   ChevronRight,
   Phone,
-  Eye,
   Search,
   X,
   CalendarPlus,
@@ -32,6 +32,7 @@ import {
   ExternalLink,
   Clock,
   User,
+  BarChart3,
 } from "lucide-react";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -98,8 +99,6 @@ interface DealStageInfo {
 }
 
 function getDealStage(lead: Lead): DealStageInfo {
-  if (lead.dnqFellOver)
-    return { label: "DNQ", bgClass: "bg-red-100 dark:bg-red-900/30", textClass: "text-red-700 dark:text-red-400" };
   if (lead.settlementDate)
     return {
       label: "Settlement",
@@ -139,16 +138,15 @@ function getDealStage(lead: Lead): DealStageInfo {
 }
 
 const CALL_RESULT_COLORS: Record<string, string> = {
-  booked: "text-green-600 bg-green-50 dark:bg-green-900/30",
-  "no-answer": "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]",
-  "not-interested": "text-red-500 bg-red-50 dark:bg-red-900/30",
-  "wrong-number": "text-gray-400 bg-gray-50 dark:bg-[var(--surface)]",
+  connected: "text-green-600 bg-green-50 dark:bg-green-900/30",
+  no_answer: "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]",
+  not_interested: "text-red-500 bg-red-50 dark:bg-red-900/30",
+  wrong_number: "text-gray-400 bg-gray-50 dark:bg-[var(--surface)]",
   callback: "text-orange-500 bg-orange-50 dark:bg-orange-900/30",
-  "callback-today": "text-gray-500 bg-gray-50 dark:bg-gray-800/30",
-  "back-to-dq": "text-gray-500 bg-gray-50 dark:bg-[var(--surface)]",
+  booked: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30",
 };
 
-const STAGE_FILTERS = ["All", "FC Booked", "FC Done", "FR Booked", "FR Done", "Settlement", "DNQ"] as const;
+const STAGE_FILTERS = ["All", "FC Booked", "FC Done", "FR Booked", "FR Done", "Settlement"] as const;
 type StageFilter = (typeof STAGE_FILTERS)[number];
 
 // ── Details Tab ──────────────────────────────────────────────────────────────
@@ -160,17 +158,17 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
 
   const row = (label: string, value: string | undefined | null) =>
     value ? (
-      <div key={label} className="flex gap-2 py-2 border-b border-gray-100 dark:border-white/[0.06] last:border-0">
-        <span className="text-xs text-gray-500 dark:text-gray-400 w-28 flex-shrink-0">{label}</span>
-        <span className="text-xs text-gray-800 dark:text-gray-200 flex-1">{value}</span>
+      <div key={label} className="flex gap-2 py-2 border-b border-[var(--border)] last:border-0">
+        <span className="text-xs text-[var(--text-muted)] w-28 flex-shrink-0">{label}</span>
+        <span className="text-xs text-[var(--text)] flex-1">{value}</span>
       </div>
     ) : null;
 
   return (
     <div className="p-4 space-y-4">
       {/* Contact info */}
-      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-1">
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Contact</p>
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 space-y-1">
+        <p className="text-label mb-2">Contact</p>
         {lead.phone && (
           <a
             href={`tel:${lead.phone}`}
@@ -200,8 +198,8 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
       </div>
 
       {/* Lead details */}
-      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Lead Info</p>
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <p className="text-label mb-2">Lead Info</p>
         {row("Ownership", lead.ownership)}
         {row("Superannuation", lead.superannuation)}
         {row("Booking Date", formatDate(lead.bookingDate))}
@@ -211,8 +209,8 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
       </div>
 
       {/* Deal pipeline */}
-      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Deal Pipeline</p>
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 space-y-3">
+        <p className="text-label">Deal Pipeline</p>
 
         {/* FC */}
         <div className="rounded-lg bg-gray-50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-700 p-3">
@@ -239,13 +237,6 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
           <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3">
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1.5">Settlement</p>
             {row("Settlement Date", formatDate(lead.settlementDate))}
-          </div>
-        )}
-
-        {lead.dnqFellOver && (
-          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 p-3">
-            <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">DNQ — Fell Over</p>
-            {lead.dnqNotes && <p className="text-xs text-red-600 dark:text-red-400">{lead.dnqNotes}</p>}
           </div>
         )}
       </div>
@@ -281,14 +272,14 @@ function DocumentsTab({ lead }: { lead: Lead }) {
     <div className="p-4 space-y-4">
       {Object.entries(grouped).map(([cat, catFiles]) => (
         <div key={cat}>
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+          <p className="text-label mb-2">
             {cat} ({catFiles.length})
           </p>
           <div className="space-y-2">
             {catFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-3 p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06] hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
+                className="flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)] hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
               >
                 <FileText size={16} className="text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -346,7 +337,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
     <div className="p-4 space-y-4">
       {/* Calendar Appointments */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+        <p className="text-label mb-2 flex items-center gap-1.5">
           <Calendar size={12} /> Calendar Appointments ({clientAppts.length})
         </p>
         {clientAppts.length === 0 ? (
@@ -358,7 +349,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
               return (
                 <div
                   key={appt.id}
-                  className="p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06]"
+                  className="p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]"
                 >
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
@@ -388,7 +379,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                       {STATUS_LABELS[appt.status] ?? appt.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
                     <span className="flex items-center gap-1">
                       <Clock size={10} /> {formatDate(appt.date)} {appt.startTime}
                       {appt.endTime ? `–${appt.endTime}` : ""}
@@ -398,7 +389,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                     </span>
                   </div>
                   {appt.notes && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2">{appt.notes}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1.5 line-clamp-2">{appt.notes}</p>
                   )}
                 </div>
               );
@@ -409,7 +400,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
 
       {/* Call History */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+        <p className="text-label mb-2 flex items-center gap-1.5">
           <Phone size={12} /> Call History ({callHistory.length})
         </p>
         {callHistory.length === 0 ? (
@@ -429,10 +420,10 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                     <div
                       className={`absolute left-2 top-3 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${bgClass}`}
                     />
-                    <div className="p-3 bg-white dark:bg-[var(--surface)] rounded-lg border border-gray-200 dark:border-white/[0.06]">
+                    <div className="p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${colorClass}`}>
-                          {call.result?.replace(/-/g, " ") ?? "unknown"}
+                          {call.result?.replace(/_/g, " ") ?? "unknown"}
                         </span>
                         <span className="text-[10px] text-gray-400">
                           {call.rep} · {call.date ? formatDateTime(call.date) : ""}
@@ -455,7 +446,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
 
 // ── Client Detail Panel ──────────────────────────────────────────────────────
 
-type PanelTab = "details" | "documents" | "history";
+type PanelTab = "details" | "documents" | "history" | "financial-reports";
 
 interface ClientDetailPanelProps {
   lead: Lead;
@@ -478,12 +469,13 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
     { key: "details", icon: Info, label: "Details" },
     { key: "documents", icon: FileText, label: "Documents", count: files.length },
     { key: "history", icon: History, label: "History", count: clientAppts.length + callCount },
+    { key: "financial-reports", icon: BarChart3 as typeof Info, label: "Reports" },
   ];
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[var(--surface)]">
+    <div className="flex flex-col h-full bg-[var(--surface)]">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
+      <div className="px-5 py-4 border-b border-[var(--border)] flex-shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{lead.name}</h2>
@@ -554,6 +546,7 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
         {tab === "details" && <DetailsTab lead={lead} reps={reps} />}
         {tab === "documents" && <DocumentsTab lead={lead} />}
         {tab === "history" && <HistoryTab lead={lead} reps={reps} serviceTypes={serviceTypes} />}
+        {tab === "financial-reports" && <FinancialReportsTab clientId={String(lead.id)} />}
       </div>
     </div>
   );
@@ -564,9 +557,11 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
 interface ClientHubPageProps {
   initialFilter?: string | null;
   onFilterCleared?: () => void;
+  /** Opens the full-screen ClientProfilePage overlay for this lead/client ID */
+  onOpenProfile?: (clientId: number) => void;
 }
 
-export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageProps) {
+export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }: ClientHubPageProps) {
   const { leads, loading } = useLeads();
   const { reps, currentUser } = useAppStore();
   const { save: saveLead } = useSaveLead();
@@ -710,7 +705,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
       {/* Header */}
-      <div className="bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] px-4 sm:px-6 py-4">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3 mb-4">
           <Briefcase size={20} className="text-amber-500" />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Client Hub</h1>
@@ -755,7 +750,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
                   stageFilter === s.label
                     ? "bg-amber-500 border-amber-500 text-white"
-                    : "bg-white dark:bg-[var(--surface)] border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-400 hover:border-amber-300"
+                    : "bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] hover:border-amber-300"
                 }`}
               >
                 <span className="font-semibold">{s.count}</span>
@@ -824,27 +819,27 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
               {/* Desktop table */}
               <div className="hidden sm:block">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06]">
+                  <thead className="sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)]">
                     <tr>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="text-left px-4 py-2.5 text-labelr">
                         Client
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                      <th className="text-left px-3 py-2.5 text-labelr hidden md:table-cell">
                         Address
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="text-left px-3 py-2.5 text-labelr">
                         FC Rep
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                      <th className="text-left px-3 py-2.5 text-labelr hidden lg:table-cell">
                         FC Date
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="text-left px-3 py-2.5 text-labelr">
                         FR Rep
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                      <th className="text-left px-3 py-2.5 text-labelr hidden lg:table-cell">
                         FR Date
                       </th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="text-left px-3 py-2.5 text-labelr">
                         Stage
                       </th>
                       <th className="px-3 py-2.5"></th>
@@ -878,8 +873,8 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                             return (
                               <tr
                                 key={lead.id}
-                                className={`border-b border-gray-100 dark:border-white/[0.06] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer transition-colors group ${isSelected ? "bg-amber-50 dark:bg-amber-900/20" : "bg-white dark:bg-[var(--surface)]"}`}
-                                onClick={() => handleSelectLead(lead)}
+                                className={`border-b border-[var(--border)] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer transition-colors group ${isSelected ? "bg-amber-50 dark:bg-amber-900/20" : "bg-white dark:bg-[var(--surface)]"}`}
+                                onClick={() => onOpenProfile ? onOpenProfile(lead.id) : handleSelectLead(lead)}
                               >
                                 <td className="px-4 py-3">
                                   <div className="font-medium text-gray-900 dark:text-white">{lead.name || "—"}</div>
@@ -895,7 +890,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                                 </td>
                                 <td className="px-3 py-3 hidden md:table-cell">
                                   <span
-                                    className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"
+                                    className="text-xs text-[var(--text-muted)] line-clamp-1"
                                     title={buildAddress(lead)}
                                   >
                                     {buildAddress(lead)}
@@ -905,7 +900,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                                   <span className="text-xs text-gray-700 dark:text-gray-300">{repName(fcRepId)}</span>
                                 </td>
                                 <td className="px-3 py-3 hidden lg:table-cell">
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="text-xs text-[var(--text-muted)]">
                                     {formatDate(lead.fcAppt?.date)}
                                   </span>
                                 </td>
@@ -913,7 +908,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                                   <span className="text-xs text-gray-700 dark:text-gray-300">{repName(frRepId)}</span>
                                 </td>
                                 <td className="px-3 py-3 hidden lg:table-cell">
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="text-xs text-[var(--text-muted)]">
                                     {formatDate(lead.frAppt?.date)}
                                   </span>
                                 </td>
@@ -931,22 +926,15 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                                   >
                                     <button
                                       onClick={() => handleBookAppointment(lead)}
-                                      className="flex items-center gap-1 px-2 py-1.5 text-xs bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors whitespace-nowrap"
+                                      className="flex items-center gap-1 px-2 py-1.5 text-xs bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors whitespace-nowrap min-h-[36px]"
                                       title="Book appointment"
                                     >
                                       <CalendarPlus size={11} />
                                       <span className="hidden xl:inline">Book</span>
                                     </button>
                                     <button
-                                      onClick={() => handleSelectLead(lead)}
-                                      className="p-1.5 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors"
-                                      title="View details"
-                                    >
-                                      <Eye size={14} />
-                                    </button>
-                                    <button
                                       onClick={() => handleAddCall(lead)}
-                                      className="p-1.5 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors"
+                                      className="p-2 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                                       title="Log call"
                                     >
                                       <Phone size={14} />
@@ -981,7 +969,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                         return (
                           <div
                             key={lead.id}
-                            onClick={() => handleSelectLead(lead)}
+                            onClick={() => onOpenProfile ? onOpenProfile(lead.id) : handleSelectLead(lead)}
                             className="px-4 py-3 bg-white dark:bg-[var(--surface)] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer"
                           >
                             <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -1001,27 +989,21 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
                                 {lead.phone}
                               </a>
                             )}
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{buildAddress(lead)}</p>
-                            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <p className="text-xs text-[var(--text-muted)] mb-1">{buildAddress(lead)}</p>
+                            <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-2">
                               <span>FC: {repName(fcRepId)}</span>
                               <span>FR: {repName(frRepId)}</span>
                             </div>
                             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => handleBookAppointment(lead)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-amber-500 text-white rounded font-medium"
+                                className="flex items-center gap-1 px-3 py-2 text-xs bg-amber-500 text-white rounded-lg font-medium min-h-[36px]"
                               >
                                 <CalendarPlus size={11} /> Book
                               </button>
                               <button
-                                onClick={() => handleSelectLead(lead)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-slate-700 rounded text-gray-600 dark:text-gray-300"
-                              >
-                                <Eye size={11} /> Details
-                              </button>
-                              <button
                                 onClick={() => handleAddCall(lead)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-slate-700 rounded text-gray-600 dark:text-gray-300"
+                                className="flex items-center gap-1 px-3 py-2 text-xs bg-gray-100 dark:bg-slate-700 rounded-lg text-gray-600 dark:text-gray-300 min-h-[36px]"
                               >
                                 <Phone size={11} /> Call
                               </button>
@@ -1036,8 +1018,8 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
           )}
         </div>
 
-        {/* Desktop split-pane: Client Detail Panel */}
-        {showPanel && selectedLead && (
+        {/* Desktop split-pane: Client Detail Panel (only when full-screen overlay unavailable) */}
+        {!onOpenProfile && showPanel && selectedLead && (
           <div className="hidden lg:flex w-[420px] flex-shrink-0 border-l border-gray-200 dark:border-white/[0.06] overflow-hidden flex-col">
             <ClientDetailPanel
               lead={selectedLead}
@@ -1054,8 +1036,8 @@ export function ClientHubPage({ initialFilter, onFilterCleared }: ClientHubPageP
         )}
       </div>
 
-      {/* Mobile overlay: Client Detail Panel */}
-      {showPanel && selectedLead && (
+      {/* Mobile overlay: Client Detail Panel (only when full-screen overlay unavailable) */}
+      {!onOpenProfile && showPanel && selectedLead && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end">
           <div
             className="absolute inset-0 bg-black/50"

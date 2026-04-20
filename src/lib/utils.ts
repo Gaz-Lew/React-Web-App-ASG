@@ -159,22 +159,6 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Validate Australian postcode
- */
-export function isValidPostcode(postcode: string): boolean {
-  if (!postcode) return false;
-
-  const cleaned = postcode.replace(/\D/g, "");
-
-  // Must be 4 digits
-  if (cleaned.length !== 4) return false;
-
-  // Must be between 0200 and 9999
-  const num = parseInt(cleaned);
-  return num >= 200 && num <= 9999;
-}
-
-/**
  * Debounce function
  *
  * Returns a debounced version of a function
@@ -399,27 +383,6 @@ export function exportAsCSV(data: any[], filename: string, columns?: string[]) {
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
-}
-
-/**
- * Generate unique ID
- */
-export function generateId(): number {
-  return Date.now() + Math.floor(Math.random() * 10000);
-}
-
-/**
- * Sleep (promise-based timeout)
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Deep clone object
- */
-export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
 }
 
 /**

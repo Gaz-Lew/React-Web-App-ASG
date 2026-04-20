@@ -8,6 +8,7 @@
 
 import React, { useState, useCallback, useMemo, useRef } from "react";
 import { Lead, LeadStatus } from "../types";
+import { LEAD_STATUS_OPTIONS } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
 import { normalizeAUPhone } from "../lib/utils";
 import { X, Upload, ArrowRight, Check, AlertTriangle, FileText } from "lucide-react";
@@ -101,7 +102,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
   const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, keyof Lead | "">>({});
   const [defaultRep, setDefaultRep] = useState<number>(currentUser?.id ?? 0);
-  const [defaultStatus, setDefaultStatus] = useState<LeadStatus>("DQ");
+  const [defaultStatus, setDefaultStatus] = useState<LeadStatus>("new");
   const [importing, setImporting] = useState(false);
 
   const activeReps = useMemo(() => reps.filter((r) => r.active), [reps]);
@@ -251,7 +252,7 @@ export function CSVImportModal({ onClose, onImport }: CSVImportModalProps) {
                       onChange={(e) => setDefaultStatus(e.target.value as LeadStatus)}
                       className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none"
                     >
-                      {["DQ", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"].map((s) => (
+                      {LEAD_STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>

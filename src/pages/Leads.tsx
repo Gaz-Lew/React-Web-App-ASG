@@ -9,6 +9,8 @@ import CallLogger from "../components/CallLogger";
 import { LeadSidebar } from "../components/LeadSidebar";
 import { AddLeadModal } from "../components/AddLeadModal";
 import { Loader } from "lucide-react";
+import { getNextAction } from "../lib/nextAction";
+import { injectRowFlashStyles } from "../lib/animation";
 
 interface LeadsPageProps {
   addLeadOpen?: boolean;
@@ -33,6 +35,29 @@ export function LeadsPage({
   const { showToast } = useToast();
   const { currentUser } = useAppStore();
   useCallbackReminders(leads);
+
+  // Inject row flash keyframes once
+  useEffect(() => {
+    injectRowFlashStyles();
+  }, []);
+
+  // Row flash feedback
+  const [flashedLeadId, setFlashedLeadId] = useState<number | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashRow = useCallback((leadId: number) => {
+    setFlashedLeadId(leadId);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashedLeadId(null), 600);
+  }, []);
+
+  const showFeedback = useCallback((msg: string) => {
+    setActionFeedback(msg);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => setActionFeedback(null), 2500);
+  }, []);
 
   // Apply filter from Dashboard navigation
   const filteredLeads = useMemo(() => {
@@ -100,13 +125,31 @@ export function LeadsPage({
       const ok = await saveLead(updatedLead);
       if (ok) {
         showToast(`✅ Call logged for ${updatedLead.name}`, "success");
+        flashRow(updatedLead.id);
+        showFeedback("Call logged ✓");
         setShowCallLogger(false);
         setSelectedLead(null);
+
+        // ── Flow mode: auto-select next highest priority lead ─────────────
+        const nextLead = filteredLeads
+          .filter((l) => l.id !== updatedLead.id && l.status !== "_deleted")
+          .sort((a, b) => {
+            const aAction = getNextAction(a);
+            const bAction = getNextAction(b);
+            const priorityVal = { high: 0, medium: 1, low: 2 };
+            return (priorityVal[aAction.priority] ?? 2) - (priorityVal[bAction.priority] ?? 2);
+          })[0];
+        if (nextLead) {
+          setTimeout(() => {
+            setSelectedLead(nextLead);
+            setShowSidebar(true);
+          }, 300);
+        }
       } else {
         showToast("❌ Failed to save call. Please try again.", "error");
       }
     },
-    [saveLead, showToast],
+    [saveLead, showToast, flashRow, showFeedback, filteredLeads],
   );
 
   // ── Sidebar save ────────────────────────────────────────────────────────────
@@ -114,12 +157,14 @@ export function LeadsPage({
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
       if (ok) {
+        flashRow(updatedLead.id);
+        showFeedback("Updated ✓");
         showToast(`✅ ${updatedLead.name} saved`, "success");
       } else {
         showToast("❌ Failed to save. Please try again.", "error");
       }
     },
-    [saveLead, showToast],
+    [saveLead, showToast, flashRow, showFeedback],
   );
 
   // ── Delete ──────────────────────────────────────────────────────────────────
@@ -165,6 +210,33 @@ export function LeadsPage({
     [saveLead, showToast],
   );
 
+  // ── Next Action click → instant response ─────────────────────────────────────
+  const handleNextAction = useCallback(
+    (lead: Lead) => {
+      const hasContact = (lead.callHistory?.length ?? 0) > 0;
+      // No contact or follow-up → open CallLogger immediately
+      if (!hasContact || lead.status === "new" || lead.status === "contacted" || lead.status === "qualified") {
+        handleAddCall(lead);
+        return;
+      }
+      // Callback scheduled → open CallLogger
+      if (lead.callbackDate) {
+        handleAddCall(lead);
+        return;
+      }
+      // Booked → open sidebar for full client view
+      if (lead.status === "booked" || lead.status === "Booked") {
+        setSelectedLead(lead);
+        setShowSidebar(true);
+        setShowCallLogger(false);
+        return;
+      }
+      // Fallback → open sidebar
+      handleSelectLead(lead);
+    },
+    [handleAddCall, handleSelectLead],
+  );
+
   // ── Add lead ────────────────────────────────────────────────────────────────
   const handleAddLead = useCallback(
     async (newLead: Lead) => {
@@ -181,7 +253,7 @@ export function LeadsPage({
   // ── Loading / Error ─────────────────────────────────────────────────────────
   if (leadsLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-[var(--surface)]">
+      <div className="flex-1 flex items-center justify-center bg-[var(--surface)]">
         <div className="text-center">
           <Loader size={40} className="animate-spin mx-auto mb-3 text-amber-500" />
           <p className="text-gray-500 dark:text-gray-400 text-sm">Loading leads...</p>
@@ -192,7 +264,7 @@ export function LeadsPage({
 
   if (leadsError) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-[var(--surface)]">
+      <div className="flex-1 flex items-center justify-center bg-[var(--surface)]">
         <div className="text-center max-w-md px-6">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Failed to load leads</h2>
@@ -210,7 +282,7 @@ export function LeadsPage({
 
   // ── Main layout ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-[var(--surface)] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[var(--surface)] overflow-hidden">
       {/* Notification permission hint */}
       {"Notification" in window && Notification.permission === "denied" && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
@@ -243,6 +315,12 @@ export function LeadsPage({
 
       {/* Body: table + optional inline sidebar on lg+ */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Action feedback indicator */}
+        {actionFeedback && (
+          <div className="absolute top-4 right-4 z-50 px-3 py-2 rounded-lg bg-green-500 text-white text-xs font-medium shadow-lg animate-pulse pointer-events-none">
+            {actionFeedback}
+          </div>
+        )}
         {/* Table — fills space; sidebar sits beside it on lg+ */}
         <div className="flex-1 overflow-hidden min-w-0 transition-all duration-200">
           <DataTable
@@ -252,37 +330,24 @@ export function LeadsPage({
             onAddCall={handleAddCall}
             onDeleteLead={handleDeleteLead}
             onUpdateLead={handleUpdateLead}
+            onNextAction={handleNextAction}
+            flashedLeadId={flashedLeadId}
             currentUserId={currentUser?.id}
             isAdmin={currentUser?.role === "admin"}
           />
         </div>
 
-        {/* Inline sidebar panel — desktop only (lg+) */}
-        {showSidebar && selectedLead && (
-          <div className="hidden lg:flex w-[480px] flex-shrink-0 border-l border-gray-200 dark:border-white/[0.06] overflow-hidden">
-            <LeadSidebar
-              lead={selectedLead}
-              onClose={handleCloseSidebar}
-              onSave={handleSaveLead}
-              onDelete={handleDeleteLead}
-              onCall={handleAddCall}
-              mode="panel"
-            />
-          </div>
-        )}
       </div>
 
-      {/* Mobile overlay sidebar (< lg) */}
+      {/* Lead detail modal — centered overlay on all screen sizes */}
       {showSidebar && selectedLead && (
-        <div className="lg:hidden">
-          <LeadSidebar
-            lead={selectedLead}
-            onClose={handleCloseSidebar}
-            onSave={handleSaveLead}
-            onDelete={handleDeleteLead}
-            onCall={handleAddCall}
-          />
-        </div>
+        <LeadSidebar
+          lead={selectedLead}
+          onClose={handleCloseSidebar}
+          onSave={handleSaveLead}
+          onDelete={handleDeleteLead}
+          onCall={handleAddCall}
+        />
       )}
 
       {/* Call Logger Modal */}
@@ -304,7 +369,7 @@ export function LeadsPage({
       {/* Saving overlay */}
       {(saveLoading || deleteLoading) && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]">
-          <div className="bg-white dark:bg-[var(--surface)] rounded-xl px-6 py-4 flex items-center gap-3 shadow-xl">
+          <div className="bg-[var(--surface)] rounded-xl px-6 py-4 flex items-center gap-3 shadow-xl">
             <Loader size={20} className="animate-spin text-amber-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {saveLoading ? "Saving..." : "Deleting..."}

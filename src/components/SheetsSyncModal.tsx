@@ -14,6 +14,7 @@ import { useAppStore } from "../stores/appStore";
 import { useSaveLead, useLeads, useAppSettings, useSaveSettings } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
 import { normalizeAUPhone } from "../lib/utils";
+import { generateLeadId } from "../lib/idGenerator";
 import {
   X,
   RefreshCw,
@@ -33,7 +34,7 @@ import {
 const CLIENT_ID = "685269806752-qip9oh4413gd0r4p4emkis3dpb5lanjh.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-const GOOGLE_API_KEY = "AIzaSyCoxDjRMuDT6NO661xzrgYvvnjo7P6isS8";
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY ?? import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 // ── Lead field definitions (what can be mapped from/to a sheet column) ────────
 // NOTE: 'address' is a virtual field — on Push it combines houseNum+street+suburb+postcode
@@ -810,7 +811,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
         } else {
           // CREATE new lead
           const lead: Lead = {
-            id: Date.now() + Math.random(),
+            id: generateLeadId(),
             name: name || "Unknown",
             phone,
             email: email || undefined,
@@ -1053,7 +1054,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
         } else {
           // CREATE new lead
           const lead: Lead = {
-            id: Date.now() + Math.random(),
+            id: generateLeadId(),
             name: name || "Unknown",
             phone: get("phone"),
             email: get("email") || undefined,
@@ -1482,7 +1483,7 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
       const rawDate = get("leadDate");
       const resolvedDate = rawDate ? normalizeDateToISO(rawDate) : undefined;
       const lead: Lead = {
-        id: Date.now() + Math.random(),
+        id: generateLeadId(),
         name: name || "Unknown",
         phone: get("phone"),
         email: get("email") || undefined,
@@ -1619,7 +1620,10 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
               <ArrowLeftRight size={18} className="text-amber-500" />
               <span className="font-bold text-gray-900 dark:text-white text-lg">Google Sheets Sync</span>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition">
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition"
+            >
               <X size={18} />
             </button>
           </div>

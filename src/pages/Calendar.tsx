@@ -194,35 +194,20 @@ interface CalendarEvent {
   leadId?: number;
 }
 
-const STATUS_BADGE_COLORS: Record<AppointmentStatus, string> = {
-  "pencilled-in": "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400",
-  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  arrived: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  started: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400",
-  completed: "bg-gray-200 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300",
-  "no-show": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  cancelled: "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-500",
-  "rebook-fc": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  "rebook-fr": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  "fc-complete-fr-booked": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "stopped-at-door": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  "presented-no-sale": "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-  "did-not-qualify": "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-gray-400",
-};
-const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  "pencilled-in": "Pencilled In",
-  confirmed: "Confirmed",
-  arrived: "Arrived",
-  started: "Started",
-  completed: "Completed",
-  "no-show": "No Show",
-  cancelled: "Cancelled",
-  "rebook-fc": "ReBook FC",
-  "rebook-fr": "ReBook FR",
-  "fc-complete-fr-booked": "FC Done - FR Booked",
-  "stopped-at-door": "Stopped At Door",
-  "presented-no-sale": "Presented No Sale",
-  "did-not-qualify": "Did Not Qualify",
+const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
+  confirmed: { label: "Confirmed", color: "bg-green-500/10 text-green-400" },
+  "pencilled-in": { label: "Pencilled In", color: "bg-yellow-500/10 text-yellow-400" },
+  cancelled: { label: "Cancelled", color: "bg-red-500/10 text-red-400" },
+  arrived: { label: "Arrived", color: "bg-blue-500/10 text-blue-400" },
+  started: { label: "Started", color: "bg-gray-500/10 text-gray-400" },
+  completed: { label: "Completed", color: "bg-gray-500/10 text-gray-400" },
+  "no-show": { label: "No Show", color: "bg-red-500/10 text-red-400" },
+  "rebook-fc": { label: "ReBook FC", color: "bg-amber-500/10 text-amber-400" },
+  "rebook-fr": { label: "ReBook FR", color: "bg-amber-500/10 text-amber-400" },
+  "fc-complete-fr-booked": { label: "FC Done - FR Booked", color: "bg-emerald-500/10 text-emerald-400" },
+  "stopped-at-door": { label: "Stopped At Door", color: "bg-orange-500/10 text-orange-400" },
+  "presented-no-sale": { label: "Presented No Sale", color: "bg-rose-500/10 text-rose-400" },
+  "did-not-qualify": { label: "Did Not Qualify", color: "bg-slate-500/10 text-slate-400" },
 };
 
 // ── Helper functions ──────────────────────────────────────────────────────────
@@ -295,30 +280,18 @@ function formatTime(timeStr: string): string {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: AppointmentStatus }) {
-  return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_BADGE_COLORS[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
+  const config = STATUS_CONFIG[status];
+  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${config.color}`}>{config.label}</span>;
 }
 
 function BookingStatusBadge({ status }: { status: AppointmentStatus }) {
   const isRelevant = ["confirmed", "pencilled-in", "cancelled"].includes(status);
   if (!isRelevant) return null;
 
-  const colors = {
-    confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    "pencilled-in": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  };
+  const config = STATUS_CONFIG[status];
+  const label = status === "pencilled-in" ? "Pending" : config.label;
 
-  const labels = {
-    confirmed: "Confirmed",
-    "pencilled-in": "Pending",
-    cancelled: "Cancelled",
-  };
-
-  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${colors[status]}`}>{labels[status]}</span>;
+  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${config.color}`}>{label}</span>;
 }
 
 interface ToolbarProps {
@@ -512,7 +485,7 @@ function DayView({
   return (
     <div className="flex-1 flex overflow-hidden h-full">
       {/* Time labels column */}
-      <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-white/[0.06] overflow-y-auto">
+      <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-white/[0.03] overflow-y-auto">
         {/* Spacer matching column header height */}
         <div style={{ height: 48 }} />
         <div className="relative" style={{ height: gridHeight + 32 }}>
@@ -538,11 +511,11 @@ function DayView({
             return (
               <div
                 key={col.key}
-                className="border-r border-gray-200 dark:border-white/[0.06] flex-1"
+                className="border-r border-gray-200 dark:border-white/[0.03] flex-1"
                 style={{ minWidth: 160 }}
               >
                 {/* Column header */}
-                <div className="sticky top-0 z-10 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06]">
+                <div className="sticky top-0 z-10 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.03]">
                   {/* Colour accent bar */}
                   <div className="h-1 w-full" style={{ backgroundColor: col.headerColor }} />
                   <div className="px-2 py-2 flex items-center justify-between gap-1">
@@ -571,8 +544,8 @@ function DayView({
                         onClick={() => onSlotClick({ date: focusDate, time: timeStr })}
                         className={`absolute w-full cursor-pointer hover:bg-amber-50/60 dark:hover:bg-amber-900/10 transition-colors ${
                           i % 2 === 0
-                            ? "border-t border-gray-200 dark:border-white/[0.06]"
-                            : "border-t border-gray-100 dark:border-white/[0.06]/60"
+                            ? "border-t border-gray-200 dark:border-white/[0.03]"
+                            : "border-t border-gray-100 dark:border-white/[0.02]"
                         }`}
                         style={{ top: i * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
                       />
@@ -582,7 +555,7 @@ function DayView({
                   {/* Current-time red line */}
                   {currentTimePx !== null && (
                     <div
-                      className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+                      className="absolute left-0 right-0 z-10 pointer-events-none flex items-center"
                       style={{ top: currentTimePx }}
                     >
                       <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 flex-shrink-0" />
@@ -616,14 +589,14 @@ function DayView({
                           e.stopPropagation();
                           onEventClick(ev);
                         }}
-                        className="absolute overflow-hidden rounded-md cursor-pointer hover:brightness-95 active:scale-[0.98] transition-all z-10 select-none"
+                        className="absolute overflow-hidden rounded-md cursor-pointer hover:brightness-95 active:scale-[0.98] transition-all z-20 select-none"
                         style={{
                           top,
                           height,
                           left: `calc(${ev.evLeft} + 2px)`,
                           width: `calc(${ev.evWidth} - 4px)`,
                           // Service-type tint background; rep colour on left border
-                          backgroundColor: blockColor + "22",
+                          backgroundColor: blockColor + "44",
                           borderLeft: `4px solid ${repColor}`,
                           borderTop: isDashed ? `1px dashed ${blockColor}88` : `1px solid ${blockColor}44`,
                           borderRight: isDashed ? `1px dashed ${blockColor}88` : `1px solid ${blockColor}33`,
@@ -634,7 +607,7 @@ function DayView({
                           {isDashed && <span className="self-end text-[9px] opacity-60 leading-none">🔗</span>}
 
                           {/* ── PRIMARY: Client name ── */}
-                          <div className="text-xs font-extrabold leading-tight truncate" style={{ color: blockColor }}>
+                          <div className="text-xs font-extrabold leading-tight truncate" style={{ color: "#ffffff" }}>
                             {ev.title}
                           </div>
 
@@ -642,7 +615,7 @@ function DayView({
                           {typeRepTag && (
                             <div
                               className="text-[10px] font-bold leading-tight truncate tracking-wide"
-                              style={{ color: repColor }}
+                              style={{ color: "#ffffff" }}
                             >
                               {typeRepTag}
                             </div>
@@ -650,7 +623,7 @@ function DayView({
 
                           {/* ── Time range ── */}
                           {ev.startTime && isMed && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
+                            <div className="text-[10px] font-medium leading-tight mt-0.5" style={{ color: "#ffffff" }}>
                               {formatTime(ev.startTime)}
                               {ev.endTime ? ` – ${formatTime(ev.endTime)}` : ""}
                             </div>
@@ -660,9 +633,9 @@ function DayView({
                           {ev.appointmentData && isTall && (
                             <div className="mt-auto pt-0.5">
                               <span
-                                className={`px-1 py-0.5 rounded text-[9px] font-semibold ${STATUS_BADGE_COLORS[ev.appointmentData.status]}`}
+                                className={`px-1 py-0.5 rounded text-[9px] font-semibold ${STATUS_CONFIG[ev.appointmentData.status].color}`}
                               >
-                                {STATUS_LABELS[ev.appointmentData.status]}
+                                {STATUS_CONFIG[ev.appointmentData.status].label}
                               </span>
                             </div>
                           )}
@@ -750,14 +723,14 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
                       key={ev.id}
                       onClick={() => onEventClick(ev)}
                       className="rounded px-1 py-0.5 cursor-pointer hover:opacity-80"
-                      style={{ backgroundColor: blockColor + "22", borderLeft: `2px solid ${repColor}` }}
+                      style={{ backgroundColor: blockColor + "44", borderLeft: `2px solid ${repColor}` }}
                     >
-                      <div className="text-[10px] font-bold truncate" style={{ color: blockColor }}>
+                      <div className="text-[10px] font-bold truncate" style={{ color: "#ffffff" }}>
                         {ev.isLeadOverlay ? "🔗 " : ""}
                         {ev.title}
                       </div>
                       {tag && (
-                        <div className="text-[9px] font-semibold truncate" style={{ color: repColor }}>
+                        <div className="text-[9px] font-semibold truncate" style={{ color: "#ffffff" }}>
                           {tag}
                         </div>
                       )}
@@ -969,44 +942,52 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto no-print">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-2 sm:p-4 overflow-y-auto no-print">
       {/* Screen controls — hidden on print */}
       <div className="w-full max-w-3xl">
-        <div className="flex items-center justify-between mb-3 no-print">
-          <h2 className="text-lg font-bold text-white">Run Sheet</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-2 sm:mb-3 no-print">
+          <h2 className="text-base sm:text-lg font-bold text-white truncate">Run Sheet</h2>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-medium rounded-lg flex-shrink-0"
             >
-              🖨️ Print
+              🖨️ <span className="hidden sm:inline">Print</span>
             </button>
-            <button onClick={onClose} className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg">
-              ✕ Close
+            <button
+              onClick={onClose}
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm rounded-lg flex-shrink-0"
+            >
+              ✕ <span className="hidden sm:inline">Close</span>
             </button>
           </div>
         </div>
 
         {/* Printable content */}
-        <div className="bg-white rounded-xl shadow-2xl overflow-hidden print-sheet">
+        <div className="bg-white rounded-xl sm:rounded-xl shadow-2xl overflow-hidden print-sheet">
           {/* Header */}
           <div
-            className="px-8 py-6 border-b border-gray-200"
+            className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200"
             style={{ borderTopColor: repColor ?? "#f59e0b", borderTopWidth: 4 }}
           >
-            <div className="flex items-center gap-3">
-              {repColor && <div className="w-4 h-4 rounded-full" style={{ backgroundColor: repColor }} />}
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Run Sheet — {repName}</h1>
-                <p className="text-sm text-gray-500 mt-0.5">{formattedDate}</p>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {repColor && (
+                <div
+                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: repColor }}
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-xl font-bold text-gray-900 truncate">Run Sheet — {repName}</h1>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">{formattedDate}</p>
               </div>
             </div>
           </div>
 
           {/* Appointments */}
           {todayEvents.length === 0 ? (
-            <div className="px-8 py-12 text-center text-gray-400">
-              <p className="text-lg">No appointments for this day</p>
+            <div className="px-4 sm:px-8 py-8 sm:py-12 text-center text-gray-400">
+              <p className="text-sm sm:text-lg">No appointments for this day</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -1016,12 +997,16 @@ function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClo
                 const mapsUrl = address ? `https://maps.google.com/maps?q=${encodeURIComponent(address)}` : null;
                 const repForEvent = event.repId ? reps.find((r) => r.id === event.repId) : null;
                 return (
-                  <div key={event.id} className="px-8 py-5 flex gap-6">
+                  <div key={event.id} className="px-4 sm:px-8 py-3 sm:py-5 flex gap-3 sm:gap-6">
                     {/* Time column */}
-                    <div className="w-24 flex-shrink-0">
-                      <div className="text-sm font-semibold text-gray-900">{formatTimeAMPM(event.startTime)}</div>
+                    <div className="w-16 sm:w-24 flex-shrink-0">
+                      <div className="text-xs sm:text-sm font-semibold text-gray-900">
+                        {formatTimeAMPM(event.startTime)}
+                      </div>
                       {event.endTime && (
-                        <div className="text-xs text-gray-400 mt-0.5">→ {formatTimeAMPM(event.endTime)}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
+                          → {formatTimeAMPM(event.endTime)}
+                        </div>
                       )}
                     </div>
                     {/* Colour bar */}
@@ -1142,8 +1127,8 @@ function CalendarLegend({
   });
 
   return (
-    <div className="absolute top-14 right-4 z-30 w-64 bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl border border-gray-200 dark:border-white/[0.06] p-4 max-h-[75vh] overflow-y-auto">
-      <div className="flex items-center justify-between mb-3">
+    <div className="absolute top-12 sm:top-14 right-2 sm:right-4 z-30 w-72 sm:w-64 bg-white dark:bg-[var(--surface)] rounded-xl shadow-2xl border border-gray-200 dark:border-white/[0.06] p-3 sm:p-4 max-h-[80vh] sm:max-h-[75vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Legend & Filters</h3>
         <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[var(--hover)]">
           <X size={14} />
@@ -1691,6 +1676,32 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
   }, [allEvents, repFilter, serviceFilter, hiddenRepIds, hiddenServiceTypeIds]);
 
   const handleSaveAppt = async (appt: Appointment) => {
+    // ── Double-booking check ──────────────────────────────────────────────────
+    const toMins = (t: string) => {
+      const [h, m] = (t || "00:00").split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const newStart = toMins(appt.startTime);
+    const newEnd = newStart + (appt.durationMins ?? 30);
+
+    const conflicts = appointments.filter((existing) => {
+      if (existing.id === appt.id) return false; // editing same appointment
+      if (existing.repId !== appt.repId) return false;
+      if (existing.date !== appt.date) return false;
+      const exStart = toMins(existing.startTime);
+      const exEnd = exStart + (existing.durationMins ?? 30);
+      return newStart < exEnd && newEnd > exStart;
+    });
+
+    if (conflicts.length > 0) {
+      const repName = reps.find((r) => r.id === appt.repId)?.name ?? "this rep";
+      const conflictTitles = conflicts.map((c) => `${c.title} at ${c.startTime}`).join(", ");
+      const proceed = window.confirm(
+        `⚠️ Double-booking detected for ${repName}!\n\nConflicts with: ${conflictTitles}\n\nSave anyway?`
+      );
+      if (!proceed) return;
+    }
+
     const ok = await saveAppt(appt);
     if (ok) showToast("✅ Appointment saved", "success");
     else showToast("❌ Failed to save appointment", "error");

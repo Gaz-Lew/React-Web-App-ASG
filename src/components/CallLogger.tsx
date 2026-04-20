@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Lead, CallResult, Appointment } from "../types";
+import React, { useState, useCallback, useMemo } from "react";
+import { Lead, CallResult } from "../types";
 import { useAppStore } from "../stores/appStore";
-import { useServiceTypes, useSaveAppointment } from "../hooks/useFirebase";
+import { useCreateDeal } from "../hooks/useFirebase";
 import { formatDateTime } from "../lib/utils";
-import { X, AlertCircle, CheckCircle } from "lucide-react";
+import { X, CheckCircle } from "lucide-react";
 
 interface CallLoggerProps {
   lead: Lead;
@@ -15,134 +15,90 @@ interface CallLoggerProps {
 /**
  * Call Logger Modal
  *
- * Logs call results with operational safeguards:
- * ✅ Required fields based on result type
- * ✅ Phone number formatting
- * ✅ Validation before save
- * ✅ Conditional fields (booking date/time for booked calls)
- * ✅ Call history display
- * ✅ Undo/Cancel
- *
- * Features:
- * - Result type dropdown (7 options)
- * - Conditional fields appear/disappear
- * - Real-time validation
- * - Notes are always required (min 10 chars)
- * - Booking details required for "Booked" result
- * - Callback date required for "Call Back" result
- * - Read-only call history
+ * Simplified call logging with standardised results.
+ * - Always shows: result dropdown, notes
+ * - Conditionally shows: booking date/time (booked), callback date/time (callback)
+ * - When result === "booked": creates a Deal document and links it via lead.dealId
+ * - No appointment creation logic
  */
 export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
-  // State
-  const { reps, settings, currentUser } = useAppStore();
-  const { serviceTypes } = useServiceTypes();
-  const { save: saveAppt } = useSaveAppointment();
-  const [result, setResult] = useState<CallResult>("no-answer");
+  const { reps, currentUser } = useAppStore();
+  const { create: createDeal, loading: dealCreating } = useCreateDeal();
+
+  const [result, setResult] = useState<CallResult>("no_answer");
   const [notes, setNotes] = useState("");
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [callbackDate, setCallbackDate] = useState("");
   const [callbackTime, setCallbackTime] = useState("");
   const [callingRep, setCallingRep] = useState<number>(currentUser?.id || reps[0]?.id || 1);
-  // timely state removed (checkbox was removed in Session 5)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  // "Add to Calendar" state (only used when result === 'booked')
-  const [createAppt, setCreateAppt] = useState(true);
-  const [apptServiceTypeId, setApptServiceTypeId] = useState("");
-  const [apptRepId, setApptRepId] = useState<number | "">(reps[0]?.id || "");
 
-  // Pre-select "First Consult" service type when serviceTypes load
-  useEffect(() => {
-    if (serviceTypes.length && !apptServiceTypeId) {
-      const fc = serviceTypes.find((st) => st.name.toLowerCase().includes("first consult"));
-      setApptServiceTypeId(fc?.id ?? serviceTypes[0]?.id ?? "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceTypes]);
-
-  // Helper: build address string from lead
-  const buildAddress = (l: Lead): string => [l.houseNum, l.street, l.suburb, l.postcode].filter(Boolean).join(" ");
-
-  // Get call result config
   const callResultsMap = useMemo(
     () => ({
-      booked: {
-        label: "✅ Booked",
-        icon: "✅",
-        color: "bg-green-500",
-        requiresFields: ["bookingDate", "bookingTime", "notes"],
-      },
-      live: {
-        label: "⚡ Set as Live",
-        icon: "⚡",
-        color: "bg-gray-500",
+      connected: {
+        label: "✅ Connected",
         requiresFields: ["notes"],
       },
-      "no-answer": {
+      no_answer: {
         label: "📞 No Answer",
-        icon: "📞",
-        color: "bg-red-500",
         requiresFields: ["notes"],
-      },
-      "not-interested": {
-        label: "❌ Not Interested",
-        icon: "❌",
-        color: "bg-red-500",
-        requiresFields: ["notes"],
-      },
-      "wrong-number": {
-        label: "😶 Wrong Number",
-        icon: "😶",
-        color: "bg-gray-500",
-        requiresFields: [],
       },
       callback: {
         label: "📅 Call Back",
-        icon: "📅",
-        color: "bg-yellow-500",
         requiresFields: ["callbackDate", "callbackTime", "notes"],
       },
-      "callback-today": {
-        label: "📅 Call Back Today",
-        icon: "📅",
-        color: "bg-gray-500",
-        requiresFields: ["callbackTime", "notes"],
+      booked: {
+        label: "📋 Booked",
+        requiresFields: ["bookingDate", "bookingTime", "notes"],
       },
-      "back-to-dq": {
-        label: "🔙 Back to DQ",
-        icon: "🔙",
-        color: "bg-gray-500",
+      not_interested: {
+        label: "❌ Not Interested",
         requiresFields: ["notes"],
+      },
+      wrong_number: {
+        label: "😶 Wrong Number",
+        requiresFields: [],
       },
     }),
     [],
   );
 
-  const resultConfig = callResultsMap[result];
   const activeReps = useMemo(() => reps.filter((r) => r.active), [reps]);
+
+  const handleClose = useCallback(() => {
+    setResult("no_answer");
+    setNotes("");
+    setBookingDate("");
+    setBookingTime("");
+    setCallbackDate("");
+    setCallbackTime("");
+    setErrors({});
+    onClose();
+  }, [onClose]);
 
   // Validation
   const validate = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if ((result === "booked" || result === "callback") && !bookingDate && !callbackDate) {
-      newErrors.date = result === "booked" ? "Booking date required" : "Callback date required";
+    if (result === "booked" && !bookingDate) {
+      newErrors.bookingDate = "Booking date required";
     }
-
-    if ((result === "booked" || result === "callback") && !bookingTime && !callbackTime) {
-      newErrors.time = result === "booked" ? "Booking time required" : "Callback time required";
+    if (result === "booked" && !bookingTime) {
+      newErrors.bookingTime = "Booking time required";
     }
-
-    if (result === "callback-today" && !callbackTime) {
-      newErrors.time = "Callback time required";
+    if (result === "callback" && !callbackDate) {
+      newErrors.callbackDate = "Callback date required";
+    }
+    if (result === "callback" && !callbackTime) {
+      newErrors.callbackTime = "Callback time required";
     }
 
     // Validate times are HH:MM format
     if (bookingTime && !/^\d{2}:\d{2}$/.test(bookingTime)) {
       newErrors.bookingTime = "Time must be HH:MM format";
     }
-
     if (callbackTime && !/^\d{2}:\d{2}$/.test(callbackTime)) {
       newErrors.callbackTime = "Time must be HH:MM format";
     }
@@ -151,7 +107,6 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
     if (bookingDate && !/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
       newErrors.bookingDate = "Date must be YYYY-MM-DD format";
     }
-
     if (callbackDate && !/^\d{4}-\d{2}-\d{2}$/.test(callbackDate)) {
       newErrors.callbackDate = "Date must be YYYY-MM-DD format";
     }
@@ -165,30 +120,29 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
     if (!validate() || saving) return;
     setSaving(true);
 
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toTimeString().slice(0, 5);
+    const repName = reps.find((r) => r.id === callingRep)?.name || "Unknown";
+
+    // Status mapping: CallResult → LeadStatus
+    const statusMap: Record<CallResult, string> = {
+      connected: "contacted",
+      no_answer: "new",
+      callback: "contacted",
+      booked: "booked",
+      not_interested: "lost",
+      wrong_number: "lost",
+    };
+
     // Build updated lead
     const updatedLead: Lead = {
       ...lead,
       result,
       notes,
-      lastCall: new Date().toISOString(),
+      lastCall: now.toISOString(),
       callingRep,
-
-      status:
-        result === "booked"
-          ? "Booked"
-          : result === "live"
-            ? "Live"
-            : result === "callback" || result === "callback-today"
-              ? "Revisit"
-              : result === "not-interested"
-                ? "Not Interested"
-                : result === "wrong-number"
-                  ? "Wrong Number"
-                  : result === "no-answer"
-                    ? "No Answer"
-                    : result === "back-to-dq"
-                      ? "DQ"
-                      : "DQ", // fallback
+      status: statusMap[result] ?? "new",
       ...(result === "booked" && {
         bookingDate,
         bookingTime,
@@ -196,55 +150,40 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
         appointmentTime: bookingTime,
       }),
       ...(result === "callback" && { callbackDate, callbackTime }),
-      ...(result === "callback-today" && {
-        callbackDate: new Date().toISOString().split("T")[0],
-        callbackTime,
-      }),
-      // Add to call history
+      // Append to call history (append-only)
       callHistory: [
         ...(lead.callHistory || []),
         {
-          date: new Date().toISOString().split("T")[0], // YYYY-MM-DD (for Dashboard date filtering)
-          time: new Date().toTimeString().slice(0, 5), // HH:MM (for Dashboard sort + timeAgo)
-          rep: reps.find((r) => r.id === callingRep)?.name || "Unknown",
-          repId: callingRep, // stored for rep-rename resilience
+          date: dateStr,
+          time: timeStr,
+          rep: repName,
+          repId: callingRep,
           result,
           notes,
         },
       ],
     };
 
-    onSave(updatedLead);
+    // If booked, create a Deal document only if one doesn't already exist
+    if (result === "booked") {
+      if (lead.dealId) {
+        // Deal already exists — just link it
+        updatedLead.dealId = lead.dealId;
+      } else {
+        const dealId = await createDeal({
+          leadId: lead.id,
+          clientName: lead.name,
+          assignedTo: callingRep,
+          dealValue: lead.dealValue,
+        });
 
-    // Auto-create calendar appointment when result is 'booked' and createAppt is on
-    if (result === "booked" && createAppt && apptServiceTypeId && bookingDate && bookingTime) {
-      const svc = serviceTypes.find((st) => st.id === apptServiceTypeId);
-      const [startH, startM] = bookingTime.split(":").map(Number);
-      const endMins = startH * 60 + startM + (svc?.defaultDuration ?? 60);
-      const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
-      const endM = String(endMins % 60).padStart(2, "0");
-      const repIdNum =
-        apptRepId !== "" ? Number(apptRepId) : (reps.find((r) => r.id === callingRep)?.id ?? reps[0]?.id ?? 0);
-      const currentRepName = reps.find((r) => r.id === callingRep)?.name ?? "Unknown";
-      const newAppt: Appointment = {
-        id: `appt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        title: lead.name,
-        serviceTypeId: apptServiceTypeId,
-        repId: repIdNum,
-        date: bookingDate,
-        startTime: bookingTime,
-        endTime: `${endH}:${endM}`,
-        durationMins: svc?.defaultDuration ?? 60,
-        status: "pencilled-in",
-        linkedLeadId: lead.id,
-        clientName: lead.name,
-        clientPhone: lead.phone,
-        clientAddress: buildAddress(lead),
-        createdBy: currentRepName,
-        createdAt: Date.now(),
-      };
-      await saveAppt(newAppt);
+        if (dealId) {
+          updatedLead.dealId = dealId;
+        }
+      }
     }
+
+    onSave(updatedLead);
 
     setSaving(false);
     handleClose();
@@ -261,29 +200,14 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
     callingRep,
     reps,
     onSave,
-    createAppt,
-    apptServiceTypeId,
-    apptRepId,
-    serviceTypes,
-    saveAppt,
+    createDeal,
+    handleClose,
   ]);
 
-  const handleClose = useCallback(() => {
-    // Reset form
-    setResult("no-answer");
-    setNotes("");
-    setBookingDate("");
-    setBookingTime("");
-    setCallbackDate("");
-    setCallbackTime("");
-    setCallingRep(currentUser?.id || reps[0]?.id || 1);
-    setErrors({});
-    setCreateAppt(true);
-    setApptRepId(reps[0]?.id || "");
-    onClose();
-  }, [onClose, settings, reps]);
-
   if (!isOpen) return null;
+
+  const inputCls = (hasError: boolean) =>
+    `w-full px-3 py-2 rounded-lg border ${hasError ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"} bg-white dark:bg-[var(--surface)] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400`;
 
   return (
     <>
@@ -296,7 +220,10 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
           {/* Header */}
           <div className="sticky top-0 bg-white dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Log Call</h2>
-            <button onClick={handleClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition">
+            <button
+              onClick={handleClose}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded transition"
+            >
               <X size={20} />
             </button>
           </div>
@@ -314,13 +241,13 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
 
           {/* Form */}
           <div className="px-6 py-4 space-y-4">
-            {/* Call Result */}
+            {/* Call Result — always shown */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Call Result *</label>
               <select
                 value={result}
                 onChange={(e) => setResult(e.target.value as CallResult)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                className={inputCls(false)}
               >
                 {Object.entries(callResultsMap).map(([key, config]) => (
                   <option key={key} value={key}>
@@ -330,60 +257,74 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
               </select>
             </div>
 
-            {/* Booking Date (for Booked result) */}
-            {(result === "booked" || result === "callback") && (
+            {/* Booking Date (only for booked) */}
+            {result === "booked" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Booking Date *</label>
+                <input
+                  type="date"
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                  className={inputCls(!!errors.bookingDate)}
+                />
+                {errors.bookingDate && <p className="text-xs text-red-500 mt-1">{errors.bookingDate}</p>}
+              </div>
+            )}
+
+            {/* Booking Time (only for booked) */}
+            {result === "booked" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Booking Time *</label>
+                <input
+                  type="time"
+                  value={bookingTime}
+                  onChange={(e) => setBookingTime(e.target.value)}
+                  className={inputCls(!!errors.bookingTime)}
+                />
+                {errors.bookingTime && <p className="text-xs text-red-500 mt-1">{errors.bookingTime}</p>}
+              </div>
+            )}
+
+            {/* Callback Date (only for callback) */}
+            {result === "callback" && (
               <div>
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                  {result === "booked" ? "Booking Date" : "Callback Date"} *
+                  Callback Date *
                 </label>
                 <input
                   type="date"
-                  value={result === "booked" ? bookingDate : callbackDate}
-                  onChange={(e) =>
-                    result === "booked" ? setBookingDate(e.target.value) : setCallbackDate(e.target.value)
-                  }
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    errors.date ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
-                  } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
+                  value={callbackDate}
+                  onChange={(e) => setCallbackDate(e.target.value)}
+                  className={inputCls(!!errors.callbackDate)}
                 />
-                {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date}</p>}
+                {errors.callbackDate && <p className="text-xs text-red-500 mt-1">{errors.callbackDate}</p>}
               </div>
             )}
 
-            {/* Callback Date for Callback-Today (auto today) */}
-            {result === "callback-today" && (
-              <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/30 rounded-lg text-sm text-gray-800 dark:text-gray-200">
-                Callback scheduled for today
-              </div>
-            )}
-
-            {/* Booking/Callback Time */}
-            {(result === "booked" || result === "callback" || result === "callback-today") && (
+            {/* Callback Time (only for callback) */}
+            {result === "callback" && (
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Time *</label>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  Callback Time *
+                </label>
                 <input
                   type="time"
-                  value={result === "booked" ? bookingTime : result === "callback" ? callbackTime : callbackTime}
-                  onChange={(e) => {
-                    if (result === "booked") setBookingTime(e.target.value);
-                    else setCallbackTime(e.target.value);
-                  }}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    errors.time ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
-                  } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold`}
+                  value={callbackTime}
+                  onChange={(e) => setCallbackTime(e.target.value)}
+                  className={inputCls(!!errors.callbackTime)}
                 />
-                {errors.time && <p className="text-sm text-red-500 mt-1">{errors.time}</p>}
+                {errors.callbackTime && <p className="text-xs text-red-500 mt-1">{errors.callbackTime}</p>}
               </div>
             )}
 
-            {/* Calling Rep (for Booked) */}
+            {/* Calling Rep (for booked) */}
             {result === "booked" && (
               <div>
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Calling Rep</label>
                 <select
                   value={callingRep}
                   onChange={(e) => setCallingRep(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className={inputCls(false)}
                 >
                   {activeReps.map((rep) => (
                     <option key={rep.id} value={rep.id}>
@@ -394,75 +335,17 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
               </div>
             )}
 
-            {/* Add to Calendar (shown when result is 'booked') */}
-            {result === "booked" && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                <label className="flex items-center gap-2 font-medium text-sm text-amber-900 dark:text-amber-200 mb-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createAppt}
-                    onChange={(e) => setCreateAppt(e.target.checked)}
-                    className="rounded"
-                  />
-                  📅 Add to Calendar
-                </label>
-                {createAppt && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-amber-700 dark:text-amber-400 mb-1">Appointment Type</label>
-                      <select
-                        value={apptServiceTypeId}
-                        onChange={(e) => setApptServiceTypeId(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      >
-                        {serviceTypes.length === 0 && <option value="">— No types configured —</option>}
-                        {Array.from(new Set(serviceTypes.map((s) => s.category))).map((cat) => (
-                          <optgroup key={cat} label={cat}>
-                            {serviceTypes
-                              .filter((s) => s.category === cat)
-                              .map((st) => (
-                                <option key={st.id} value={st.id}>
-                                  {st.name}
-                                </option>
-                              ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-amber-700 dark:text-amber-400 mb-1">Assigned Rep</label>
-                      <select
-                        value={apptRepId}
-                        onChange={(e) => setApptRepId(e.target.value ? Number(e.target.value) : "")}
-                        className="w-full px-2 py-1.5 text-sm rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      >
-                        {reps
-                          .filter((r) => r.active && r.availableForBookings !== false)
-                          .map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Notes */}
+            {/* Notes — always shown */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Call Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any extra Notes?"
+                placeholder="Any extra notes?"
                 rows={4}
-                className={`w-full px-3 py-2 rounded-lg border ${
-                  errors.notes ? "border-red-500" : "border-gray-300 dark:border-white/[0.08]"
-                } bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold resize-none`}
+                className={inputCls(!!errors.notes)}
               />
-              {errors.notes && <p className="text-sm text-red-500 mt-1">{errors.notes}</p>}
+              {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}
             </div>
 
             {/* Call History */}
@@ -473,15 +356,25 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
                   {lead.callHistory.slice(-3).map((call, idx) => (
                     <div key={idx} className="p-2 bg-gray-50 dark:bg-[var(--surface)] rounded text-xs">
                       <div className="font-semibold text-gray-900 dark:text-white">
-                        {call.result} - {call.rep}
+                        {call.result?.replace(/_/g, " ")} — {call.rep}
                       </div>
                       <div className="text-gray-600 dark:text-gray-400">
-                        {new Date(call.time).toLocaleString("en-AU")}
+                        {call.date} {call.time}
                       </div>
                       <div className="text-gray-600 dark:text-gray-400 mt-1">{call.notes}</div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Booked info */}
+            {result === "booked" && (
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                  <strong>Booked</strong> will create a new deal in the <strong>Deal Pipeline</strong> with status{" "}
+                  <strong>Lead</strong>. The lead will be linked via <code>dealId</code>.
+                </p>
               </div>
             )}
           </div>
@@ -490,14 +383,14 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
           <div className="sticky bottom-0 bg-gray-50 dark:bg-[var(--surface)] border-t border-gray-200 dark:border-white/[0.06] px-6 py-4 flex gap-3">
             <button
               onClick={handleClose}
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition font-medium"
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[var(--hover)] transition font-medium text-sm"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              disabled={Object.keys(errors).length > 0 || saving}
-              className="flex-1 px-4 py-2 rounded-lg bg-gold text-white hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium flex items-center justify-center gap-2"
+              disabled={Object.keys(errors).length > 0 || saving || dealCreating}
+              className="flex-1 px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium flex items-center justify-center gap-2 text-sm"
             >
               {saving ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

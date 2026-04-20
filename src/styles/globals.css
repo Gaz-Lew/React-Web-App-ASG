@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global UI Scaling System */
+:root {
+  --ui-scale: 1;
+}
+
 /* Root font-size controlled by useUiScale() hook — default 16px.
    All Tailwind rem units (text-*, p-*, gap-*, etc.) scale proportionally. */
 html {
@@ -19,10 +24,14 @@ html {
     --brass-light: #d4aa55;
     --brass-dark: #9a7a2e;
 
+    /* Focus ring */
+    --ring: #b8933a;
+
     /* Light mode surfaces (warm off-white) */
     --bg: #f0f0ee;
     --surface: #f4f4f2;
     --border: #e2e2de;
+    --hover: #e8e8e6;
     --text: #1a1a18;
     --text-muted: #6b6b65;
 
@@ -39,6 +48,7 @@ html {
     --hover: #222226;
     --text: #f0f0ee;
     --text-muted: #8a8a84;
+    --ring: #d4aa55;
   }
 
   * {
@@ -59,37 +69,59 @@ html {
     color: var(--text);
   }
 
-  /* Subtle hover and active states for cards and buttons */
-  .card,
+  /* Subtle active states for interactive elements */
   .btn {
     transition: all 0.15s ease;
   }
 
-  .card:hover {
-    background-color: rgba(255, 255, 255, 0.02);
-    transform: scale(1.01);
-  }
-
-  .card:active {
-    transform: scale(0.98);
-  }
-
   .btn:hover {
-    transform: scale(1.01);
+    filter: brightness(0.96);
   }
 
   .btn:active {
     transform: scale(0.98);
   }
-
-  .dark body {
-    background-color: #121214;
-    color: #f8fafc;
-  }
 }
 
 @layer utilities {
-  /* Hide scrollbar but keep scroll functionality */
+  /* ── Typography scale ─────────────────────────────────────────────────── */
+
+  /* Section / page headings */
+  .text-heading {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  /* Column headers, card labels, form labels */
+  .text-label {
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  /* Secondary body text, timestamps, metadata */
+  .text-caption {
+    font-size: 0.75rem; /* 12px */
+    font-weight: 400;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── Focus ring utility ───────────────────────────────────────────────── */
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  /* ── Hide scrollbar but keep scroll functionality ─────────────────────── */
   .scrollbar-none {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -98,12 +130,12 @@ html {
     display: none;
   }
 
-  /* Display font utility */
+  /* ── Display font utility ─────────────────────────────────────────────── */
   .font-display {
     font-family: var(--font-display);
   }
 
-  /* Animate-in utility used by ToastContext */
+  /* ── Animate-in utility used by ToastContext ──────────────────────────── */
   .animate-in {
     animation-fill-mode: both;
   }
@@ -128,7 +160,7 @@ html {
     }
   }
 
-  /* Animated brass gradient background for login screen */
+  /* ── Animated brass gradient background for login screen ─────────────── */
   .login-bg {
     background:
       radial-gradient(ellipse at 20% 50%, rgba(184, 147, 58, 0.15) 0%, transparent 60%),
@@ -149,7 +181,7 @@ html {
     }
   }
 
-  /* Skeleton shimmer for initial load */
+  /* ── Skeleton shimmer for initial load ───────────────────────────────── */
   .skeleton-shimmer {
     background: linear-gradient(90deg, #e5e5e3 25%, #f0f0ee 50%, #e5e5e3 75%);
     background-size: 200% 100%;

@@ -2,15 +2,15 @@
  * Zustand Global State Store
  */
 
-import { create } from 'zustand';
-import { Lead, Rep, AppSettings, DrapsEntry, CommissionEntry, AuditEntry, DEFAULT_STATUS_COLORS } from '../types';
+import { create } from "zustand";
+import { Lead, Rep, AppSettings, DrapsEntry, CommissionEntry, AuditEntry, DEFAULT_STATUS_COLORS } from "../types";
 
 interface AppState {
   leads: Lead[];
   reps: Rep[];
   currentUser: Rep | null;
   settings: AppSettings;
-  statusColors: Record<string, string>;   // hex per LeadStatus, synced from Firestore settings
+  statusColors: Record<string, string>; // hex per LeadStatus, synced from Firestore settings
   drapsEntries: DrapsEntry[];
   commissions: CommissionEntry[];
   auditLog: AuditEntry[];
@@ -38,27 +38,30 @@ const defaultSettings: AppSettings = {
   staleThresholdDays: 14,
 };
 
+// localStorage keys with namespace to avoid collisions
+const STORAGE_KEYS = {
+  REPS: "asg-crm:reps",
+  DARK_MODE: "asg-crm:dark-mode",
+  UI_SCALE: "asg-crm:ui-scale",
+  USER_LOCATION: "asg-crm:user-location",
+} as const;
+
 const loadReps = (): Rep[] => {
   try {
-    const stored = localStorage.getItem('asgReps');
-    return stored ? JSON.parse(stored) : getDefaultReps();
+    const stored = localStorage.getItem(STORAGE_KEYS.REPS);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // If we have cached reps, return them
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    // Return empty array - reps will be loaded from Firestore
+    return [];
   } catch {
-    return getDefaultReps();
+    return [];
   }
 };
-
-function getDefaultReps(): Rep[] {
-  return [
-    { id: 1, name: 'Garry', active: true, role: 'admin' },
-    { id: 2, name: 'Blake', active: true, role: 'rep' },
-    { id: 3, name: 'Mike', active: true, role: 'rep' },
-    { id: 4, name: 'Josh', active: true, role: 'rep' },
-    { id: 5, name: 'Kai', active: true, role: 'rep' },
-    { id: 6, name: 'Vinu', active: true, role: 'rep' },
-    { id: 7, name: 'Lewis', active: true, role: 'rep' },
-    { id: 8, name: 'Joe', active: true, role: 'rep' },
-  ];
-}
 
 export const useAppStore = create<AppState>((set) => ({
   leads: [],
@@ -73,7 +76,7 @@ export const useAppStore = create<AppState>((set) => ({
   setLeads: (leads) => set({ leads }),
 
   setReps: (reps) => {
-    localStorage.setItem('asgReps', JSON.stringify(reps));
+    localStorage.setItem(STORAGE_KEYS.REPS, JSON.stringify(reps));
     set({ reps });
   },
 

@@ -1,0 +1,167 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─────────────────────────────────────────────
+    // Core CRM Collections
+    // ─────────────────────────────────────────────
+
+    // Reps (users of the system)
+    match /reps/{repId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Leads (clients)
+    match /leads/{leadId} {
+      allow read, write: if isAuthenticated();
+
+      match /{subcollection}/{docId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Deals
+    match /deals/{dealId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Deal documents
+    match /dealDocuments/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Deal events (immutable log)
+    match /dealEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    // Document instances (OA, contracts, etc.)
+    match /documentInstances/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // DocuSign envelopes
+    match /docusignEnvelopes/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ─────────────────────────────────────────────
+    // Client Data
+    // ─────────────────────────────────────────────
+
+    // Notes
+    match /clientNotes/{noteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.clientId is string
+        && request.resource.data.content is string;
+
+      allow update, delete: if isAuthenticated();
+    }
+
+    // Reports
+    match /piaReports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /smsfReports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // SMSF Financial Data (encrypted bank details)
+    match /smsfFinancials/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.token.role in ["admin", "director"];
+    }
+
+    // ─────────────────────────────────────────────
+    // App Config / Settings
+    // ─────────────────────────────────────────────
+
+    match /appSettings/{docId} {
+      allow read, write: if isAuthenticated();
+
+      match /{sub}/{subId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    match /settingsHistory/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Per-user settings
+    match /users/{userId}/repSettings/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ─────────────────────────────────────────────
+    // Activity / Analytics
+    // ─────────────────────────────────────────────
+
+    match /analyticsEvents/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /trainingSessions/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /userDevices/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /errors/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    match /auditLogs/{docId} {
+      allow read: if request.auth != null
+        && request.auth.token.role in ["admin", "director"];
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // System / Read-only
+    // ─────────────────────────────────────────────
+
+    match /dailyStats/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /sentAlerts/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /properties/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Catch-all (deny everything else)
+    // ─────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,9 +1,10 @@
 import React from 'react';
-import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { handleError } from '../lib/errorHandler';
 
 interface Props {
   children: React.ReactNode;
+  /** Optional label for the section this boundary wraps (shown in logs) */
+  context?: string;
 }
 
 interface State {
@@ -22,19 +23,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Log to Firestore errors collection (best-effort, non-fatal)
+    // Route through the unified error handler — it logs to console + Firestore
+    const context = this.props.context
+      ? `ErrorBoundary(${this.props.context})`
+      : 'ErrorBoundary';
     try {
-      const userId = localStorage.getItem('asgCurrentUserId') ?? 'unknown';
-      addDoc(collection(db, 'errors'), {
-        timestamp: Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        user: userId,
-        message: error.message,
-        stack: error.stack ?? '',
-        componentStack: info.componentStack ?? '',
-      }).catch(() => {/* silent */});
+      handleError(
+        Object.assign(error, { componentStack: info.componentStack }),
+        context
+      );
     } catch {
-      // Never let error logging crash the boundary itself
+      // Never let error logging cascade into a second crash
     }
   }
 

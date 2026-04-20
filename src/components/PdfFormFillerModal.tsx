@@ -881,9 +881,12 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
   const handleDownload = () =>
     doExport(async (blob, name) => {
       const url = URL.createObjectURL(blob);
-      Object.assign(document.createElement("a"), { href: url, download: name }).click();
-      URL.revokeObjectURL(url);
-      showToast("✅ PDF downloaded", "success");
+      try {
+        Object.assign(document.createElement("a"), { href: url, download: name }).click();
+        showToast("✅ PDF downloaded", "success");
+      } finally {
+        URL.revokeObjectURL(url);
+      }
       setSaveMode(null);
     });
 
@@ -903,10 +906,13 @@ export function PdfFormFillerModal({ template, onClose }: { template: FormTempla
         uploadedAt: Date.now(),
       } as Omit<LeadFile, "id">);
       const url = URL.createObjectURL(blob);
-      Object.assign(document.createElement("a"), { href: url, download: name }).click();
-      URL.revokeObjectURL(url);
-      showToast(`✅ Saved to ${selectedLead.name}'s files`, "success");
-      onClose();
+      try {
+        Object.assign(document.createElement("a"), { href: url, download: name }).click();
+        showToast(`✅ Saved to ${selectedLead.name}'s files`, "success");
+        onClose();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     });
   };
 

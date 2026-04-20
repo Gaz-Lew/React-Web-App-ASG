@@ -1,35 +1,63 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Lead, FormTemplate, CustomPinType } from '../types';
-import { useAppStore } from '../stores/appStore';
-import { sanitizePhone } from '../lib/utils';
-import { SuburbInput } from './SuburbInput';
+import React, { useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
+import { Lead, FormTemplate, CustomPinType } from "../types";
+import { useAppStore } from "../stores/appStore";
+import { sanitizePhone } from "../lib/utils";
+import { SuburbInput } from "./SuburbInput";
 import {
-  X, Phone, Trash2, Save, Paperclip, FileText, Image, File,
-  Download, Camera, Upload, XCircle, ClipboardList, Loader, Mail,
-} from 'lucide-react';
-import { doc, setDoc, deleteDoc, collection, onSnapshot, addDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { uploadFile, formatFileSize, fileTypeIcon } from '../lib/storage';
-import { useLeadFiles, useDeleteLeadFile, useFormTemplates } from '../hooks/useFirebase';
+  X,
+  Phone,
+  Trash2,
+  Save,
+  Paperclip,
+  FileText,
+  Image,
+  File,
+  Download,
+  Camera,
+  Upload,
+  XCircle,
+  ClipboardList,
+  Loader,
+  Edit3,
+  Mail,
+  MessageSquare,
+  CalendarDays,
+  CheckCheck,
+  StickyNote,
+  CalendarClock,
+} from "lucide-react";
+import { doc, setDoc, deleteDoc, collection, onSnapshot, addDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { uploadFile, formatFileSize, fileTypeIcon } from "../lib/storage";
+import { getNextAction, deriveLastActivityAt, ACTION_COLORS } from "../lib/nextAction";
+import { isOverdue, isDueToday, formatFollowUpDate } from "../lib/followUp";
+import { applyAutomation } from "../lib/automation";
+import {
+  useLeadFiles,
+  useDeleteLeadFile,
+  useFormTemplates,
+  useLeadNotes,
+  useAddLeadNote,
+  useDeleteLeadNote,
+  useLeadAppointments,
+} from "../hooks/useFirebase";
 
-const FormFillerModal = lazy(() =>
-  import('./FormFillerModal').then((m) => ({ default: m.FormFillerModal }))
-);
+const FormFillerModal = lazy(() => import("./FormFillerModal").then((m) => ({ default: m.FormFillerModal })));
 
 // Built-in knock result colour map (mirrors Map.tsx KNOCK_COLORS)
 const KNOCK_COLORS: Record<string, string> = {
-  'not-interested':   '#ef4444',
-  'no-answer':        '#f97316',
-  'skipped':          '#6b7280',
-  'dq-complete':      '#22c55e',
-  'parents-not-home': '#3b82f6',
+  "not-interested": "#ef4444",
+  "no-answer": "#f97316",
+  skipped: "#6b7280",
+  "dq-complete": "#22c55e",
+  "parents-not-home": "#3b82f6",
 };
 const KNOCK_LABELS: Record<string, string> = {
-  'not-interested':   'Not Interested',
-  'no-answer':        'No Answer',
-  'skipped':          'Skipped',
-  'dq-complete':      'DQ Complete',
-  'parents-not-home': 'Parents Not Home',
+  "not-interested": "Not Interested",
+  "no-answer": "No Answer",
+  skipped: "Skipped",
+  "dq-complete": "DQ Complete",
+  "parents-not-home": "Parents Not Home",
 };
 
 interface LeadSidebarProps {
@@ -41,14 +69,14 @@ interface LeadSidebarProps {
   /** When passed (from Map page), shows a Knock Pin Type selector in the form */
   customPinTypes?: CustomPinType[];
   /** 'modal' (default) = fixed overlay with backdrop; 'panel' = inline, fills parent */
-  mode?: 'modal' | 'panel';
+  mode?: "modal" | "panel";
 }
 
-const SUPER_OPTIONS = ['$0-75k', '$75k to 150k', '$150k+', 'Other'];
-const STATUS_OPTIONS = ['DQ', 'Booked', 'Revisit', 'Not Interested', 'Wrong Number', 'No Answer'];
+const SUPER_OPTIONS = ["$0-75k", "$75k to 150k", "$150k+", "Other"];
+const STATUS_OPTIONS = ["new", "contacted", "qualified", "booked", "lost"];
 
 function buildAddress(lead: Lead): string {
-  return [lead.houseNum, lead.street, lead.suburb, lead.postcode].filter(Boolean).join(' ');
+  return [lead.houseNum, lead.street, lead.suburb, lead.postcode].filter(Boolean).join(" ");
 }
 
 function parseAddress(raw: string): { houseNum?: string; street?: string; suburb?: string; postcode?: string } {
@@ -62,18 +90,26 @@ function parseAddress(raw: string): { houseNum?: string; street?: string; suburb
   if (/^\d{4}$/.test(last)) {
     const withoutPost = body.slice(0, -1);
     const suburb = withoutPost.length > 0 ? withoutPost[withoutPost.length - 1] : undefined;
-    const street = withoutPost.slice(0, -1).join(' ') || undefined;
+    const street = withoutPost.slice(0, -1).join(" ") || undefined;
     return { houseNum, street, suburb, postcode: last };
   }
   if (body.length > 1) {
     const suburb = body[body.length - 1];
-    const street = body.slice(0, -1).join(' ') || undefined;
+    const street = body.slice(0, -1).join(" ") || undefined;
     return { houseNum, street, suburb };
   }
-  return { houseNum, street: body.join(' ') };
+  return { houseNum, street: body.join(" ") };
 }
 
-export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPinTypes, mode = 'modal' }: LeadSidebarProps) {
+export function LeadSidebar({
+  lead,
+  onClose,
+  onSave,
+  onDelete,
+  onCall,
+  customPinTypes,
+  mode = "modal",
+}: LeadSidebarProps) {
   const { reps, currentUser } = useAppStore();
   const [form, setForm] = useState<Lead>(lead);
   const [addressStr, setAddressStr] = useState<string>(buildAddress(lead));
@@ -81,10 +117,20 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [otherViewers, setOtherViewers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Modal animation — stable (no RAF flicker)
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => { setIsOpen(true); }, []);
 
   // Camera staging
   const [stagedPhotos, setStagedPhotos] = useState<File[]>([]);
   const [stagedPreviews, setStagedPreviews] = useState<string[]>([]);
+
+  // Clean up blob URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      stagedPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [stagedPreviews]);
 
   // Form filler
   const [formPickerOpen, setFormPickerOpen] = useState(false);
@@ -102,6 +148,17 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
   const { remove: deleteLeadFile } = useDeleteLeadFile();
   const { templates } = useFormTemplates();
 
+  // Notes subcollection
+  const { notes: leadNotes, loading: notesLoading } = useLeadNotes(String(lead.id));
+  const { add: addLeadNote } = useAddLeadNote();
+  const { remove: deleteLeadNote } = useDeleteLeadNote();
+  const [noteText, setNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Linked appointments
+  const { appointments: linkedAppointments } = useLeadAppointments(lead.id);
+
   // Reset when lead changes
   useEffect(() => {
     setForm(lead);
@@ -113,15 +170,16 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
   // Presence
   useEffect(() => {
     if (!currentUser) return;
-    const presenceRef = doc(db, 'leads', String(lead.id), 'presence', String(currentUser.id));
+    const presenceRef = doc(db, "leads", String(lead.id), "presence", String(currentUser.id));
     setDoc(presenceRef, { name: currentUser.name, ts: Date.now() });
-    const unsub = onSnapshot(collection(db, 'leads', String(lead.id), 'presence'), (snap) => {
-      const others = snap.docs
-        .filter((d) => d.id !== String(currentUser.id))
-        .map((d) => d.data().name as string);
+    const unsub = onSnapshot(collection(db, "leads", String(lead.id), "presence"), (snap) => {
+      const others = snap.docs.filter((d) => d.id !== String(currentUser.id)).map((d) => d.data().name as string);
       setOtherViewers(others);
     });
-    return () => { unsub(); deleteDoc(presenceRef); };
+    return () => {
+      unsub();
+      deleteDoc(presenceRef);
+    };
   }, [lead.id, currentUser]);
 
   // Auto-save debounce — after 1.5s of no changes, save silently
@@ -134,8 +192,20 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
       }
     }, 1500);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, dirty]);
+
+  // Automation — runs when lead loads or its call/note activity changes.
+  // Writes back to Firestore only if there are actual updates (non-empty result).
+  useEffect(() => {
+    if (!lead.name?.trim()) return;
+    const updates = applyAutomation(lead);
+    if (Object.keys(updates).length === 0) return;
+    const updated: Lead = { ...lead, ...updates };
+    setForm(updated);
+    onSave(updated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id, lead.callHistory?.length ?? 0, leadNotes.length]);
 
   const update = (field: keyof Lead, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -169,23 +239,34 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
   };
 
   const handleDelete = () => {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     onDelete(lead);
   };
 
-  const handleFileUpload = async (file: File, type: 'document' | 'photo' | 'file') => {
+  const handleFileUpload = async (file: File, type: "document" | "photo" | "file") => {
     if (!currentUser) return;
     setUploading(true);
     try {
       const path = `leadFiles/${lead.id}/${Date.now()}_${file.name}`;
       const url = await uploadFile(path, file);
-      await addDoc(collection(db, 'leads', String(lead.id), 'files'), {
-        name: file.name, storagePath: path, downloadUrl: url,
-        fileType: file.type, fileSize: file.size, type,
-        uploadedBy: currentUser.name, uploadedAt: Date.now(),
+      await addDoc(collection(db, "leads", String(lead.id), "files"), {
+        name: file.name,
+        storagePath: path,
+        downloadUrl: url,
+        fileType: file.type,
+        fileSize: file.size,
+        type,
+        uploadedBy: currentUser.name,
+        uploadedAt: Date.now(),
       });
-    } catch (err) { console.error('Upload failed:', err); }
-    finally { setUploading(false); }
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,7 +275,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
     const previewUrl = URL.createObjectURL(file);
     setStagedPhotos((prev) => [...prev, file]);
     setStagedPreviews((prev) => [...prev, previewUrl]);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   const handleRemoveStaged = (index: number) => {
@@ -205,7 +286,8 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
   const handleDiscardAllStaged = () => {
     stagedPreviews.forEach((url) => URL.revokeObjectURL(url));
-    setStagedPhotos([]); setStagedPreviews([]);
+    setStagedPhotos([]);
+    setStagedPreviews([]);
   };
 
   const handleUploadStaged = async () => {
@@ -215,99 +297,206 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
       for (const file of stagedPhotos) {
         const path = `leadFiles/${lead.id}/${Date.now()}_${file.name}`;
         const url = await uploadFile(path, file);
-        await addDoc(collection(db, 'leads', String(lead.id), 'files'), {
-          name: file.name, storagePath: path, downloadUrl: url,
-          fileType: file.type, fileSize: file.size, type: 'photo',
-          uploadedBy: currentUser.name, uploadedAt: Date.now(),
+        await addDoc(collection(db, "leads", String(lead.id), "files"), {
+          name: file.name,
+          storagePath: path,
+          downloadUrl: url,
+          fileType: file.type,
+          fileSize: file.size,
+          type: "photo",
+          uploadedBy: currentUser.name,
+          uploadedAt: Date.now(),
         });
       }
-    } catch (err) { console.error('Camera upload failed:', err); }
-    finally {
+    } catch (err) {
+      console.error("Camera upload failed:", err);
+    } finally {
       stagedPreviews.forEach((url) => URL.revokeObjectURL(url));
-      setStagedPhotos([]); setStagedPreviews([]); setUploading(false);
+      setStagedPhotos([]);
+      setStagedPreviews([]);
+      setUploading(false);
     }
   };
 
   const handleFillForm = () => {
     if (templates.length === 0) return;
-    if (templates.length === 1) { setSelectedTemplate(templates[0]); return; }
+    if (templates.length === 1) {
+      setSelectedTemplate(templates[0]);
+      return;
+    }
     setFormPickerOpen(true);
+  };
+
+  /** One-click "I just spoke to this lead" — sets status to Live and logs a minimal call entry */
+  const handleMarkContacted = () => {
+    if (!currentUser) return;
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toTimeString().slice(0, 5);
+    const updatedLead: Lead = {
+      ...form,
+      status: "qualified",
+      lastCall: `${dateStr}T${timeStr}`,
+      callHistory: [
+        ...(form.callHistory ?? []),
+        {
+          date: dateStr,
+          time: timeStr,
+          rep: currentUser.name,
+          repId: currentUser.id,
+          result: "live",
+          notes: "Marked as contacted",
+        },
+      ],
+    };
+    setForm(updatedLead);
+    onSave(updatedLead);
+    setDirty(false);
+  };
+
+  /** Submits a new note to the leads/{id}/notes subcollection */
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !currentUser) return;
+    setAddingNote(true);
+    await addLeadNote(String(lead.id), {
+      text: noteText.trim(),
+      createdAt: Date.now(),
+      createdBy: currentUser.name,
+      createdById: currentUser.id,
+    });
+    setNoteText("");
+    setAddingNote(false);
+    noteInputRef.current?.focus();
   };
 
   const activeReps = reps.filter((r) => r.active !== false);
   const formerReps = reps.filter((r) => r.active === false);
   const allRepsForDropdown = [...activeReps, ...formerReps];
-  const dqRepName = reps.find((r) => r.id === lead.dqRep)?.name || '—';
-  const lastCall = lead.callHistory && lead.callHistory.length > 0
-    ? lead.callHistory[lead.callHistory.length - 1] : null;
-  const lastContactRep = lastCall?.rep || '—';
-  const lastCallNotes = lastCall?.notes || '—';
+  const dqRepName = reps.find((r) => r.id === lead.dqRep)?.name || "—";
+  const lastCall =
+    lead.callHistory && lead.callHistory.length > 0 ? lead.callHistory[lead.callHistory.length - 1] : null;
+  const lastContactRep = lastCall?.rep || "—";
+  const lastCallNotes = lastCall?.notes || "—";
   const lastCallDate = lead.lastCall
-    ? new Date(lead.lastCall).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })
-    : 'Never';
+    ? new Date(lead.lastCall).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })
+    : "Never";
   const callCount = lead.callHistory?.length || 0;
 
-  const isPanel = mode === 'panel';
+  // ── Next Action Engine ────────────────────────────────────────────────────
+  const nextAction = useMemo(
+    () => getNextAction(lead, linkedAppointments),
+    [lead.id, lead.status, lead.lastCall, lead.callHistory, linkedAppointments],
+  );
+
+  const isPanel = mode === "panel";
 
   return (
     <>
-      {/* Backdrop — only in modal mode */}
-      {!isPanel && <div className="fixed inset-0 bg-black/50 z-40" onClick={handleClose} />}
+      {/* ── Backdrop — modal mode only ────────────────────────────────── */}
+      {!isPanel && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[4px] z-[99]" onClick={handleClose} />
+      )}
 
-      {/* Card wrapper */}
-      <div className={isPanel
-        ? "flex flex-col h-full w-full bg-white dark:bg-[var(--surface)]"
-        : "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
-      }>
-        <div className={isPanel
-          ? "flex flex-col h-full w-full"
-          : "bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col"
-        }>
-
+      {/* ── Outer container ───────────────────────────────────────────── */}
+      <div
+        className={
+          isPanel
+            ? "flex flex-col h-full w-full bg-[#141824] text-white"
+            : "fixed inset-0 z-[100] flex items-center justify-center px-6 py-6"
+        }
+      >
+        <div
+          className={
+            isPanel
+              ? "flex flex-col h-full w-full"
+              : `relative w-full max-w-[1100px] h-[80vh] rounded-2xl border border-[#2a2a2e] shadow-2xl overflow-hidden flex flex-col bg-[#141824] text-white will-change-transform transition-all duration-200 ease-out${isOpen ? " opacity-100 translate-y-0" : " opacity-0 translate-y-2"}`
+          }
+        >
+        {/* ── X close button — modal mode only ─────────────────────────── */}
+        {!isPanel && (
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-10 p-2 rounded-lg bg-[#2a2a2e] hover:bg-[#3a3a3e] border border-[#3a3a3e] text-gray-400 hover:text-white transition-all duration-150 hover:scale-105"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        )}
           {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
+          <div className="flex items-start justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">{lead.name}</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">
+                {lead.name}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                 {dqRepName} · {lead.status}
                 {lead.dnqFellOver && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 flex-shrink-0">
                     ❌ Fell Over
                   </span>
                 )}
               </p>
-              <a href={`tel:${lead.phone.replace(/\s/g, '')}`}
-                className="text-sm text-amber-500 hover:underline flex items-center gap-1 mt-0.5 w-fit"
-                onClick={(e) => e.stopPropagation()}>
+              <a
+                href={`tel:${lead.phone.replace(/\s/g, "")}`}
+                className="text-xs sm:text-sm text-amber-500 hover:underline flex items-center gap-1 mt-0.5 w-fit"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Phone size={12} /> {lead.phone}
               </a>
               {otherViewers.length > 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                  ⚠️ {otherViewers.join(', ')} {otherViewers.length === 1 ? 'is' : 'are'} also viewing
+                  ⚠️ {otherViewers.join(", ")} {otherViewers.length === 1 ? "is" : "are"} also viewing
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 ml-2 sm:ml-3 flex-shrink-0">
               <button
                 onClick={() => onCall(lead)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-400 transition"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-500 text-white text-xs sm:text-sm font-semibold hover:bg-amber-400 transition flex-shrink-0"
               >
-                <Phone size={14} /> Log Call
+                <Phone size={14} /> <span className="hidden sm:inline">Log Call</span>
+                <span className="sm:hidden">Call</span>
               </button>
+
+              {/* Quick "Mark as Contacted" — available when lead hasn't been contacted yet or is DQ/No Answer */}
+              {form.status === "new" && (
+                <button
+                  onClick={handleMarkContacted}
+                  title="Mark as Contacted — sets status to Live and logs a quick contact entry"
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-green-600 text-white text-xs sm:text-sm font-semibold hover:bg-green-500 transition flex-shrink-0"
+                >
+                  <CheckCheck size={14} />
+                  <span className="hidden sm:inline">Contacted</span>
+                </button>
+              )}
+
+              {/* Quick Add Note shortcut — scrolls note input into view */}
+              <button
+                onClick={() => {
+                  noteInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  noteInputRef.current?.focus();
+                }}
+                title="Add a note"
+                className="flex items-center gap-1 px-2 py-1.5 sm:py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] text-xs font-medium transition flex-shrink-0"
+              >
+                <StickyNote size={14} />
+                <span className="hidden sm:inline">Note</span>
+              </button>
+
               <button
                 onClick={handleDelete}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex-shrink-0 ${
                   confirmDelete
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20'
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
                 }`}
               >
                 <Trash2 size={14} />
-                {confirmDelete ? 'Confirm?' : 'Delete'}
+                {confirmDelete ? "Confirm?" : <span className="hidden sm:inline">Delete</span>}
               </button>
               <button
                 onClick={handleClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition text-gray-500"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition text-gray-500 flex-shrink-0"
               >
                 <X size={18} />
               </button>
@@ -316,51 +505,214 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
           {/* ── Body: single scrollable column ─────────────────────────────── */}
           <div className="flex-1 overflow-hidden min-h-0">
-
             {/* Lead detail form */}
-            <div className="h-full overflow-y-auto px-5 py-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="h-full overflow-y-auto px-3 sm:px-5 py-3 sm:py-4">
+              {/* ── Next Action Banner ──────────────────────────────────────── */}
+              {nextAction.type !== "none" && nextAction.type !== "settled" && nextAction.type !== "lost" && (
+                <div
+                  className={`mb-3 rounded-xl border text-xs ${ACTION_COLORS[nextAction.priority]?.bg ?? ""} ${
+                    nextAction.priority === "high"
+                      ? "border-red-200 dark:border-red-800"
+                      : nextAction.priority === "medium"
+                        ? "border-amber-200 dark:border-amber-800"
+                        : "border-green-200 dark:border-green-800"
+                  }`}
+                >
+                  {/* Top row: icon + text */}
+                  <div className="flex items-start gap-2.5 p-3 pb-0">
+                    <span className="text-base leading-none mt-0.5 flex-shrink-0">
+                      {nextAction.type === "call"
+                        ? "📞"
+                        : nextAction.type === "followup"
+                          ? "⏰"
+                          : nextAction.type === "callback"
+                            ? "📅"
+                            : nextAction.type === "confirm"
+                              ? "✅"
+                              : nextAction.type === "booked"
+                                ? "📋"
+                                : "🔄"}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`font-bold tracking-wide text-xs mb-0.5 ${
+                          nextAction.priority === "high"
+                            ? "text-red-700 dark:text-red-300"
+                            : nextAction.priority === "medium"
+                              ? "text-amber-700 dark:text-amber-300"
+                              : "text-green-700 dark:text-green-300"
+                        }`}
+                      >
+                        {nextAction.label}
+                      </div>
+                      <div className={`text-[10px] ${ACTION_COLORS[nextAction.priority]?.text ?? "text-gray-400"}`}>
+                        {nextAction.reason}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Bottom row: action buttons */}
+                  <div className="flex gap-2 p-3 pt-2">
+                    <button
+                      onClick={() => onCall(lead)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition active:scale-[0.98] shadow-sm ${
+                        nextAction.priority === "high"
+                          ? "bg-red-500 text-white hover:bg-red-400"
+                          : nextAction.priority === "medium"
+                            ? "bg-amber-500 text-white hover:bg-amber-400"
+                            : "bg-green-500 text-white hover:bg-green-400"
+                      }`}
+                    >
+                      <Phone size={13} />
+                      {nextAction.type === "call" || nextAction.type === "followup"
+                        ? "Call Now"
+                        : nextAction.type === "booked"
+                          ? "View Client"
+                          : "Log Call"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const noteEl = document.getElementById("lead-note-text");
+                        noteEl?.focus();
+                        noteEl?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 text-xs font-medium hover:bg-gray-200 dark:hover:bg-white/10 transition active:scale-[0.98]"
+                    >
+                      <Edit3 size={13} /> Log Note
+                    </button>
+                  </div>
+                </div>
+              )}
 
+              {/* ── Follow-Up Section ──────────────────────────────────────── */}
+              <div className="mb-3 p-3 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <CalendarClock size={12} />
+                    Next Contact Date
+                  </div>
+                  {form.nextContactDate && (
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                        isOverdue(form.nextContactDate)
+                          ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400"
+                          : isDueToday(form.nextContactDate)
+                            ? "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                            : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400"
+                      }`}
+                    >
+                      {isOverdue(form.nextContactDate)
+                        ? "Overdue"
+                        : isDueToday(form.nextContactDate)
+                          ? "Due Today"
+                          : formatFollowUpDate(form.nextContactDate)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    value={form.nextContactDate || ""}
+                    onChange={(e) => {
+                      const val = e.target.value || undefined;
+                      const updated: Lead = { ...form, nextContactDate: val };
+                      setForm(updated);
+                      // Save immediately — don't queue through the debounce
+                      if (updated.name?.trim()) onSave(updated);
+                      setDirty(false);
+                    }}
+                  />
+                  {form.nextContactDate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated: Lead = { ...form, nextContactDate: undefined };
+                        setForm(updated);
+                        if (updated.name?.trim()) onSave(updated);
+                        setDirty(false);
+                      }}
+                      className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                      title="Clear follow-up date"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {/* Date + Status */}
                 <Field label="Date">
-                  <input type="date" className={inputCls} value={form.leadDate || ''}
-                    onChange={(e) => update('leadDate', e.target.value)} />
+                  <input
+                    type="date"
+                    className={inputCls}
+                    value={form.leadDate || ""}
+                    onChange={(e) => update("leadDate", e.target.value)}
+                  />
                 </Field>
                 <Field label="Lead Status">
-                  <select className={inputCls} value={form.status}
-                    onChange={(e) => update('status', e.target.value as Lead['status'])}>
-                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  <select
+                    className={inputCls}
+                    value={form.status}
+                    onChange={(e) => update("status", e.target.value as Lead["status"])}
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 </Field>
 
                 {/* Name + Phone */}
                 <Field label="Lead Name *">
-                  <input className={inputCls} value={form.name}
-                    onChange={(e) => update('name', e.target.value)} placeholder="Full name" />
+                  <input
+                    className={inputCls}
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="Full name"
+                  />
                 </Field>
                 <Field label="Contact Number">
-                  <input className={inputCls} value={form.phone}
-                    onChange={(e) => update('phone', sanitizePhone(e.target.value))} placeholder="04xx xxx xxx" />
+                  <input
+                    className={inputCls}
+                    value={form.phone}
+                    onChange={(e) => update("phone", sanitizePhone(e.target.value))}
+                    placeholder="04xx xxx xxx"
+                  />
                 </Field>
 
                 {/* Email + Owner/Renter */}
-                <Field label={
-                  <span className="flex items-center gap-1.5">
-                    Email
-                    {lead.email && (
-                      <a href={`mailto:${lead.email}`} onClick={(e) => e.stopPropagation()}
-                        className="text-amber-500 hover:text-amber-400 transition" title={`Email ${lead.email}`}>
-                        <Mail size={10} />
-                      </a>
-                    )}
-                  </span>
-                }>
-                  <input className={inputCls} value={form.email || ''}
-                    onChange={(e) => update('email', e.target.value)} placeholder="optional" />
+                <Field
+                  label={
+                    <span className="flex items-center gap-1.5">
+                      Email
+                      {lead.email && (
+                        <a
+                          href={`mailto:${lead.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-amber-500 hover:text-amber-400 transition"
+                          title={`Email ${lead.email}`}
+                        >
+                          <Mail size={10} />
+                        </a>
+                      )}
+                    </span>
+                  }
+                >
+                  <input
+                    className={inputCls}
+                    value={form.email || ""}
+                    onChange={(e) => update("email", e.target.value)}
+                    placeholder="optional"
+                  />
                 </Field>
                 <Field label="Renter / Owner">
-                  <select className={inputCls} value={form.ownership || ''}
-                    onChange={(e) => update('ownership', e.target.value)}>
+                  <select
+                    className={inputCls}
+                    value={form.ownership || ""}
+                    onChange={(e) => update("ownership", e.target.value)}
+                  >
                     <option value="">—</option>
                     <option>Renter</option>
                     <option>Owner</option>
@@ -370,9 +722,12 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 {/* Address — full width */}
                 <div className="col-span-2">
                   <Field label="Address">
-                    <input className={inputCls} value={addressStr}
+                    <input
+                      className={inputCls}
+                      value={addressStr}
                       onChange={(e) => updateAddress(e.target.value)}
-                      placeholder="15 Smith St Bentleigh 3204" />
+                      placeholder="15 Smith St Bentleigh 3204"
+                    />
                   </Field>
                 </div>
 
@@ -380,8 +735,11 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 <div className="col-span-2">
                   <Field label="Suburb">
                     <SuburbInput
-                      value={form.suburb ?? ''}
-                      onChange={(v) => { setForm((f) => ({ ...f, suburb: v })); setDirty(true); }}
+                      value={form.suburb ?? ""}
+                      onChange={(v) => {
+                        setForm((f) => ({ ...f, suburb: v }));
+                        setDirty(true);
+                      }}
                       className={inputCls}
                       placeholder="Suburb"
                     />
@@ -390,27 +748,43 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
                 {/* Super + DQ Rep */}
                 <Field label="Superannuation">
-                  <select className={inputCls} value={form.superannuation || ''}
-                    onChange={(e) => update('superannuation', e.target.value)}>
+                  <select
+                    className={inputCls}
+                    value={form.superannuation || ""}
+                    onChange={(e) => update("superannuation", e.target.value)}
+                  >
                     <option value="">—</option>
-                    {SUPER_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                    {SUPER_OPTIONS.map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="DQ Rep">
-                  <select className={inputCls} value={form.dqRep || ''}
-                    onChange={(e) => update('dqRep', Number(e.target.value))}>
+                  <select
+                    className={inputCls}
+                    value={form.dqRep || ""}
+                    onChange={(e) => update("dqRep", Number(e.target.value))}
+                  >
                     <option value="">— Select —</option>
-                    {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    {activeReps.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
                     {formerReps.length > 0 && (
                       <optgroup label="── Former Staff ──">
-                        {formerReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        {formerReps.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
                       </optgroup>
                     )}
                   </select>
                 </Field>
 
                 {/* ── Booked Details — only shown when status is Booked ───── */}
-                {form.status === 'Booked' && (
+                {form.status === "Booked" && (
                   <div className="col-span-2 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 space-y-3">
                     <div className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide flex items-center gap-1.5 mb-1">
                       📋 Booked Details
@@ -428,14 +802,22 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                       <Field label="FC Rep">
                         <select
                           className={`${inputCls} border-green-200 dark:border-green-700`}
-                          value={form.fcRep || ''}
-                          onChange={(e) => update('fcRep', e.target.value ? Number(e.target.value) : undefined)}
+                          value={form.fcRep || ""}
+                          onChange={(e) => update("fcRep", e.target.value ? Number(e.target.value) : undefined)}
                         >
                           <option value="">— Select FC —</option>
-                          {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          {activeReps.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
                           {formerReps.length > 0 && (
                             <optgroup label="── Former Staff ──">
-                              {formerReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                              {formerReps.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name}
+                                </option>
+                              ))}
                             </optgroup>
                           )}
                         </select>
@@ -445,14 +827,22 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                       <Field label="FR Rep">
                         <select
                           className={`${inputCls} border-green-200 dark:border-green-700`}
-                          value={form.frRep || ''}
-                          onChange={(e) => update('frRep', e.target.value ? Number(e.target.value) : undefined)}
+                          value={form.frRep || ""}
+                          onChange={(e) => update("frRep", e.target.value ? Number(e.target.value) : undefined)}
                         >
                           <option value="">— Select FR —</option>
-                          {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          {activeReps.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
                           {formerReps.length > 0 && (
                             <optgroup label="── Former Staff ──">
-                              {formerReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                              {formerReps.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name}
+                                </option>
+                              ))}
                             </optgroup>
                           )}
                         </select>
@@ -463,14 +853,22 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                         <Field label="PS Rep (Post-Settlement)">
                           <select
                             className={`${inputCls} border-green-200 dark:border-green-700`}
-                            value={form.psRep || ''}
-                            onChange={(e) => update('psRep', e.target.value ? Number(e.target.value) : undefined)}
+                            value={form.psRep || ""}
+                            onChange={(e) => update("psRep", e.target.value ? Number(e.target.value) : undefined)}
                           >
                             <option value="">— Select PS Rep —</option>
-                            {activeReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            {activeReps.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                              </option>
+                            ))}
                             {formerReps.length > 0 && (
                               <optgroup label="── Former Staff ──">
-                                {formerReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                {formerReps.map((r) => (
+                                  <option key={r.id} value={r.id}>
+                                    {r.name}
+                                  </option>
+                                ))}
                               </optgroup>
                             )}
                           </select>
@@ -484,23 +882,23 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                         type="button"
                         onClick={() => {
                           const next = !form.dnqFellOver;
-                          update('dnqFellOver', next);
-                          if (!next) update('dnqNotes', '');
+                          update("dnqFellOver", next);
+                          if (!next) update("dnqNotes", "");
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                          form.dnqFellOver
-                            ? 'bg-red-500'
-                            : 'bg-gray-300 dark:bg-[var(--surface)]'
+                          form.dnqFellOver ? "bg-red-500" : "bg-gray-300 dark:bg-[var(--surface)]"
                         }`}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                            form.dnqFellOver ? 'translate-x-6' : 'translate-x-1'
+                            form.dnqFellOver ? "translate-x-6" : "translate-x-1"
                           }`}
                         />
                       </button>
-                      <span className={`text-sm font-semibold ${form.dnqFellOver ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {form.dnqFellOver ? '❌ DNQ / Fell Over' : 'DNQ / Fell Over?'}
+                      <span
+                        className={`text-sm font-semibold ${form.dnqFellOver ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"}`}
+                      >
+                        {form.dnqFellOver ? "❌ DNQ / Fell Over" : "DNQ / Fell Over?"}
                       </span>
                     </div>
 
@@ -514,8 +912,8 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                           className="w-full px-3 py-2 text-sm rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
                           rows={3}
                           placeholder="Why did this fall over? e.g. Client changed mind, couldn't verify super, no show…"
-                          value={form.dnqNotes || ''}
-                          onChange={(e) => update('dnqNotes', e.target.value)}
+                          value={form.dnqNotes || ""}
+                          onChange={(e) => update("dnqNotes", e.target.value)}
                         />
                       </div>
                     )}
@@ -523,15 +921,23 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 )}
 
                 {/* Callback — conditional, full width */}
-                {(form.status === 'Revisit' || form.callbackDate) && (
+                {(form.status === "Revisit" || form.callbackDate) && (
                   <div className="col-span-2 grid grid-cols-2 gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
                     <Field label="Callback Date">
-                      <input type="date" className={inputCls} value={form.callbackDate || ''}
-                        onChange={(e) => update('callbackDate', e.target.value)} />
+                      <input
+                        type="date"
+                        className={inputCls}
+                        value={form.callbackDate || ""}
+                        onChange={(e) => update("callbackDate", e.target.value)}
+                      />
                     </Field>
                     <Field label="Callback Time">
-                      <input type="time" className={inputCls} value={form.callbackTime || ''}
-                        onChange={(e) => update('callbackTime', e.target.value)} />
+                      <input
+                        type="time"
+                        className={inputCls}
+                        value={form.callbackTime || ""}
+                        onChange={(e) => update("callbackTime", e.target.value)}
+                      />
                     </Field>
                   </div>
                 )}
@@ -543,11 +949,11 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                       <div className="flex flex-wrap gap-1.5 mt-0.5">
                         <button
                           type="button"
-                          onClick={() => update('knockResult', '')}
+                          onClick={() => update("knockResult", "")}
                           className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
                             !form.knockResult
-                              ? 'bg-gray-700 text-white border-gray-700 dark:bg-gray-500 dark:border-gray-500'
-                              : 'border-gray-300 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]'
+                              ? "bg-gray-700 text-white border-gray-700 dark:bg-gray-500 dark:border-gray-500"
+                              : "border-gray-300 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
                           }`}
                         >
                           None
@@ -561,11 +967,11 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                             <button
                               key={id}
                               type="button"
-                              onClick={() => update('knockResult', id)}
+                              onClick={() => update("knockResult", id)}
                               className="px-2.5 py-1 rounded-full text-xs font-medium border transition"
                               style={
                                 active
-                                  ? { backgroundColor: color, borderColor: color, color: '#fff' }
+                                  ? { backgroundColor: color, borderColor: color, color: "#fff" }
                                   : { borderColor: color, color: color }
                               }
                             >
@@ -590,22 +996,29 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 <div className="col-span-2">
                   <Field label="Notes">
                     <textarea
+                      id="lead-note-text"
                       className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
                       rows={3}
                       placeholder="Add notes about this lead…"
-                      value={form.notes || ''}
-                      onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); setDirty(true); }}
+                      value={form.notes || ""}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, notes: e.target.value }));
+                        setDirty(true);
+                      }}
                     />
                   </Field>
                 </div>
-
               </div>
 
               {/* Save / Discard footer — only when dirty */}
               {dirty && (
                 <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
                   <button
-                    onClick={() => { setForm(lead); setAddressStr(buildAddress(lead)); setDirty(false); }}
+                    onClick={() => {
+                      setForm(lead);
+                      setAddressStr(buildAddress(lead));
+                      setDirty(false);
+                    }}
                     className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                   >
                     Discard
@@ -629,10 +1042,89 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                   <Paperclip size={14} />
                   Files &amp; Forms
                   {leadFiles.length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold">{leadFiles.length}</span>
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                      {leadFiles.length}
+                    </span>
                   )}
                   {uploading && <span className="text-amber-500 text-xs font-normal">Uploading…</span>}
                 </button>
+              </div>
+
+              {/* ── Note History ─────────────────────────────────────────── */}
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <StickyNote size={12} />
+                  Note History
+                  {leadNotes.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                      {leadNotes.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Composer */}
+                <div className="flex gap-2 mb-3">
+                  <textarea
+                    ref={noteInputRef}
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+                    rows={2}
+                    placeholder="Add a note… (Ctrl+Enter to save)"
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        void handleAddNote();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => void handleAddNote()}
+                    disabled={!noteText.trim() || addingNote || !currentUser}
+                    className="self-end px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-400 transition disabled:opacity-40 flex items-center gap-1 flex-shrink-0"
+                  >
+                    {addingNote ? <Loader size={12} className="animate-spin" /> : <MessageSquare size={12} />}
+                    Add
+                  </button>
+                </div>
+
+                {/* Note list */}
+                {notesLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 py-2">
+                    <Loader size={12} className="animate-spin" /> Loading notes…
+                  </div>
+                ) : leadNotes.length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    No notes yet — type above to add the first one.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {leadNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="group flex gap-2 p-2.5 bg-amber-50/60 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-900/30"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap break-words">
+                            {note.text}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            {note.createdBy} · {timeAgoMs(note.createdAt)}
+                          </p>
+                        </div>
+                        {(currentUser?.role === "admin" || currentUser?.id === note.createdById) && (
+                          <button
+                            onClick={() => void deleteLeadNote(String(lead.id), note.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition flex-shrink-0 self-start mt-0.5"
+                            title="Delete note"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* ── Call History — kept in main column ───────────────────── */}
@@ -645,30 +1137,41 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                     {[...(lead.callHistory || [])].reverse().map((call, i, arr) => (
                       <div key={i} className="flex gap-3 relative">
                         <div className="flex flex-col items-center flex-shrink-0">
-                          <div className={`w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ${
-                            call.result === 'booked' ? 'bg-purple-500' :
-                            call.result === 'not-interested' ? 'bg-red-500' :
-                            call.result === 'callback' || call.result === 'callback-today' ? 'bg-orange-500' :
-                            call.result === 'no-answer' ? 'bg-gray-400' :
-                            'bg-amber-400'
-                          }`} />
-                          {i < arr.length - 1 && <div className="w-0.5 bg-gray-200 dark:bg-[var(--hover)] flex-1 mt-1 mb-1 min-h-[12px]" />}
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ${
+                              call.result === "booked"
+                                ? "bg-purple-500"
+                                : call.result === "not-interested"
+                                  ? "bg-red-500"
+                                  : call.result === "callback" || call.result === "callback-today"
+                                    ? "bg-orange-500"
+                                    : call.result === "no-answer"
+                                      ? "bg-gray-400"
+                                      : "bg-amber-400"
+                            }`}
+                          />
+                          {i < arr.length - 1 && (
+                            <div className="w-0.5 bg-gray-200 dark:bg-[var(--hover)] flex-1 mt-1 mb-1 min-h-[12px]" />
+                          )}
                         </div>
                         <div className="pb-3 flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
                             <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 capitalize">
-                              {call.result?.replace(/-/g, ' ')}
+                              {call.result?.replace(/-/g, " ")}
                             </span>
                             <span className="text-xs text-gray-400 flex-shrink-0">{call.rep}</span>
                           </div>
                           <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">
                             {(() => {
                               // Support both new format (date=YYYY-MM-DD, time=HH:MM) and old (ISO strings)
-                              const isNewFmt = /^\d{4}-\d{2}-\d{2}$/.test(call.date ?? '') && /^\d{2}:\d{2}$/.test(call.time ?? '');
+                              const isNewFmt =
+                                /^\d{4}-\d{2}-\d{2}$/.test(call.date ?? "") && /^\d{2}:\d{2}$/.test(call.time ?? "");
                               const dt = isNewFmt
                                 ? new Date(`${call.date}T${call.time}`)
-                                : new Date(call.time || call.date || '');
-                              return isNaN(dt.getTime()) ? (call.date ?? '') : dt.toLocaleString('en-AU', { dateStyle: 'short', timeStyle: 'short' });
+                                : new Date(call.time || call.date || "");
+                              return isNaN(dt.getTime())
+                                ? (call.date ?? "")
+                                : dt.toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" });
                             })()}
                           </div>
                           {call.notes && (
@@ -679,6 +1182,66 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+              {/* ── Linked Appointments ──────────────────────────────────── */}
+              {linkedAppointments.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06]">
+                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                    <CalendarDays size={12} />
+                    Linked Appointments ({linkedAppointments.length})
+                  </div>
+                  <div className="space-y-2">
+                    {linkedAppointments.map((appt) => {
+                      const dateFormatted = new Date(appt.date + "T00:00").toLocaleDateString("en-AU", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      });
+                      const apptRep = reps.find((r) => r.id === appt.repId);
+                      // Derive a readable status label
+                      const statusLabel = appt.status.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                      // Colour-code by status group
+                      const statusStyle =
+                        appt.status === "completed" || appt.status === "fc-complete-fr-booked"
+                          ? { backgroundColor: "#22c55e22", color: "#22c55e" }
+                          : appt.status === "no-show" || appt.status === "cancelled"
+                            ? { backgroundColor: "#ef444422", color: "#ef4444" }
+                            : appt.status === "confirmed" || appt.status === "arrived" || appt.status === "started"
+                              ? { backgroundColor: "#6366f122", color: "#6366f1" }
+                              : { backgroundColor: "#f9731622", color: "#f97316" };
+                      return (
+                        <div
+                          key={appt.id}
+                          className="p-2.5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-lg border border-indigo-100 dark:border-indigo-900/30"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                                {appt.title}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {dateFormatted} · {appt.startTime}
+                                {apptRep ? ` · ${apptRep.name}` : ""}
+                              </p>
+                            </div>
+                            <span
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 whitespace-nowrap"
+                              style={statusStyle}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                          {appt.notes && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                              {appt.notes}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -701,11 +1264,15 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                     Files &amp; Forms — {lead.name}
                   </h3>
                   {leadFiles.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold">{leadFiles.length}</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                      {leadFiles.length}
+                    </span>
                   )}
                 </div>
-                <button onClick={() => setShowFilesPanel(false)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400 transition">
+                <button
+                  onClick={() => setShowFilesPanel(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400 transition"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -716,7 +1283,10 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                 {templates.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => { setShowFilesPanel(false); handleFillForm(); }}
+                    onClick={() => {
+                      setShowFilesPanel(false);
+                      handleFillForm();
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-sm font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
                   >
                     <ClipboardList size={14} />
@@ -729,70 +1299,138 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
                 {/* Upload buttons */}
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Attach Files</p>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Attach Files
+                  </p>
                   <div className="flex gap-2 flex-wrap">
-                    <button type="button" onClick={() => docInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={() => docInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50"
+                    >
                       <FileText size={13} /> Document
                     </button>
-                    <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50"
+                    >
                       <Image size={13} /> Photo
                     </button>
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50"
+                    >
                       <File size={13} /> File
                     </button>
-                    <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-600 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-600 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition disabled:opacity-50"
+                    >
                       <Camera size={13} /> Camera
                     </button>
                   </div>
                 </div>
 
                 {/* Hidden file inputs */}
-                <input ref={docInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'document'); e.target.value = ''; }} />
-                <input ref={photoInputRef} type="file" className="hidden" accept="image/*"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'photo'); e.target.value = ''; }} />
-                <input ref={fileInputRef} type="file" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'file'); e.target.value = ''; }} />
-                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-                  onChange={handleCameraCapture} />
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileUpload(f, "document");
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileUpload(f, "photo");
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileUpload(f, "file");
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleCameraCapture}
+                />
 
                 {/* Camera staging area */}
                 {stagedPhotos.length > 0 && (
                   <div className="rounded-xl border-2 border-dashed border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10 p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                        <Camera size={11} /> {stagedPhotos.length} photo{stagedPhotos.length !== 1 ? 's' : ''} staged
+                        <Camera size={11} /> {stagedPhotos.length} photo{stagedPhotos.length !== 1 ? "s" : ""} staged
                       </span>
-                      <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}
-                        className="text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-50">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={uploading}
+                        className="text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-50"
+                      >
                         + Take Another
                       </button>
                     </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       {stagedPreviews.map((src, i) => (
                         <div key={i} className="relative group">
-                          <img src={src} alt={`Photo ${i + 1}`}
-                            className="w-full h-16 object-cover rounded-lg border border-amber-200 dark:border-amber-700" />
-                          <button type="button" onClick={() => handleRemoveStaged(i)}
-                            className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
+                          <img
+                            src={src}
+                            alt={`Photo ${i + 1}`}
+                            className="w-full h-16 object-cover rounded-lg border border-amber-200 dark:border-amber-700"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStaged(i)}
+                            className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                          >
                             <XCircle size={12} />
                           </button>
                         </div>
                       ))}
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" onClick={handleDiscardAllStaged} disabled={uploading}
-                        className="flex-1 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50 flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={handleDiscardAllStaged}
+                        disabled={uploading}
+                        className="flex-1 py-1.5 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
                         <XCircle size={11} /> Discard
                       </button>
-                      <button type="button" onClick={handleUploadStaged} disabled={uploading}
-                        className="flex-1 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-400 transition disabled:opacity-50 flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={handleUploadStaged}
+                        disabled={uploading}
+                        className="flex-1 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-400 transition disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
                         <Upload size={11} />
-                        {uploading ? 'Uploading…' : `Upload ${stagedPhotos.length}`}
+                        {uploading ? "Uploading…" : `Upload ${stagedPhotos.length}`}
                       </button>
                     </div>
                   </div>
@@ -809,9 +1447,12 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                     <div className="space-y-2">
                       {leadFiles.map((lf) => (
                         <div key={lf.id} className="p-2.5 bg-gray-50 dark:bg-[var(--surface)] rounded-lg">
-                          {lf.type === 'photo' && (
-                            <img src={lf.downloadUrl} alt={lf.name}
-                              className="w-full h-28 object-cover rounded-md mb-2" />
+                          {lf.type === "photo" && (
+                            <img
+                              src={lf.downloadUrl}
+                              alt={lf.name}
+                              className="w-full h-28 object-cover rounded-md mb-2"
+                            />
                           )}
                           <div className="flex items-start gap-2">
                             <span className="text-base leading-none mt-0.5">{fileTypeIcon(lf.fileType)}</span>
@@ -821,13 +1462,22 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
                                 {formatFileSize(lf.fileSize)} · {lf.uploadedBy} · {timeAgoMs(lf.uploadedAt)}
                               </p>
                             </div>
-                            <a href={lf.downloadUrl} target="_blank" rel="noopener noreferrer"
-                              className="p-1 text-gray-400 hover:text-amber-500 transition" title="Download">
+                            <a
+                              href={lf.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-gray-400 hover:text-amber-500 transition"
+                              title="Download"
+                            >
                               <Download size={13} />
                             </a>
-                            {(currentUser?.role === 'admin' || currentUser?.name === lf.uploadedBy) && (
-                              <button type="button" onClick={() => deleteLeadFile(String(lead.id), lf)}
-                                className="p-1 text-gray-400 hover:text-red-500 transition" title="Delete">
+                            {(currentUser?.role === "admin" || currentUser?.name === lf.uploadedBy) && (
+                              <button
+                                type="button"
+                                onClick={() => deleteLeadFile(String(lead.id), lf)}
+                                className="p-1 text-gray-400 hover:text-red-500 transition"
+                                title="Delete"
+                              >
                                 <Trash2 size={13} />
                               </button>
                             )}
@@ -851,18 +1501,28 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
             <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[70vh]">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">Select a Form Template</h3>
-                <button onClick={() => setFormPickerOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400">
+                <button
+                  onClick={() => setFormPickerOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[var(--hover)] text-gray-400"
+                >
                   <X size={16} />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                 {templates.map((t) => (
-                  <button key={t.id} onClick={() => { setSelectedTemplate(t); setFormPickerOpen(false); }}
-                    className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-white/[0.06] hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition">
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTemplate(t);
+                      setFormPickerOpen(false);
+                    }}
+                    className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-white/[0.06] hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                  >
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.name}</p>
                     {t.description && <p className="text-xs text-gray-400 mt-0.5">{t.description}</p>}
-                    <p className="text-xs text-gray-400 mt-1">{t.fields.length} field{t.fields.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {t.fields.length} field{t.fields.length !== 1 ? "s" : ""}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -873,11 +1533,13 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 
       {/* Form Filler Modal */}
       {selectedTemplate && currentUser && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-            <Loader size={32} className="animate-spin text-amber-500" />
-          </div>
-        }>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+              <Loader size={32} className="animate-spin text-amber-500" />
+            </div>
+          }
+        >
           <FormFillerModal
             template={selectedTemplate}
             lead={lead}
@@ -896,7 +1558,7 @@ export function LeadSidebar({ lead, onClose, onSave, onDelete, onCall, customPin
 function timeAgoMs(ms: number): string {
   const diff = Date.now() - ms;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -905,10 +1567,10 @@ function timeAgoMs(ms: number): string {
 }
 
 const inputCls =
-  'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400';
+  "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
 const readOnlyCls =
-  'w-full px-3 py-2 rounded-lg border border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50 text-gray-700 dark:text-gray-300 text-sm';
+  "w-full px-3 py-2 rounded-lg border border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]/50 text-gray-700 dark:text-gray-300 text-sm";
 
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (

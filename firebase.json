@@ -1,14 +1,32 @@
 {
-  "functions": {
-    "source": "functions"
-  },
   "hosting": {
     "site": "amplify-leads-2026",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [
+      {
+        "source": "/smsf/**",
+        "destination": "/smsf/index.html"
+      },
+      {
+        "source": "/pia/**",
+        "destination": "/pia/index.html"
+      },
+      {
+        "source": "/docusignWebhook",
+        "function": "docusignWebhook"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   },
   "firestore": {
+    "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions"
   }
 }

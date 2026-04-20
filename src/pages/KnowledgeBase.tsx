@@ -13,6 +13,7 @@ import { KBArticle, KBCategory } from "../types";
 import { useAppStore } from "../stores/appStore";
 import { useKBArticles, useSaveKBArticle, useDeleteKBArticle, useIncrementKBViews } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
+import { AICoachingPanel } from "../components/AICoachingPanel";
 import {
   BookOpen,
   Search,
@@ -27,6 +28,7 @@ import {
   Tag,
   Clock,
   Save,
+  Zap,
 } from "lucide-react";
 
 const KB_CATEGORIES: KBCategory[] = [
@@ -868,6 +870,9 @@ export function KnowledgeBasePage() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  // View mode: "articles" or "ai-coaching"
+  const [viewMode, setViewMode] = useState<"articles" | "ai-coaching">("articles");
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [newArticle, setNewArticle] = useState(false);
@@ -969,138 +974,182 @@ export function KnowledgeBasePage() {
     <div className="flex-1 flex overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
       {/* ── Left panel ── */}
       <div className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--surface)]">
-        {/* Search + New button */}
-        <div className="p-3 border-b border-gray-200 dark:border-white/[0.06] space-y-2">
-          {/* Prominent full-text search */}
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search articles by title, content or tag…"
-              className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Result count when searching */}
-          {search && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 px-0.5">
-              {filtered.length} result{filtered.length !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
-            </p>
-          )}
-
-          {/* Category filter + New button */}
-          <div className="flex items-center gap-2">
-            <select
-              className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value as KBCategory | "all")}
+        {/* View mode toggle */}
+        <div className="p-3 border-b border-gray-200 dark:border-white/[0.06]">
+          <div className="flex gap-1 bg-gray-100 dark:bg-white/5 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode("articles")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition ${
+                viewMode === "articles"
+                  ? "bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
             >
-              <option value="all">All Categories</option>
-              {KB_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_ICONS[c]} {c}
-                </option>
-              ))}
-            </select>
-            {isAdmin && (
-              <>
-                <button
-                  onClick={() => {
-                    setNewArticle(true);
-                    setEditing(false);
-                    setSelectedId(null);
-                  }}
-                  className="flex-shrink-0 w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center hover:bg-amber-400 transition"
-                  title="New Article"
-                >
-                  <Plus size={14} />
-                </button>
-                {articles.length === 0 && (
+              <BookOpen size={12} /> Articles
+            </button>
+            <button
+              onClick={() => setViewMode("ai-coaching")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition ${
+                viewMode === "ai-coaching"
+                  ? "bg-white dark:bg-[var(--surface)] text-gray-800 dark:text-gray-200 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              <Zap size={12} /> AI Coaching
+            </button>
+          </div>
+        </div>
+
+        {viewMode === "ai-coaching" ? (
+          /* AI Coaching panel in left sidebar */
+          <div className="flex-1 overflow-y-auto p-3">
+            <AICoachingPanel
+              onLaunchScenario={(id) => {
+                window.dispatchEvent(new CustomEvent("launch-scenario", { detail: id }));
+              }}
+              onUseResponse={(text) => {
+                showToast(`Response ready: "${text.substring(0, 50)}…"`, "info");
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Search + New button */}
+            <div className="p-3 border-b border-gray-200 dark:border-white/[0.06] space-y-2">
+              {/* Prominent full-text search */}
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search articles by title, content or tag…"
+                  className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                {search && (
                   <button
-                    onClick={handleSeedDefaults}
-                    disabled={seeding}
-                    className="flex-shrink-0 px-2 py-1 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-500 disabled:opacity-50 transition whitespace-nowrap"
-                    title="Populate with default articles for all features"
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {seeding ? "Seeding…" : "✨ Seed"}
+                    <X size={14} />
                   </button>
                 )}
-              </>
-            )}
-          </div>
-        </div>
+              </div>
 
-        {/* Article list */}
-        <div className="flex-1 overflow-y-auto py-2">
-          {loading ? (
-            <div className="px-4 py-8 text-center text-xs text-gray-400">Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center">
-              <BookOpen size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-              <p className="text-xs text-gray-400">{search ? "No articles match your search" : "No articles yet"}</p>
-              {isAdmin && !search && (
-                <button
-                  onClick={() => {
-                    setNewArticle(true);
-                    setEditing(false);
-                    setSelectedId(null);
-                  }}
-                  className="mt-2 text-xs text-amber-600 dark:text-amber-400 hover:underline"
+              {/* Result count when searching */}
+              {search && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 px-0.5">
+                  {filtered.length} result{filtered.length !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
+                </p>
+              )}
+
+              {/* Category filter + New button */}
+              <div className="flex items-center gap-2">
+                <select
+                  className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value as KBCategory | "all")}
                 >
-                  Create your first article
-                </button>
+                  <option value="all">All Categories</option>
+                  {KB_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_ICONS[c]} {c}
+                    </option>
+                  ))}
+                </select>
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setNewArticle(true);
+                        setEditing(false);
+                        setSelectedId(null);
+                      }}
+                      className="flex-shrink-0 w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center hover:bg-amber-400 transition"
+                      title="New Article"
+                    >
+                      <Plus size={14} />
+                    </button>
+                    {articles.length === 0 && (
+                      <button
+                        onClick={handleSeedDefaults}
+                        disabled={seeding}
+                        className="flex-shrink-0 px-2 py-1 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-500 disabled:opacity-50 transition whitespace-nowrap"
+                        title="Populate with default articles for all features"
+                      >
+                        {seeding ? "Seeding…" : "✨ Seed"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Article list */}
+            <div className="flex-1 overflow-y-auto py-2">
+              {loading ? (
+                <div className="px-4 py-8 text-center text-xs text-gray-400">Loading…</div>
+              ) : filtered.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <BookOpen size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                  <p className="text-xs text-gray-400">
+                    {search ? "No articles match your search" : "No articles yet"}
+                  </p>
+                  {isAdmin && !search && (
+                    <button
+                      onClick={() => {
+                        setNewArticle(true);
+                        setEditing(false);
+                        setSelectedId(null);
+                      }}
+                      className="mt-2 text-xs text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                      Create your first article
+                    </button>
+                  )}
+                </div>
+              ) : (
+                Array.from(grouped.entries()).map(([cat, catArticles]) => (
+                  <div key={cat} className="mb-2">
+                    <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-wide">
+                      {CATEGORY_ICONS[cat as KBCategory]} {cat}
+                    </div>
+                    {catArticles.map((article) => (
+                      <button
+                        key={article.id}
+                        onClick={() => handleSelect(article)}
+                        className={`w-full text-left px-3 py-2 flex items-start gap-2 transition ${
+                          selectedId === article.id
+                            ? "bg-amber-50 dark:bg-amber-900/20 border-r-2 border-amber-500"
+                            : "hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
+                        }`}
+                      >
+                        {article.pinned && <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📌</span>}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-xs font-medium truncate ${selectedId === article.id ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}
+                          >
+                            <HighlightMatch text={article.title} query={search} />
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">{article.views} views</p>
+                        </div>
+                        {selectedId === article.id && (
+                          <ChevronRight size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))
               )}
             </div>
-          ) : (
-            Array.from(grouped.entries()).map(([cat, catArticles]) => (
-              <div key={cat} className="mb-2">
-                <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-wide">
-                  {CATEGORY_ICONS[cat as KBCategory]} {cat}
-                </div>
-                {catArticles.map((article) => (
-                  <button
-                    key={article.id}
-                    onClick={() => handleSelect(article)}
-                    className={`w-full text-left px-3 py-2 flex items-start gap-2 transition ${
-                      selectedId === article.id
-                        ? "bg-amber-50 dark:bg-amber-900/20 border-r-2 border-amber-500"
-                        : "hover:bg-gray-50 dark:hover:bg-[var(--hover)]"
-                    }`}
-                  >
-                    {article.pinned && <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📌</span>}
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-xs font-medium truncate ${selectedId === article.id ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"}`}
-                      >
-                        <HighlightMatch text={article.title} query={search} />
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{article.views} views</p>
-                    </div>
-                    {selectedId === article.id && (
-                      <ChevronRight size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            ))
-          )}
-        </div>
 
-        {/* Stats footer */}
-        <div className="px-3 py-2 border-t border-gray-200 dark:border-white/[0.06] text-xs text-gray-400">
-          {articles.length} article{articles.length !== 1 ? "s" : ""} ·{" "}
-          {KB_CATEGORIES.filter((c) => articles.some((a) => a.category === c)).length} categories
-        </div>
+            {/* Stats footer */}
+            <div className="px-3 py-2 border-t border-gray-200 dark:border-white/[0.06] text-xs text-gray-400">
+              {articles.length} article{articles.length !== 1 ? "s" : ""} ·{" "}
+              {KB_CATEGORIES.filter((c) => articles.some((a) => a.category === c)).length} categories
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Right panel ── */}

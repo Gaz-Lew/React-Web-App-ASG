@@ -1,8 +1,12 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Lead, FilterOptions, LeadStatus, DEFAULT_STATUS_COLORS } from "../types";
+import { LEAD_STATUS_OPTIONS } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
 import { useToast } from "../context/ToastContext";
 import { Phone, Clock, Eye, ChevronDown, ChevronRight, Columns, Bookmark } from "lucide-react";
+import { formatDateSmart, formatDateRelative, formatDateFull, timeAgo } from "../lib/dates";
+import { normalizeAUPhone, formatPhoneForDisplay } from "../lib/utils";
+import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
 
 interface DataTableProps {
   leads: Lead[];
@@ -11,6 +15,8 @@ interface DataTableProps {
   onAddCall: (lead: Lead) => void;
   onDeleteLead: (lead: Lead) => void;
   onUpdateLead: (lead: Lead) => void;
+  onNextAction?: (lead: Lead) => void;
+  flashedLeadId?: number | null;
   currentUserId?: number;
   isAdmin?: boolean;
 }
@@ -36,7 +42,7 @@ function SkeletonRow({ cols }: { cols: number }) {
 
 function SkeletonCard() {
   return (
-    <div className="p-4 border-b border-gray-100 dark:border-white/[0.06]/50">
+    <div className="p-4 border-b border-[var(--border)]">
       <div className="flex items-center justify-between mb-2">
         <div className="h-4 w-36 rounded skeleton-shimmer" />
         <div className="h-5 w-16 rounded-full skeleton-shimmer" />
@@ -63,13 +69,11 @@ interface FilterPreset {
 
 const STATUS_TABS: { label: string; value: LeadStatus | "all" }[] = [
   { label: "All Leads", value: "all" },
-  { label: "DQ", value: "DQ" },
-  { label: "Live", value: "Live" },
-  { label: "Booked", value: "Booked" },
-  { label: "Revisit", value: "Revisit" },
-  { label: "Not Interested", value: "Not Interested" },
-  { label: "Wrong Number", value: "Wrong Number" },
-  { label: "No Answer", value: "No Answer" },
+  { label: "New", value: "new" },
+  { label: "Contacted", value: "contacted" },
+  { label: "Qualified", value: "qualified" },
+  { label: "Booked", value: "booked" },
+  { label: "Lost", value: "lost" },
 ];
 
 // Columns that can be toggled (Name and Action always visible)
@@ -134,21 +138,10 @@ function normalizeDateKey(dateStr: string | undefined | null): string {
 }
 
 function formatGroupDate(isoDate: string): string {
-  try {
-    const [year, month, day] = isoDate.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
-    if (isNaN(d.getTime())) return isoDate;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((today.getTime() - d.getTime()) / 86400000);
-    const longDate = d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    if (diffDays === 0) return `Today  ·  ${longDate}`;
-    if (diffDays === 1) return `Yesterday  ·  ${longDate}`;
-    if (diffDays > 1 && diffDays <= 6) return `${diffDays} days ago  ·  ${longDate}`;
-    return longDate;
-  } catch {
-    return isoDate;
-  }
+  const longDate = formatDateFull(isoDate);
+  const relative = formatDateRelative(isoDate);
+  if (relative === "-" || relative === isoDate) return longDate;
+  return `${relative}  ·  ${longDate}`;
 }
 
 // Street-type words often found in dirty suburb fields — excluded from suburb filter
@@ -245,6 +238,8 @@ export function DataTable({
   onAddCall,
   onDeleteLead,
   onUpdateLead,
+  onNextAction,
+  flashedLeadId,
   currentUserId,
   isAdmin,
 }: DataTableProps) {
@@ -265,9 +260,9 @@ export function DataTable({
   const [filters, setFilters] = useState<FilterOptions>({});
   const [currentTab, setCurrentTab] = useState<LeadStatus | "all">(() => {
     const stored = localStorage.getItem("asgActiveTab");
-    return (stored as LeadStatus | "all") ?? "DQ";
+    return (stored as LeadStatus | "all") ?? "new";
   });
-  const [bulkStatus, setBulkStatus] = useState<LeadStatus>("DQ");
+  const [bulkStatus, setBulkStatus] = useState<LeadStatus>("new");
   const [bulkRep, setBulkRep] = useState<number | "">("");
   const [bulkDate, setBulkDate] = useState("");
   const [bulkSuburb, setBulkSuburb] = useState("");
@@ -600,36 +595,40 @@ export function DataTable({
   };
 
   const daysSinceCall = (lastCall: string | undefined) => {
-    if (!lastCall) return "Never";
-    const days = Math.floor((Date.now() - new Date(lastCall).getTime()) / 86400000);
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    return `${days}d ago`;
+    return timeAgo(lastCall ? new Date(lastCall).getTime() : undefined);
   };
 
-  // Short date for the Date column (e.g. "16 Mar")
-  const formatShortDate = (isoDate: string | undefined): string => {
-    if (!isoDate) return "—";
-    try {
-      const [year, month, day] = isoDate.split("-").map(Number);
-      return new Date(year, month - 1, day).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
-    } catch {
-      return isoDate;
+  // Priority tint: red = no contact, amber = follow-up, green = booked
+  const getRowPriority = (lead: Lead): { bg: string; border: string } => {
+    if (lead.status === "booked" || lead.status === "Booked") {
+      return { bg: "bg-green-50/40 dark:bg-green-900/5", border: "border-l-2 border-l-green-400" };
     }
+    if (lead.status === "qualified" || lead.callbackDate) {
+      return { bg: "bg-amber-50/40 dark:bg-amber-900/5", border: "border-l-2 border-l-amber-400" };
+    }
+    if (!lead.callHistory || lead.callHistory.length === 0) {
+      return { bg: "bg-red-50/40 dark:bg-red-900/5", border: "border-l-2 border-l-red-400" };
+    }
+    return { bg: "", border: "border-l-2 border-l-transparent" };
+  };
+
+  // Short date for the Date column (e.g. "10 Apr")
+  const formatShortDate = (isoDate: string | undefined): string => {
+    return formatDateSmart(isoDate);
   };
 
   const SortArrow = ({ col }: { col: keyof Lead }) =>
     sortBy === col ? <span className="ml-1 text-amber-500">{sortOrder === "asc" ? "↑" : "↓"}</span> : null;
 
   const thCls =
-    "px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 transition whitespace-nowrap";
+    "px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide cursor-pointer select-none hover:text-[var(--text)] transition whitespace-nowrap";
   const thStatic =
-    "px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap";
+    "px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap";
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-[var(--surface)]">
+    <div className="w-full h-full flex flex-col bg-[var(--surface)]">
       {/* ── Toolbar ── */}
-      <div className="border-b border-gray-200 dark:border-white/[0.06] p-4 space-y-3 flex-shrink-0">
+      <div className="border-b border-[var(--border)] p-4 space-y-3 flex-shrink-0">
         {/* Search & Filters */}
         <div className="flex gap-2 flex-wrap items-center">
           {/* My Leads / All Leads toggle */}
@@ -638,12 +637,12 @@ export function DataTable({
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all flex-shrink-0 ${
               myLeadsOnly
                 ? "bg-amber-500 text-white border-amber-500"
-                : "bg-white dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/[0.06] hover:border-amber-300"
+                : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)] hover:border-amber-300"
             }`}
           >
             {myLeadsOnly ? "👤 My Leads" : "👥 All Leads"}
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${myLeadsOnly ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-[var(--hover)] text-gray-500 dark:text-gray-400"}`}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${myLeadsOnly ? "bg-white/20 text-white" : "bg-[var(--hover)] text-[var(--text-muted)]"}`}
             >
               {myLeadsOnly && currentUserId ? leads.filter((l) => l.dqRep === currentUserId).length : leads.length}
             </span>
@@ -659,7 +658,7 @@ export function DataTable({
               if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
               searchDebounceRef.current = setTimeout(() => setSearchTerm(v), 250);
             }}
-            className="flex-1 min-w-[180px] px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="flex-1 min-w-[180px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] placeholder-[var(--text-muted)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brass)]"
           />
           <select
             value={filters.repId || ""}
@@ -667,7 +666,7 @@ export function DataTable({
               setFilters((p) => ({ ...p, repId: e.target.value ? parseInt(e.target.value) : undefined }))
             }
             disabled={myLeadsOnly}
-            className={`px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 ${myLeadsOnly ? "opacity-40 cursor-not-allowed" : ""}`}
+            className={`px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brass)] ${myLeadsOnly ? "opacity-40 cursor-not-allowed" : ""}`}
           >
             <option value="">All Reps</option>
             {activeReps.map((r) => (
@@ -679,7 +678,7 @@ export function DataTable({
           <select
             value={filters.suburb || ""}
             onChange={(e) => setFilters((p) => ({ ...p, suburb: e.target.value || undefined }))}
-            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brass)]"
           >
             <option value="">All Suburbs</option>
             {suburbs.map((s) => (
@@ -706,7 +705,7 @@ export function DataTable({
             <button
               onClick={() => setSavingPreset(true)}
               title="Save current filters as preset"
-              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
             >
               <Bookmark size={13} />
               Save Filter
@@ -718,20 +717,20 @@ export function DataTable({
             <div className="relative" ref={presetMenuRef}>
               <button
                 onClick={() => setPresetMenuOpen((o) => !o)}
-                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
+                className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
               >
                 📌 Saved ({presets.length})
               </button>
               {presetMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 z-30 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg min-w-[200px] py-1">
+                <div className="absolute left-0 top-full mt-1 z-30 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg min-w-[200px] py-1">
                   {presets.map((p, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-[var(--hover)] group"
+                      className="flex items-center justify-between px-3 py-2 hover:bg-[var(--hover)] group"
                     >
                       <button
                         onClick={() => applyPreset(p)}
-                        className="text-sm text-gray-800 dark:text-gray-200 text-left flex-1 truncate"
+                        className="text-sm text-[var(--text)] text-left flex-1 truncate"
                       >
                         {p.name}
                         <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({p.tab})</span>
@@ -756,7 +755,7 @@ export function DataTable({
           <button
             onClick={() => setGroupSortOrder((o) => (o === "newest" ? "oldest" : "newest"))}
             title="Toggle date sort order"
-            className="ml-auto px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+            className="ml-auto px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
           >
             {groupSortOrder === "newest" ? "↓ Newest First" : "↑ Oldest First"}
           </button>
@@ -766,17 +765,17 @@ export function DataTable({
             <button
               onClick={() => setColMenuOpen((o) => !o)}
               title="Toggle column visibility"
-              className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
+              className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--hover)] transition flex items-center gap-1.5 whitespace-nowrap"
             >
               <Columns size={13} />
               Columns ▾
             </button>
             {colMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 bg-white dark:bg-[var(--surface)] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg min-w-[160px] py-2">
+              <div className="absolute right-0 top-full mt-1 z-30 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg min-w-[160px] py-2">
                 {COLUMNS.map((col) => (
                   <label
                     key={col.key}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[var(--hover)] cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--hover)] cursor-pointer text-sm text-[var(--text-muted)]"
                   >
                     <input
                       type="checkbox"
@@ -795,7 +794,7 @@ export function DataTable({
         {/* Feature 4: Preset name input (shown when savingPreset) */}
         {savingPreset && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Preset name:</span>
+            <span className="text-sm text-[var(--text-muted)]">Preset name:</span>
             <input
               autoFocus
               type="text"
@@ -809,7 +808,7 @@ export function DataTable({
                   setPresetName("");
                 }
               }}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 w-48"
+              className="px-3 py-1.5 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brass)] w-48"
             />
             <button
               onClick={savePreset}
@@ -845,7 +844,7 @@ export function DataTable({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-medium transition flex-shrink-0 ${
                   isActive
                     ? "bg-amber-500 text-white shadow-sm"
-                    : "bg-gray-100 dark:bg-[var(--surface)] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[var(--hover)]"
+                    : "bg-[var(--hover)] text-[var(--text-muted)] hover:bg-[var(--border)]"
                 }`}
               >
                 {tab.value !== "all" && (
@@ -856,7 +855,7 @@ export function DataTable({
                 )}
                 {tab.label}
                 <span
-                  className={`${isActive ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-[var(--hover)] text-gray-500 dark:text-gray-400"} px-1.5 py-0.5 rounded-full text-[10px] font-semibold`}
+                  className={`${isActive ? "bg-white/20 text-white" : "bg-[var(--border)] text-[var(--text-muted)]"} px-1.5 py-0.5 rounded-full text-[10px] font-semibold`}
                 >
                   {tabCounts[tab.value] ?? 0}
                 </span>
@@ -880,7 +879,7 @@ export function DataTable({
           <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
             <div className="text-center py-16">
               <div className="text-5xl mb-3">📭</div>
-              <p className="font-medium text-gray-600 dark:text-gray-400">No leads found</p>
+              <p className="font-medium text-[var(--text-muted)]">No leads found</p>
               {myLeadsOnly && !searchTerm ? (
                 <p className="text-sm mt-1">
                   No leads assigned to you yet.{" "}
@@ -902,7 +901,7 @@ export function DataTable({
           </div>
         ) : (
           <table className="w-full border-collapse" style={{ minWidth: "1000px" }}>
-            <thead className="sticky top-0 bg-gray-50 dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] z-10">
+            <thead className="sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] z-10">
               <tr>
                 {/* Checkbox — always visible */}
                 <th className="w-10 px-3 py-3">
@@ -977,6 +976,10 @@ export function DataTable({
                     </span>
                   </th>
                 )}
+                {/* Next Action — always visible, interactive */}
+                <th className={thStatic} style={{ width: 130 }}>
+                  Next Action
+                </th>
                 {/* Action — always visible */}
                 <th className={thStatic} style={{ width: 180 }}>
                   Action
@@ -993,17 +996,17 @@ export function DataTable({
                     {/* ── Date group header ── */}
                     <tr
                       onClick={() => toggleGroup(dateKey)}
-                      className="cursor-pointer bg-gray-100 dark:bg-[var(--surface)] hover:bg-gray-200 dark:hover:bg-[var(--hover)] transition border-t-2 border-gray-200 dark:border-white/[0.06]"
+                      className="cursor-pointer bg-[var(--hover)] dark:bg-[var(--surface)] hover:brightness-[0.97] transition border-t-2 border-[var(--border)]"
                     >
                       <td colSpan={totalCols} className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           {isCollapsed ? (
-                            <ChevronRight size={14} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <ChevronRight size={14} className="text-[var(--text-muted)] flex-shrink-0" />
                           ) : (
-                            <ChevronDown size={14} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <ChevronDown size={14} className="text-[var(--text-muted)] flex-shrink-0" />
                           )}
-                          <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm">{label}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="font-semibold text-[var(--text)] text-sm">{label}</span>
+                          <span className="text-xs text-[var(--text-muted)]">
                             ({groupLeadList.length} lead{groupLeadList.length !== 1 ? "s" : ""})
                           </span>
                           {selectedInGroup > 0 && (
@@ -1023,188 +1026,220 @@ export function DataTable({
                         const hiddenCount = groupLeadList.length - displayedLeads.length;
                         return (
                           <>
-                            {displayedLeads.map((lead) => (
-                              <tr
-                                key={lead.id}
-                                onClick={() => onSelectLead(lead)}
-                                className="border-b border-gray-100 dark:border-white/[0.06] hover:bg-amber-50/40 dark:hover:bg-[var(--hover)]/60 transition cursor-pointer group"
-                              >
-                                {/* Checkbox */}
-                                <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedLeads.has(lead.id)}
-                                    onChange={() => handleSelectLead(lead.id)}
-                                    className="w-4 h-4 accent-amber-500 cursor-pointer"
-                                  />
-                                </td>
-
-                                {/* Date */}
-                                {isColVisible("date") && (
-                                  <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-sm whitespace-nowrap">
-                                    {formatShortDate(lead.leadDate)}
+                            {displayedLeads.map((lead) => {
+                              const priority = getRowPriority(lead);
+                              return (
+                                <tr
+                                  key={lead.id}
+                                  onClick={() => onSelectLead(lead)}
+                                  className={`border-b border-[var(--border)] hover:bg-[var(--hover)] transition cursor-pointer group ${priority.bg} ${priority.border} ${flashedLeadId === lead.id ? "asg-row-flash" : ""}`}
+                                >
+                                  {/* Checkbox */}
+                                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedLeads.has(lead.id)}
+                                      onChange={() => handleSelectLead(lead.id)}
+                                      className="w-4 h-4 accent-amber-500 cursor-pointer"
+                                    />
                                   </td>
-                                )}
 
-                                {/* Name — always visible */}
-                                <td className="px-3 py-2.5 font-medium text-gray-900 dark:text-white">
-                                  <span className="truncate block max-w-[150px]">{lead.name}</span>
-                                </td>
+                                  {/* Date */}
+                                  {isColVisible("date") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                      {formatShortDate(lead.leadDate)}
+                                    </td>
+                                  )}
 
-                                {/* Contact — tel: link */}
-                                {isColVisible("phone") && (
-                                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-300">
-                                    <a
-                                      href={`tel:${lead.phone.replace(/\s/g, "")}`}
-                                      className="text-amber-600 hover:underline text-sm"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {lead.phone}
-                                    </a>
+                                  {/* Name — always visible */}
+                                  <td className="px-3 py-2.5 font-medium text-[var(--text)]">
+                                    <span className="truncate block max-w-[150px]">{lead.name}</span>
                                   </td>
-                                )}
 
-                                {/* Address */}
-                                {isColVisible("address") && (
-                                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-300 text-sm">
-                                    <span className="block max-w-[190px] truncate" title={buildAddress(lead)}>
-                                      {buildAddress(lead)}
-                                    </span>
+                                  {/* Contact — tel: link */}
+                                  {isColVisible("phone") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)]">
+                                      <a
+                                        href={`tel:${lead.phone.replace(/\s/g, "")}`}
+                                        className="text-amber-600 hover:underline text-sm"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {lead.phone}
+                                      </a>
+                                    </td>
+                                  )}
+
+                                  {/* Address */}
+                                  {isColVisible("address") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                      <span className="block max-w-[190px] truncate" title={buildAddress(lead)}>
+                                        {buildAddress(lead)}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {/* Renter/Owner */}
+                                  {isColVisible("ownership") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                      {lead.ownership || "—"}
+                                    </td>
+                                  )}
+
+                                  {/* Superannuation */}
+                                  {isColVisible("super") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                      {lead.superannuation || "—"}
+                                    </td>
+                                  )}
+
+                                  {/* Last Contact Rep */}
+                                  {isColVisible("lastContact") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                      <span className="truncate block max-w-[120px]" title={getLastContactRep(lead)}>
+                                        {getLastContactRep(lead)}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {/* Status */}
+                                  {isColVisible("status") && (
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                      <span
+                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                        style={statusBadgeStyle(
+                                          statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
+                                        )}
+                                      >
+                                        {lead.status}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {/* Notes (most recent call, truncated) */}
+                                  {isColVisible("notes") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                      <span className="block max-w-[190px] truncate" title={getLastNotes(lead)}>
+                                        {getLastNotes(lead)}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {/* Last Call */}
+                                  {isColVisible("lastCall") && (
+                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                      <span className="flex items-center gap-1">
+                                        <Clock size={12} />
+                                        {daysSinceCall(lead.lastCall)}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {/* Next Action — always visible, clickable */}
+                                  <td
+                                    className="px-3 py-2.5 text-sm whitespace-nowrap"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onNextAction?.(lead);
+                                    }}
+                                  >
+                                    {(() => {
+                                      const action = getNextAction(lead);
+                                      const colors = ACTION_COLORS[action.priority] ?? ACTION_COLORS.low;
+                                      return (
+                                        <div
+                                          className="flex flex-col gap-0.5 cursor-pointer hover:opacity-80 transition"
+                                          title={`Click to: ${action.label}`}
+                                        >
+                                          <span className={`font-bold text-[11px] ${colors.text}`}>{action.label}</span>
+                                          <span className="text-[9px] text-gray-400 dark:text-gray-500 truncate max-w-[110px]">
+                                            {action.reason}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   </td>
-                                )}
 
-                                {/* Renter/Owner */}
-                                {isColVisible("ownership") && (
-                                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-300 text-sm whitespace-nowrap">
-                                    {lead.ownership || "—"}
+                                  {/* Action — always visible */}
+                                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                      {/* Quick: No Answer */}
+                                      <button
+                                        title="Quick: No Answer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const now = new Date();
+                                          onUpdateLead({
+                                            ...lead,
+                                            status: "new",
+                                            result: "no_answer",
+                                            lastCall: now.toISOString(),
+                                            callHistory: [
+                                              ...(lead.callHistory ?? []),
+                                              {
+                                                date: now.toISOString().split("T")[0],
+                                                time: now.toTimeString().slice(0, 5),
+                                                rep:
+                                                  reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
+                                                repId: currentUserId ?? lead.dqRep,
+                                                result: "no_answer",
+                                                notes: "",
+                                              },
+                                            ],
+                                          });
+                                        }}
+                                        className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                                      >
+                                        NA
+                                      </button>
+                                      {/* Quick: Wrong Number */}
+                                      <button
+                                        title="Quick: Wrong Number"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const now = new Date();
+                                          onUpdateLead({
+                                            ...lead,
+                                            status: "lost",
+                                            result: "wrong_number",
+                                            lastCall: now.toISOString(),
+                                            callHistory: [
+                                              ...(lead.callHistory ?? []),
+                                              {
+                                                date: now.toISOString().split("T")[0],
+                                                time: now.toTimeString().slice(0, 5),
+                                                rep:
+                                                  reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
+                                                repId: currentUserId ?? lead.dqRep,
+                                                result: "wrong_number",
+                                                notes: "",
+                                              },
+                                            ],
+                                          });
+                                        }}
+                                        className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
+                                      >
+                                        WN
+                                      </button>
+                                      <button
+                                        onClick={() => onAddCall(lead)}
+                                        title="Log a call"
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
+                                      >
+                                        <Phone size={11} />
+                                        <span>Call</span>
+                                      </button>
+                                      <button
+                                        onClick={() => onSelectLead(lead)}
+                                        title="View / edit lead"
+                                        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition"
+                                      >
+                                        <Eye size={14} />
+                                      </button>
+                                    </div>
                                   </td>
-                                )}
-
-                                {/* Superannuation */}
-                                {isColVisible("super") && (
-                                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-300 text-sm whitespace-nowrap">
-                                    {lead.superannuation || "—"}
-                                  </td>
-                                )}
-
-                                {/* Last Contact Rep */}
-                                {isColVisible("lastContact") && (
-                                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-300 text-sm">
-                                    <span className="truncate block max-w-[120px]" title={getLastContactRep(lead)}>
-                                      {getLastContactRep(lead)}
-                                    </span>
-                                  </td>
-                                )}
-
-                                {/* Status */}
-                                {isColVisible("status") && (
-                                  <td className="px-3 py-2.5 whitespace-nowrap">
-                                    <span
-                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                      style={statusBadgeStyle(
-                                        statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
-                                      )}
-                                    >
-                                      {lead.status}
-                                    </span>
-                                  </td>
-                                )}
-
-                                {/* Notes (most recent call, truncated) */}
-                                {isColVisible("notes") && (
-                                  <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-sm">
-                                    <span className="block max-w-[190px] truncate" title={getLastNotes(lead)}>
-                                      {getLastNotes(lead)}
-                                    </span>
-                                  </td>
-                                )}
-
-                                {/* Last Call */}
-                                {isColVisible("lastCall") && (
-                                  <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-sm whitespace-nowrap">
-                                    <span className="flex items-center gap-1">
-                                      <Clock size={12} />
-                                      {daysSinceCall(lead.lastCall)}
-                                    </span>
-                                  </td>
-                                )}
-
-                                {/* Action — always visible */}
-                                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    {/* Quick: No Answer */}
-                                    <button
-                                      title="Quick: No Answer"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const now = new Date();
-                                        onUpdateLead({
-                                          ...lead,
-                                          status: "No Answer",
-                                          result: "no-answer",
-                                          lastCall: now.toISOString(),
-                                          callHistory: [
-                                            ...(lead.callHistory ?? []),
-                                            {
-                                              date: now.toISOString().split("T")[0],
-                                              time: now.toTimeString().slice(0, 5),
-                                              rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
-                                              result: "no-answer",
-                                              notes: "",
-                                            },
-                                          ],
-                                        });
-                                      }}
-                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
-                                    >
-                                      NA
-                                    </button>
-                                    {/* Quick: Wrong Number */}
-                                    <button
-                                      title="Quick: Wrong Number"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const now = new Date();
-                                        onUpdateLead({
-                                          ...lead,
-                                          status: "Wrong Number",
-                                          result: "wrong-number",
-                                          lastCall: now.toISOString(),
-                                          callHistory: [
-                                            ...(lead.callHistory ?? []),
-                                            {
-                                              date: now.toISOString().split("T")[0],
-                                              time: now.toTimeString().slice(0, 5),
-                                              rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
-                                              result: "wrong-number",
-                                              notes: "",
-                                            },
-                                          ],
-                                        });
-                                      }}
-                                      className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
-                                    >
-                                      WN
-                                    </button>
-                                    <button
-                                      onClick={() => onAddCall(lead)}
-                                      title="Log a call"
-                                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
-                                    >
-                                      <Phone size={11} />
-                                      <span>Call</span>
-                                    </button>
-                                    <button
-                                      onClick={() => onSelectLead(lead)}
-                                      title="View / edit lead"
-                                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[var(--hover)] rounded-lg transition"
-                                    >
-                                      <Eye size={14} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                                </tr>
+                              );
+                            })}
                             {hiddenCount > 0 && (
                               <tr>
                                 <td
@@ -1246,7 +1281,7 @@ export function DataTable({
           <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
             <div className="text-center py-16">
               <div className="text-5xl mb-3">📭</div>
-              <p className="font-medium text-gray-600 dark:text-gray-400">No leads found</p>
+              <p className="font-medium text-[var(--text-muted)]">No leads found</p>
               {myLeadsOnly && !searchTerm ? (
                 <p className="text-sm mt-1">
                   No leads assigned to you yet.{" "}
@@ -1275,14 +1310,14 @@ export function DataTable({
                   {/* Mobile group header */}
                   <button
                     onClick={() => toggleGroup(dateKey)}
-                    className="w-full flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-[var(--surface)] border-b border-gray-200 dark:border-white/[0.06] text-left"
+                    className="w-full flex items-center gap-2 px-4 py-2 bg-[var(--hover)] dark:bg-[var(--surface)] border-b border-[var(--border)] text-left"
                   >
                     {isCollapsed ? (
-                      <ChevronRight size={13} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                      <ChevronRight size={13} className="text-[var(--text-muted)] flex-shrink-0" />
                     ) : (
-                      <ChevronDown size={13} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                      <ChevronDown size={13} className="text-[var(--text-muted)] flex-shrink-0" />
                     )}
-                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{label}</span>
+                    <span className="text-xs font-semibold text-[var(--text)]">{label}</span>
                     <span className="text-xs text-gray-400">({groupLeadList.length})</span>
                   </button>
 
@@ -1293,139 +1328,166 @@ export function DataTable({
                       const hiddenCount = groupLeadList.length - displayedLeads.length;
                       return (
                         <ul className="divide-y divide-gray-100 dark:divide-slate-800">
-                          {displayedLeads.map((lead) => (
-                            <li
-                              key={lead.id}
-                              onClick={() => onSelectLead(lead)}
-                              className="px-4 py-3 flex items-start gap-3 active:bg-gray-50 dark:active:bg-slate-800/60 cursor-pointer"
-                            >
-                              {/* Checkbox */}
-                              <div className="pt-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedLeads.has(lead.id)}
-                                  onChange={() => handleSelectLead(lead.id)}
-                                  className="w-4 h-4 accent-amber-500 cursor-pointer"
-                                />
-                              </div>
-
-                              {/* Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-1">
-                                  <span className="font-semibold text-gray-900 dark:text-white truncate">
-                                    {lead.name}
-                                  </span>
-                                  <span
-                                    className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                                    style={statusBadgeStyle(
-                                      statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
-                                    )}
-                                  >
-                                    {lead.status}
-                                  </span>
+                          {displayedLeads.map((lead) => {
+                            const priority = getRowPriority(lead);
+                            return (
+                              <li
+                                key={lead.id}
+                                onClick={() => onSelectLead(lead)}
+                                className={`px-4 py-3 flex items-start gap-3 active:bg-gray-50 dark:active:bg-slate-800/60 cursor-pointer ${priority.bg} ${priority.border}`}
+                              >
+                                {/* Checkbox */}
+                                <div className="pt-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedLeads.has(lead.id)}
+                                    onChange={() => handleSelectLead(lead.id)}
+                                    className="w-4 h-4 accent-amber-500 cursor-pointer"
+                                  />
                                 </div>
-                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                  {/* Feature 1: tel: link in mobile card */}
-                                  <a
-                                    href={`tel:${lead.phone.replace(/\s/g, "")}`}
-                                    className="flex items-center gap-1 text-amber-600 hover:underline"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <Phone size={11} />
-                                    {lead.phone}
-                                  </a>
-                                  <span>{buildAddress(lead)}</span>
-                                  <span>{lead.ownership || ""}</span>
-                                  <span>{getLastContactRep(lead)}</span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock size={11} />
-                                    {daysSinceCall(lead.lastCall)}
-                                  </span>
-                                </div>
-                                {getLastNotes(lead) !== "—" && (
-                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
-                                    {getLastNotes(lead)}
-                                  </p>
-                                )}
-                              </div>
 
-                              {/* Buttons */}
-                              <div className="flex-shrink-0 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                {/* Quick: No Answer */}
-                                <button
-                                  title="Quick: No Answer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const now = new Date();
-                                    onUpdateLead({
-                                      ...lead,
-                                      status: "No Answer",
-                                      result: "no-answer",
-                                      lastCall: now.toISOString(),
-                                      callHistory: [
-                                        ...(lead.callHistory ?? []),
-                                        {
-                                          date: now.toISOString().split("T")[0],
-                                          time: now.toTimeString().slice(0, 5),
-                                          rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
-                                          result: "no-answer",
-                                          notes: "",
-                                        },
-                                      ],
-                                    });
-                                  }}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
-                                >
-                                  NA
-                                </button>
-                                {/* Quick: Wrong Number */}
-                                <button
-                                  title="Quick: Wrong Number"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const now = new Date();
-                                    onUpdateLead({
-                                      ...lead,
-                                      status: "Wrong Number",
-                                      result: "wrong-number",
-                                      lastCall: now.toISOString(),
-                                      callHistory: [
-                                        ...(lead.callHistory ?? []),
-                                        {
-                                          date: now.toISOString().split("T")[0],
-                                          time: now.toTimeString().slice(0, 5),
-                                          rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
-                                          result: "wrong-number",
-                                          notes: "",
-                                        },
-                                      ],
-                                    });
-                                  }}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-[var(--hover)] text-slate-600 dark:text-gray-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
-                                >
-                                  WN
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAddCall(lead);
-                                  }}
-                                  className="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
-                                >
-                                  📞
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSelectLead(lead);
-                                  }}
-                                  className="px-3 py-1.5 text-xs bg-slate-100 dark:bg-[var(--hover)] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-[var(--hover)] transition font-medium"
-                                >
-                                  <Eye size={12} className="mx-auto" />
-                                </button>
-                              </div>
-                            </li>
-                          ))}
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-semibold text-gray-900 dark:text-white truncate">
+                                      {lead.name}
+                                    </span>
+                                    <span
+                                      className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                      style={statusBadgeStyle(
+                                        statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
+                                      )}
+                                    >
+                                      {lead.status}
+                                    </span>
+                                  </div>
+                                  {/* Next Action */}
+                                  {(() => {
+                                    const action = getNextAction(lead);
+                                    const colors = ACTION_COLORS[action.priority] ?? ACTION_COLORS.low;
+                                    return (
+                                      <div
+                                        className="flex items-center gap-1.5 mb-1 cursor-pointer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNextAction?.(lead);
+                                        }}
+                                        title={`Click to: ${action.label}`}
+                                      >
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${colors.badge}`}>
+                                          {action.label}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
+                                          {action.reason}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--text-muted)]">
+                                    {/* Feature 1: tel: link in mobile card */}
+                                    <a
+                                      href={`tel:${lead.phone.replace(/\s/g, "")}`}
+                                      className="flex items-center gap-1 text-amber-600 hover:underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Phone size={11} />
+                                      {lead.phone}
+                                    </a>
+                                    <span>{buildAddress(lead)}</span>
+                                    <span>{lead.ownership || ""}</span>
+                                    <span>{getLastContactRep(lead)}</span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock size={11} />
+                                      {daysSinceCall(lead.lastCall)}
+                                    </span>
+                                  </div>
+                                  {getLastNotes(lead) !== "—" && (
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
+                                      {getLastNotes(lead)}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="flex-shrink-0 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                  {/* Quick: No Answer */}
+                                  <button
+                                    title="Quick: No Answer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const now = new Date();
+                                      onUpdateLead({
+                                        ...lead,
+                                        status: "new",
+                                        result: "no_answer",
+                                        lastCall: now.toISOString(),
+                                        callHistory: [
+                                          ...(lead.callHistory ?? []),
+                                          {
+                                            date: now.toISOString().split("T")[0],
+                                            time: now.toTimeString().slice(0, 5),
+                                            rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
+                                            repId: currentUserId ?? lead.dqRep,
+                                            result: "no_answer",
+                                            notes: "",
+                                          },
+                                        ],
+                                      });
+                                    }}
+                                    className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                                  >
+                                    NA
+                                  </button>
+                                  {/* Quick: Wrong Number */}
+                                  <button
+                                    title="Quick: Wrong Number"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const now = new Date();
+                                      onUpdateLead({
+                                        ...lead,
+                                        status: "lost",
+                                        result: "wrong_number",
+                                        lastCall: now.toISOString(),
+                                        callHistory: [
+                                          ...(lead.callHistory ?? []),
+                                          {
+                                            date: now.toISOString().split("T")[0],
+                                            time: now.toTimeString().slice(0, 5),
+                                            rep: reps.find((r) => r.id === (currentUserId ?? lead.dqRep))?.name ?? "",
+                                            repId: currentUserId ?? lead.dqRep,
+                                            result: "wrong_number",
+                                            notes: "",
+                                          },
+                                        ],
+                                      });
+                                    }}
+                                    className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
+                                  >
+                                    WN
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onAddCall(lead);
+                                    }}
+                                    className="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
+                                  >
+                                    📞
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSelectLead(lead);
+                                    }}
+                                    className="px-3 py-1.5 text-xs bg-[var(--hover)] text-[var(--text-muted)] rounded-lg hover:brightness-[0.96] transition font-medium"
+                                  >
+                                    <Eye size={12} className="mx-auto" />
+                                  </button>
+                                </div>
+                              </li>
+                            );
+                          })}
                           {hiddenCount > 0 && (
                             <li className="px-4 py-2.5 text-center bg-gray-50 dark:bg-[var(--surface)]/50">
                               <button
@@ -1447,9 +1509,9 @@ export function DataTable({
       </div>
 
       {/* ── Footer / Bulk Actions ── */}
-      <div className="border-t border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)] px-4 py-3 flex-shrink-0">
+      <div className="border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-[var(--text-muted)]">
             {selectedLeads.size > 0
               ? `${selectedLeads.size} of ${sortedLeads.length} selected`
               : `Showing ${sortedLeads.length} of ${leads.length} leads`}
@@ -1458,7 +1520,7 @@ export function DataTable({
           {selectedLeads.size > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {/* Status */}
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+              <span className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">
                 Status:
               </span>
               <select
@@ -1468,11 +1530,9 @@ export function DataTable({
                   setConfirmingDelete(false);
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="px-2 py-1 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--brass)]"
               >
-                {(
-                  ["DQ", "Live", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"] as LeadStatus[]
-                ).map((s) => (
+                {LEAD_STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -1488,7 +1548,7 @@ export function DataTable({
               <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Rep reassign */}
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Rep:</span>
+              <span className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">Rep:</span>
               <select
                 value={bulkRep}
                 onChange={(e) => {
@@ -1496,7 +1556,7 @@ export function DataTable({
                   setConfirmingDelete(false);
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="px-2 py-1 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--brass)]"
               >
                 <option value="">Pick rep…</option>
                 {activeReps.map((r) => (
@@ -1525,14 +1585,14 @@ export function DataTable({
               <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Feature 5: Bulk Date */}
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+              <span className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">
                 Date:
               </span>
               <input
                 type="date"
                 value={bulkDate}
                 onChange={(e) => setBulkDate(e.target.value)}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none"
+                className="px-2 py-1 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none"
               />
               <button
                 onClick={handleBulkDateUpdate}
@@ -1545,7 +1605,7 @@ export function DataTable({
               <span className="text-gray-300 dark:text-gray-500 text-sm">|</span>
 
               {/* Feature 5: Bulk Suburb */}
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+              <span className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">
                 Suburb:
               </span>
               <input
@@ -1553,7 +1613,7 @@ export function DataTable({
                 placeholder="New suburb…"
                 value={bulkSuburb}
                 onChange={(e) => setBulkSuburb(e.target.value)}
-                className="px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none w-28"
+                className="px-2 py-1 text-sm rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none w-28"
               />
               <button
                 onClick={handleBulkSuburbUpdate}
@@ -1579,7 +1639,7 @@ export function DataTable({
                   </button>
                   <button
                     onClick={() => setConfirmingDelete(false)}
-                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-[var(--hover)] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-[var(--hover)] transition font-medium"
+                    className="px-3 py-1 text-sm bg-[var(--hover)] text-[var(--text-muted)] rounded-lg hover:brightness-[0.96] transition font-medium"
                   >
                     Cancel
                   </button>

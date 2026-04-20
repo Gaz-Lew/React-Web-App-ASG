@@ -1,0 +1,1553 @@
+<!-- /index.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMSF Growth Comparison Calculator</title>
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      :root {
+        --bg: #0f0f12;
+        --card: #1a1a1d;
+        --text: #e5e7eb;
+        --muted: #7a7a74;
+        --primary: #b8933a;
+        --primary-dark: #d4aa55;
+        --accent: #b8933a;
+        --danger: #f87171;
+        --accent-smsf: #b8933a;
+        --accent-smsf-dark: #d4aa55;
+        --border: #2a2a2e;
+        --shadow: rgba(0, 0, 0, 0.5);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f0f12;
+          --card: #1a1a1d;
+          --text: #e5e7eb;
+          --muted: #7a7a74;
+          --primary: #b8933a;
+          --primary-dark: #d4aa55;
+          --accent: #b8933a;
+          --danger: #f87171;
+          --accent-smsf: #b8933a;
+          --accent-smsf-dark: #d4aa55;
+          --border: #2a2a2e;
+          --shadow: rgba(0, 0, 0, 0.5);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      body {
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Arial,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+        min-height: 100%;
+      }
+      h1 {
+        text-align: center;
+        margin: 0 0 6px;
+        color: var(--text);
+        font-size: 28px;
+      }
+      .subtitle {
+        text-align: center;
+        color: #64748b;
+        margin-bottom: 18px;
+        font-style: italic;
+      }
+      .note {
+        background: rgba(184, 147, 58, 0.1);
+        border: 1px solid rgba(184, 147, 58, 0.25);
+        color: #d4aa55;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 18px;
+        font-size: 14px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 22px;
+        box-shadow: 0 2px 10px var(--shadow);
+        border: 1px solid var(--border);
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .input-group {
+        margin-bottom: 14px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 700;
+        color: #c8c8c4;
+      }
+      input[type="number"],
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border: 2px solid #2a2a2e;
+        border-radius: 8px;
+        background: #1a1a1d;
+        color: #e5e7eb;
+      }
+      input[type="number"]:focus,
+      input[type="text"]:focus,
+      select:focus {
+        outline: none;
+        border-color: #b8933a;
+        box-shadow: 0 0 0 3px rgba(184, 147, 58, 0.15);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .btn {
+        padding: 12px 16px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+      }
+      .btn.primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .btn.primary:hover {
+        background: var(--primary-dark);
+      }
+      .btn.muted {
+        background: #2a2a2e;
+        color: #c8c8c4;
+      }
+      .btn.ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .results {
+        margin-top: 18px;
+        background: #1a1a1d;
+        border-radius: 12px;
+        padding: 18px;
+        border: 1px solid #2a2a2e;
+      }
+      .result-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      @media (max-width: 900px) {
+        .result-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .result-card {
+        background: #141417;
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid #2a2a2e;
+      }
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #2a2a2e;
+      }
+      .stat:last-child {
+        border-bottom: none;
+      }
+      .stat .label {
+        color: #c8c8c4;
+      }
+      .amount {
+        font-weight: 700;
+      }
+      .amount.current {
+        color: var(--primary);
+      }
+      .amount.smsf {
+        color: var(--accent-smsf);
+      }
+      .muted {
+        color: #94a3b8;
+        font-size: 12px;
+      }
+      .error {
+        color: #e74c3c;
+        font-size: 14px;
+        margin: 6px 0 0;
+      }
+      .tag {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(184, 147, 58, 0.15);
+        color: #d4aa55;
+        font-size: 12px;
+      }
+      .compare {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        display: grid;
+        gap: 12px;
+      }
+      .badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid var(--border);
+      }
+      .badge.win {
+        background: #ecfdf5;
+        color: #065f46;
+      }
+      .badge.lose {
+        background: #fef2f2;
+        color: #7f1d1d;
+      }
+      .flex {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      canvas {
+        width: 100%;
+        height: 320px;
+      }
+
+      /* +/- buttons */
+      .input-with-buttons {
+        display: flex;
+        gap: 4px;
+      }
+      .input-with-buttons input {
+        flex: 1;
+      }
+      .number-btn {
+        padding: 10px 12px;
+        background: #2a2a2e;
+        border: 1px solid #3a3a3e;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        color: #c8c8c4;
+      }
+      .number-btn:hover {
+        background: #3a3a3e;
+      }
+      .copy-btn {
+        padding: 10px 12px;
+        background: #2a2a2e;
+        border: 1px solid #3a3a3e;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        color: #c8c8c4;
+      }
+      .copy-btn:hover {
+        filter: brightness(0.97);
+      }
+
+      /* Yearly table */
+      .yearly-comparison {
+        margin-top: 24px;
+      }
+      .table-container {
+        max-height: 420px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .yearly-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        table-layout: fixed;
+        font-size: 14px;
+      }
+      .yearly-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+        padding: 14px 10px;
+        white-space: normal; /* wrap headings */
+        line-height: 1.4;
+        text-align: center;
+        font-weight: 600;
+        border-bottom: 1px solid #eee;
+      }
+      .yearly-table {
+        table-layout: fixed;
+        width: max-content;
+        min-width: 100%;
+      }
+      .yearly-table td {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        line-height: 1.3;
+      }
+      .yearly-table tbody td {
+        text-align: center !important;
+      } /* center body cells */
+      .yearly-table tbody td.year-col {
+        text-align: left !important;
+      } /* first column left */
+
+      .yearly-table .year-header {
+        background: var(--primary);
+        color: #fff;
+      }
+      .yearly-table .year-header,
+      .yearly-table td.year-col {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: var(--card);
+        box-shadow: 1px 0 0 rgba(0, 0, 0, 0.08);
+      }
+      .yearly-table thead .year-header {
+        z-index: 3;
+      }
+
+      .yearly-table .current-balance {
+        background: rgba(52, 152, 219, 0.08);
+      }
+      .yearly-table .smsf-balance {
+        background: rgba(16, 185, 129, 0.08);
+      }
+      .yearly-table .difference {
+        background: rgba(156, 163, 175, 0.08);
+        font-weight: 600;
+      }
+      .yearly-table .positive {
+        color: var(--accent-smsf);
+      }
+      .yearly-table .negative {
+        color: #e74c3c;
+      }
+      .yearly-table .running-total {
+        background: rgba(156, 163, 175, 0.15);
+        font-weight: 600;
+      }
+      .yearly-table .current-diff {
+        color: #e74c3c;
+        font-weight: 600;
+      }
+
+      .card.yearly-comparison {
+        overflow: visible;
+      }
+
+      @media (max-width: 768px) {
+        .yearly-table {
+          font-size: 12px;
+        }
+        .yearly-table thead th {
+          padding: 12px 8px;
+        }
+      }
+
+      /* Loading spinner */
+      .loading {
+        position: relative;
+        pointer-events: none;
+      }
+      .loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>SMSF Growth Comparison Calculator</h1>
+      <div class="subtitle">All calculations are an estimate and are used for illustrative purposes</div>
+
+      <div class="note" role="note">
+        <strong>Note:</strong> This tool is illustrative only and excludes tax, fees, insurance, caps, contribution
+        timing nuances, and market volatility. Figures are not to be taken as literal and are used as an example.
+      </div>
+
+      <div class="grid" aria-label="Input scenarios">
+        <!-- LEFT: Current -->
+        <section class="card" id="left-card" aria-labelledby="left-title">
+          <h2 id="left-title">Current Superannuation Setup <span class="tag">Industry Avg Growth</span></h2>
+
+          <div class="input-group">
+            <label for="left-balance">Current Superannuation Balance ($)</label>
+            <div class="input-with-buttons">
+              <input
+                type="text"
+                inputmode="decimal"
+                id="left-balance"
+                placeholder="e.g., 100,000.00"
+                aria-describedby="left-balance-hint"
+              />
+              <button type="button" class="number-btn" id="left-balance-decrease">-</button>
+              <button type="button" class="number-btn" id="left-balance-increase">+</button>
+            </div>
+            <div id="left-balance-hint" class="muted">Enter your current super balance</div>
+          </div>
+
+          <div class="input-group">
+            <label for="left-salary">Annual Salary ($)</label>
+            <div class="input-with-buttons">
+              <input
+                type="text"
+                inputmode="decimal"
+                id="left-salary"
+                placeholder="e.g., 85,000.00"
+                aria-describedby="left-salary-hint"
+              />
+              <button type="button" class="number-btn" id="left-salary-decrease">-</button>
+              <button type="button" class="number-btn" id="left-salary-increase">+</button>
+            </div>
+            <div id="left-salary-hint" class="muted">Used to calculate employer contributions</div>
+          </div>
+
+          <div class="row">
+            <div class="input-group">
+              <label for="left-employer">Employer Contribution Rate</label>
+              <select id="left-employer">
+                <option value="0.0">0%</option>
+                <option value="0.12">12%</option>
+                <option value="0.13">13%</option>
+                <option value="0.14">14%</option>
+                <option value="0.15">15%</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="left-growth">Growth (industry ave.)</label>
+              <select id="left-growth">
+                <option value="0.05">5%</option>
+                <option value="0.075">7.5%</option>
+                <option value="0.10">10%</option>
+                <option value="0.125">12.5%</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Salary Sacrifice?</label>
+            <div class="switch">
+              <input type="checkbox" id="left-ss-toggle" />
+              <label for="left-ss-toggle" style="margin: 0">Enable</label>
+              <div class="input-with-buttons">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  id="left-ss"
+                  placeholder="% (e.g., 5)"
+                  style="max-width: 140px"
+                  value="5"
+                />
+                <button type="button" class="number-btn" id="left-ss-decrease">-</button>
+                <button type="button" class="number-btn" id="left-ss-increase">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="left-years">Years of Performance</label>
+            <select id="left-years">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+
+          <div id="left-error" class="error" aria-live="polite"></div>
+        </section>
+
+        <!-- RIGHT: SMSF -->
+        <section class="card" id="right-card" aria-labelledby="right-title">
+          <h2 id="right-title">SMSF with ASG + Partners <span class="tag">SMSF Growth</span></h2>
+
+          <div class="input-group">
+            <label for="right-balance">Current Superannuation Balance ($)</label>
+            <div class="input-with-buttons">
+              <input
+                type="text"
+                inputmode="decimal"
+                id="right-balance"
+                placeholder="e.g., 100,000.00"
+                aria-describedby="right-balance-hint"
+              />
+              <button type="button" class="number-btn" id="right-balance-decrease">-</button>
+              <button type="button" class="number-btn" id="right-balance-increase">+</button>
+              <button type="button" class="copy-btn" id="copy-right-balance">Copy</button>
+            </div>
+            <div id="right-balance-hint" class="muted">Match the same starting balance for a fair comparison</div>
+          </div>
+
+          <div class="input-group">
+            <label for="right-salary">Annual Salary ($)</label>
+            <div class="input-with-buttons">
+              <input
+                type="text"
+                inputmode="decimal"
+                id="right-salary"
+                placeholder="e.g., 85,000.00"
+                aria-describedby="right-salary-hint"
+              />
+              <button type="button" class="number-btn" id="right-salary-decrease">-</button>
+              <button type="button" class="number-btn" id="right-salary-increase">+</button>
+              <button type="button" class="copy-btn" id="copy-right-salary">Copy</button>
+            </div>
+            <div id="right-salary-hint" class="muted">Used to calculate employer contributions</div>
+          </div>
+
+          <div class="row">
+            <div class="input-group">
+              <label for="right-employer">Employer Contribution Rate</label>
+              <select id="right-employer">
+                <option value="0.0">0%</option>
+                <option value="0.12">12%</option>
+                <option value="0.13">13%</option>
+                <option value="0.14">14%</option>
+                <option value="0.15">15%</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="right-growth">Growth</label>
+              <select id="right-growth">
+                <option value="0.10">10%</option>
+                <option value="0.125">12.5%</option>
+                <option value="0.15">15%</option>
+                <option value="0.175">17.5%</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Salary Sacrifice?</label>
+            <div class="switch">
+              <input type="checkbox" id="right-ss-toggle" />
+              <label for="right-ss-toggle" style="margin: 0">Enable</label>
+              <div class="input-with-buttons">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  id="right-ss"
+                  placeholder="% (e.g., 5)"
+                  style="max-width: 140px"
+                />
+                <button type="button" class="number-btn" id="right-ss-decrease">-</button>
+                <button type="button" class="number-btn" id="right-ss-increase">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="right-years">Years of Performance</label>
+            <select id="right-years">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+
+          <div id="right-error" class="error" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <div class="actions" role="group" aria-label="Actions">
+        <button class="btn primary" id="calc-btn" title="Calculate projections">▶ Calculate</button>
+        <button class="btn muted" id="reset-btn" title="Reset to example values">↺ Reset to Example</button>
+        <button class="btn ghost" id="csv-btn" title="Download year-by-year CSV">⬇ Export CSV</button>
+        <button class="btn ghost" id="share-btn" title="Copy shareable link">🔗 Share</button>
+        <span id="share-tip" class="muted" aria-live="polite"></span>
+      </div>
+
+      <section id="results" class="results" style="display: none" aria-labelledby="res-title">
+        <h2 id="res-title" style="margin: 0 0 10px">Estimated super balance (excluding fees)</h2>
+
+        <div class="compare" id="compare">
+          <div class="flex">
+            <span id="winner-badge" class="badge">—</span>
+            <div id="delta-text"></div>
+          </div>
+          <div class="flex">
+            <div class="badge" id="delta-final">Final: —</div>
+            <div class="badge" id="delta-growth">Growth: —</div>
+          </div>
+        </div>
+
+        <div class="result-grid" aria-label="Results">
+          <div class="result-card" id="left-results" aria-labelledby="left-res-title">
+            <h3 id="left-res-title" style="margin: 0 0 10px">Current Superannuation Setup</h3>
+            <div class="stat">
+              <div class="label">Estimated Balance (after selected years)</div>
+              <div class="amount current" id="left-final"></div>
+            </div>
+            <div class="stat">
+              <div class="label">Growth (Final − Current)</div>
+              <div class="amount current" id="left-growth-amt"></div>
+            </div>
+            <div class="stat">
+              <div class="label">Growth %</div>
+              <div class="amount current" id="left-growth-pct"></div>
+            </div>
+          </div>
+          <div class="result-card" id="right-results" aria-labelledby="right-res-title">
+            <h3 id="right-res-title" style="margin: 0 0 10px">SMSF with ASG + Partners</h3>
+            <div class="stat">
+              <div class="label">Estimated Balance (after selected years)</div>
+              <div class="amount smsf" id="right-final"></div>
+            </div>
+            <div class="stat">
+              <div class="label">Growth (Final − Current)</div>
+              <div class="amount smsf" id="right-growth-amt"></div>
+            </div>
+            <div class="stat">
+              <div class="label">Growth %</div>
+              <div class="amount smsf" id="right-growth-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px">
+          <h3 style="margin: 0 0 10px">Balance Projection (Year-by-Year)</h3>
+          <canvas id="chart" aria-label="Line chart comparing balances over time" role="img"></canvas>
+        </div>
+
+        <!-- Year-by-Year Table -->
+        <div class="card yearly-comparison">
+          <h3 style="margin: 0 0 10px">Year-by-Year Breakdown</h3>
+          <div class="table-container">
+            <table class="yearly-table" id="yearly-table" aria-label="Year by year balance comparison">
+              <colgroup>
+                <col style="width: 140px" />
+                <col span="11" style="width: calc((100% - 140px) / 11)" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="year-header">Year</th>
+                  <th>Current Super Balance</th>
+                  <th>Current Super Difference<br />(Year-over-year)</th>
+                  <th>SMSF Balance</th>
+                  <th>SMSF Difference<br />(vs starting balance)</th>
+                  <th>Employer Contrib. (Current)</th>
+                  <th>Total Employer Contrib. (Current)</th>
+                  <th>Salary Sacrifice (Current)</th>
+                  <th>Total Salary Sacrifice (Current)</th>
+                  <th>Employer Contrib. (SMSF)</th>
+                  <th>Total Employer Contrib. (SMSF)</th>
+                  <th>Salary Sacrifice (SMSF)</th>
+                  <th>Total Salary Sacrifice (SMSF)</th>
+                </tr>
+              </thead>
+              <tbody id="yearly-table-body"></tbody>
+            </table>
+          </div>
+          <p class="muted" style="margin-top: 12px">
+            This tool is illustrative only and excludes tax, fees, insurance, caps, contribution timing nuances, and
+            market volatility. Figures are not to be taken as literal and are used as an example.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Limits and helpers
+      const MAX_BALANCE = 1_000_000_000;
+      const MAX_SALARY = 5_000_000;
+      const DEBOUNCE_DELAY = 500;
+
+      const fmtAUD = (n) =>
+        new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2 }).format(n);
+      const fmtPct = (n) => `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(n)}%`;
+
+      const debounce = (fn, ms) => {
+        let t;
+        return (...args) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...args), ms);
+        };
+      };
+      const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+      const parseNumber = (s) => {
+        if (typeof s === "number") return s;
+        if (!s) return NaN;
+        const clean = String(s).replace(/[,\s]/g, "");
+        return Number(clean);
+      };
+      const parsePercent = (s) => {
+        if (s === "" || s === null || s === undefined) return 0;
+        const n = parseNumber(s);
+        return isNaN(n) ? NaN : n;
+      };
+      const formatCurrencyInput = (el) => {
+        const n = parseNumber(el.value);
+        if (isNaN(n)) return;
+        el.value = new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+      };
+
+      function copyCurrencyInput(fromEl, toEl) {
+        const val = parseNumber(fromEl.value);
+        if (isNaN(val)) return;
+        toEl.value = new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+        formatCurrencyInput(toEl);
+        saveStateToStorage();
+        debouncedCalculate();
+      }
+
+      // Projection
+      function projectYearlySeries(
+        currentBalance,
+        salary,
+        employerRate,
+        salaryPctEnabled,
+        salaryPct,
+        growthRate,
+        years,
+      ) {
+        const ssRate = salaryPctEnabled ? clamp((salaryPct || 0) / 100, 0, 1) : 0;
+        const employerContrib = salary * employerRate;
+        const ssContrib = salary * ssRate;
+        const totalAnnualContrib = employerContrib + ssContrib;
+
+        let bal = currentBalance;
+        const series = [bal];
+        const employerContributions = [0];
+        const ssContributions = [0];
+        const totalEmployerContributions = [0];
+        const totalSSContributions = [0];
+        let runningEmp = 0,
+          runningSS = 0;
+
+        for (let y = 1; y <= years; y++) {
+          bal += totalAnnualContrib;
+          bal = bal * (1 + growthRate);
+          series.push(bal);
+
+          employerContributions.push(employerContrib);
+          ssContributions.push(ssContrib);
+
+          runningEmp += employerContrib;
+          runningSS += ssContrib;
+          totalEmployerContributions.push(runningEmp);
+          totalSSContributions.push(runningSS);
+        }
+
+        const final = bal;
+        const growthAmt = final - currentBalance;
+        const growthPct = currentBalance > 0 ? (growthAmt / currentBalance) * 100 : 0;
+
+        return {
+          employerContrib,
+          ssContrib,
+          totalAnnualContrib,
+          series,
+          employerContributions,
+          ssContributions,
+          totalEmployerContributions,
+          totalSSContributions,
+          final,
+          growthAmt,
+          growthPct,
+        };
+      }
+
+      // State
+      const STORAGE_KEY = "smsf-comparison-state-v4";
+      const getEl = (id) => document.getElementById(id);
+
+      function readScenario(side) {
+        const bal = parseNumber(getEl(`${side}-balance`).value);
+        const salary = parseNumber(getEl(`${side}-salary`).value);
+        const employer = parseFloat(getEl(`${side}-employer`).value);
+        const growth = parseFloat(getEl(`${side}-growth`).value);
+        const years = parseInt(getEl(`${side}-years`).value, 10);
+        const ssEnabled = getEl(`${side}-ss-toggle`).checked;
+        const ssPct = parsePercent(getEl(`${side}-ss`).value);
+        return { bal, salary, employer, growth, years, ssEnabled, ssPct };
+      }
+
+      function validateScenario(side, s) {
+        const errEl = getEl(`${side}-error`);
+        errEl.textContent = "";
+        if (!(s.bal > 0)) {
+          errEl.textContent = "Enter a positive balance.";
+          return false;
+        }
+        if (s.bal > MAX_BALANCE) {
+          errEl.textContent = `Balance must be less than ${fmtAUD(MAX_BALANCE)}`;
+          return false;
+        }
+        if (!(s.salary > 0)) {
+          errEl.textContent = "Enter a positive salary.";
+          return false;
+        }
+        if (s.salary > MAX_SALARY) {
+          errEl.textContent = `Salary must be less than ${fmtAUD(MAX_SALARY)}`;
+          return false;
+        }
+        if (!(s.employer >= 0)) {
+          errEl.textContent = "Employer contribution is required.";
+          return false;
+        }
+        if (!(s.growth >= 0)) {
+          errEl.textContent = "Growth rate is required.";
+          return false;
+        }
+        if (!(Number.isInteger(s.years) && s.years > 0)) {
+          errEl.textContent = "Years must be > 0.";
+          return false;
+        }
+        if (s.ssEnabled) {
+          if (isNaN(s.ssPct)) {
+            errEl.textContent = "Salary sacrifice must be a number.";
+            return false;
+          }
+          if (!(s.ssPct >= 0 && s.ssPct <= 100)) {
+            errEl.textContent = "Salary sacrifice % must be 0–100.";
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function setScenario(side, s) {
+        getEl(`${side}-balance`).value = isNaN(s.bal)
+          ? ""
+          : new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(s.bal);
+        getEl(`${side}-salary`).value = isNaN(s.salary)
+          ? ""
+          : new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(s.salary);
+        getEl(`${side}-employer`).value = String(s.employer ?? "0.12");
+        getEl(`${side}-growth`).value = String(s.growth ?? "0.10");
+        getEl(`${side}-years`).value = String(s.years ?? "10");
+        getEl(`${side}-ss-toggle`).checked = !!s.ssEnabled;
+        getEl(`${side}-ss`).value = isNaN(s.ssPct) ? "" : String(s.ssPct);
+        toggleSSInput(side);
+        getEl(`${side}-error`).textContent = "";
+      }
+
+      function toggleSSInput(side) {
+        const input = getEl(`${side}-ss`);
+        input.disabled = !getEl(`${side}-ss-toggle`).checked;
+        const decBtn = getEl(`${side}-ss-decrease`);
+        const incBtn = getEl(`${side}-ss-increase`);
+        if (decBtn && incBtn) {
+          decBtn.disabled = input.disabled;
+          incBtn.disabled = input.disabled;
+        }
+      }
+
+      function renderResults(side, r, years) {
+        getEl(`${side}-final`).textContent = `${fmtAUD(r.final)} ${years ? `(${years} yrs)` : ""}`;
+        getEl(`${side}-growth-amt`).textContent = fmtAUD(r.growthAmt);
+        getEl(`${side}-growth-pct`).textContent = fmtPct(r.growthPct);
+      }
+
+      function renderComparison(resL, resR, years) {
+        const winner =
+          resR.final > resL.final
+            ? "SMSF with ASG + Partners"
+            : resR.final < resL.final
+              ? "Current Superannuation Setup"
+              : "Tie";
+        const badge = getEl("winner-badge");
+        if (winner === "Tie") {
+          badge.textContent = "No difference at final year";
+          badge.className = "badge";
+        } else {
+          badge.textContent = `${winner} leads`;
+          badge.className = `badge ${winner.includes("SMSF") ? "win" : "lose"}`;
+        }
+        const deltaFinal = resR.final - resL.final;
+        const deltaGrowthPct = resR.growthPct - resL.growthPct;
+        getEl("delta-text").textContent =
+          winner === "Tie"
+            ? "Both scenarios end at the same balance."
+            : `${winner} by ${fmtAUD(Math.abs(deltaFinal))} after ${years} years.`;
+        getEl("delta-final").textContent = `Final: ${deltaFinal >= 0 ? "+" : ""}${fmtAUD(deltaFinal)}`;
+        getEl("delta-growth").textContent = `Growth: ${deltaGrowthPct >= 0 ? "+" : ""}${fmtPct(deltaGrowthPct)}`;
+      }
+
+      // Yearly table:
+      // - Current Difference = YoY change for Current (contrib + growth)
+      // - SMSF Difference = cumulative difference vs starting SMSF balance (includes contrib + growth)
+      function renderYearlyTable(resL, resR, years) {
+        const tbody = getEl("yearly-table-body");
+        tbody.innerHTML = "";
+
+        const smsfStart = resR.series[0] || 0;
+
+        for (let y = 0; y <= years; y++) {
+          const leftBal = resL.series[y] || 0;
+          const rightBal = resR.series[y] || 0;
+
+          const leftPrev = y > 0 ? resL.series[y - 1] || 0 : null;
+          const currYoY = leftPrev === null ? null : leftBal - leftPrev;
+          const currYoYSymbol = currYoY !== null && currYoY >= 0 ? "+" : "";
+
+          // Cumulative SMSF difference vs start
+          const smsfCumDiff = y === 0 ? null : rightBal - smsfStart;
+          const smsfClass = smsfCumDiff !== null && smsfCumDiff >= 0 ? "positive" : "negative";
+          const smsfSymbol = smsfCumDiff !== null && smsfCumDiff >= 0 ? "+" : "";
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+          <td class="year-col"><strong>Year ${y}</strong></td>
+
+          <td class="current-balance">${fmtAUD(leftBal)}</td>
+          <td class="current-diff">${y === 0 ? "—" : `${currYoYSymbol}${fmtAUD(currYoY)}`}</td>
+
+          <td class="smsf-balance">${fmtAUD(rightBal)}</td>
+          <td class="difference ${smsfClass}">${y === 0 ? "—" : `${smsfSymbol}${fmtAUD(smsfCumDiff)}`}</td>
+
+          <td>${y === 0 ? "—" : fmtAUD(resL.employerContributions[y])}</td>
+          <td class="running-total">${fmtAUD(resL.totalEmployerContributions[y])}</td>
+
+          <td>${y === 0 ? "—" : resL.ssContributions[y] > 0 ? fmtAUD(resL.ssContributions[y]) : "—"}</td>
+          <td class="running-total">${resL.totalSSContributions[y] > 0 ? fmtAUD(resL.totalSSContributions[y]) : "—"}</td>
+
+          <td>${y === 0 ? "—" : fmtAUD(resR.employerContributions[y])}</td>
+          <td class="running-total">${fmtAUD(resR.totalEmployerContributions[y])}</td>
+
+          <td>${y === 0 ? "—" : resR.ssContributions[y] > 0 ? fmtAUD(resR.ssContributions[y]) : "—"}</td>
+          <td class="running-total">${resR.totalSSContributions[y] > 0 ? fmtAUD(resR.totalSSContributions[y]) : "—"}</td>
+        `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      // Chart
+      let chart;
+      function renderChart(labels, leftSeries, rightSeries) {
+        const ctx = getEl("chart").getContext("2d");
+        if (chart) {
+          chart.destroy();
+        }
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        chart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Current Superannuation",
+                data: leftSeries,
+                borderWidth: 2,
+                borderColor: "rgb(52, 152, 219)",
+                backgroundColor: "rgba(52, 152, 219, 0.1)",
+                fill: false,
+                tension: 0.15,
+              },
+              {
+                label: "SMSF with ASG + Partners",
+                data: rightSeries,
+                borderWidth: 2,
+                borderColor: "rgb(16, 185, 129)",
+                backgroundColor: "rgba(16, 185, 129, 0.1)",
+                fill: false,
+                tension: 0.15,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { position: "top" },
+              tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtAUD(ctx.parsed.y)}` } },
+            },
+            scales: {
+              y: { ticks: { callback: (v) => fmtAUD(v) } },
+              x: { title: { display: true, text: "Year" } },
+            },
+            animation: reduceMotion ? false : { duration: 600 },
+          },
+        });
+      }
+
+      // CSV export, matches table logic
+      function exportCSV(resL, resR, years) {
+        const smsfStart = resR.series[0] || 0;
+        const rows = [
+          [
+            "Year",
+            "Current Balance",
+            "Current Super Difference (YoY)",
+            "SMSF Balance",
+            "SMSF Difference (vs start)",
+            "Employer Contribution (Current)",
+            "Total Employer Contribution (Current)",
+            "Salary Sacrifice (Current)",
+            "Total Salary Sacrifice (Current)",
+            "Employer Contribution (SMSF)",
+            "Total Employer Contribution (SMSF)",
+            "Salary Sacrifice (SMSF)",
+            "Total Salary Sacrifice (SMSF)",
+          ],
+        ];
+        for (let y = 0; y <= years; y++) {
+          const leftBal = resL.series[y] || 0;
+          const rightBal = resR.series[y] || 0;
+
+          const leftPrev = y > 0 ? resL.series[y - 1] || 0 : null;
+          const currYoY = leftPrev === null ? "" : leftBal - leftPrev;
+
+          const smsfCumDiff = y === 0 ? "" : rightBal - smsfStart;
+
+          rows.push([
+            y,
+            leftBal,
+            currYoY === "" ? "" : currYoY,
+            rightBal,
+            smsfCumDiff === "" ? "" : smsfCumDiff,
+            y === 0 ? "" : resL.employerContributions[y],
+            resL.totalEmployerContributions[y],
+            y === 0 ? "" : resL.ssContributions[y],
+            resL.totalSSContributions[y],
+            y === 0 ? "" : resR.employerContributions[y],
+            resR.totalEmployerContributions[y],
+            y === 0 ? "" : resR.ssContributions[y],
+            resR.totalSSContributions[y],
+          ]);
+        }
+        const csv = rows
+          .map((r) => r.map((v, i) => (i === 0 ? String(v) : typeof v === "number" ? v.toFixed(2) : v)).join(","))
+          .join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "smsf_comparison.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      // Share state
+      function saveStateToStorage() {
+        const L = readScenario("left");
+        const R = readScenario("right");
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ L, R }));
+        const params = new URLSearchParams();
+        for (const [prefix, s] of [
+          ["l", L],
+          ["r", R],
+        ]) {
+          params.set(`${prefix}b`, isNaN(s.bal) ? "" : String(s.bal));
+          params.set(`${prefix}s`, isNaN(s.salary) ? "" : String(s.salary));
+          params.set(`${prefix}e`, String(s.employer));
+          params.set(`${prefix}g`, String(s.growth));
+          params.set(`${prefix}y`, String(s.years));
+          params.set(`${prefix}sOn`, s.ssEnabled ? "1" : "0");
+          params.set(`${prefix}ss`, isNaN(s.ssPct) ? "" : String(s.ssPct));
+        }
+        const shareUrl = `${location.origin}${location.pathname}?${params.toString()}`;
+        history.replaceState(null, "", shareUrl);
+        return shareUrl;
+      }
+
+      function loadState() {
+        const url = new URL(location.href);
+        const q = url.searchParams;
+        let state = null;
+        const fromUrl = q.has("lb") || q.has("rb");
+        if (fromUrl) {
+          state = {
+            L: {
+              bal: parseNumber(q.get("lb")),
+              salary: parseNumber(q.get("ls")),
+              employer: parseFloat(q.get("le")),
+              growth: parseFloat(q.get("lg")),
+              years: parseInt(q.get("ly") || "10", 10),
+              ssEnabled: q.get("lsOn") === "1",
+              ssPct: parsePercent(q.get("lss")),
+            },
+            R: {
+              bal: parseNumber(q.get("rb")),
+              salary: parseNumber(q.get("rs")),
+              employer: parseFloat(q.get("re")),
+              growth: parseFloat(q.get("rg")),
+              years: parseInt(q.get("ry") || "10", 10),
+              ssEnabled: q.get("rsOn") === "1",
+              ssPct: parsePercent(q.get("rss")),
+            },
+          };
+        } else {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            try {
+              state = JSON.parse(raw);
+            } catch {}
+          }
+        }
+        if (state) {
+          setScenario("left", state.L);
+          setScenario("right", state.R);
+        } else {
+          resetExample(false);
+        }
+      }
+
+      // Wiring
+      function setupNumberInput(side, field, step = 10000, min = 0, max = null) {
+        const input = getEl(`${side}-${field}`);
+        const decBtn = getEl(`${side}-${field}-decrease`);
+        const incBtn = getEl(`${side}-${field}-increase`);
+        if (!decBtn || !incBtn) return;
+        decBtn.addEventListener("click", () => {
+          const current = parseNumber(input.value) || 0;
+          const newValue = clamp(current - step, min, max || Infinity);
+          input.value =
+            newValue === 0
+              ? ""
+              : new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(newValue);
+          formatCurrencyInput(input);
+          saveStateToStorage();
+          debouncedCalculate();
+        });
+        incBtn.addEventListener("click", () => {
+          const current = parseNumber(input.value) || 0;
+          const newValue = clamp(current + step, min, max || Infinity);
+          input.value = new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+            newValue,
+          );
+          formatCurrencyInput(input);
+          saveStateToStorage();
+          debouncedCalculate();
+        });
+      }
+
+      function setupPercentInput(side, field, step = 1, min = 0, max = 100) {
+        const input = getEl(`${side}-${field}`);
+        const decBtn = getEl(`${side}-${field}-decrease`);
+        const incBtn = getEl(`${side}-${field}-increase`);
+        if (!decBtn || !incBtn) return;
+        decBtn.addEventListener("click", () => {
+          const current = parsePercent(input.value) || 0;
+          const newValue = clamp(current - step, min, max);
+          input.value = newValue === 0 ? "" : String(newValue);
+          saveStateToStorage();
+          debouncedCalculate();
+        });
+        incBtn.addEventListener("click", () => {
+          const current = parsePercent(input.value) || 0;
+          const newValue = clamp(current + step, min, max);
+          input.value = String(newValue);
+          saveStateToStorage();
+          debouncedCalculate();
+        });
+      }
+
+      let calculationInProgress = false;
+      function calculate() {
+        if (calculationInProgress) return;
+        calculationInProgress = true;
+
+        const calcBtn = getEl("calc-btn");
+        calcBtn.disabled = true;
+        calcBtn.classList.add("loading");
+        calcBtn.innerHTML = "Calculating...";
+
+        setTimeout(() => {
+          try {
+            const L = readScenario("left");
+            const R = readScenario("right");
+            const okL = validateScenario("left", L);
+            const okR = validateScenario("right", R);
+            if (!(okL && okR)) {
+              getEl("results").style.display = "none";
+              return;
+            }
+
+            const resL = projectYearlySeries(L.bal, L.salary, L.employer, L.ssEnabled, L.ssPct, L.growth, L.years);
+            const resR = projectYearlySeries(R.bal, R.salary, R.employer, R.ssEnabled, R.ssPct, R.growth, R.years);
+
+            renderResults("left", resL, L.years);
+            renderResults("right", resR, R.years);
+
+            const years = Math.min(L.years, R.years);
+            const labels = Array.from({ length: years + 1 }, (_, i) => i);
+            renderComparison(resL, resR, years);
+
+            renderYearlyTable(resL, resR, years);
+            renderChart(labels, resL.series.slice(0, years + 1), resR.series.slice(0, years + 1));
+
+            getEl("results").style.display = "block";
+            saveStateToStorage();
+
+            // Send results back to CRM
+            sendResultToCRM({
+              projectedBalance: resR.final,
+              contributions: resR.totalEmployerContributions[resR.totalEmployerContributions.length - 1],
+              strategy: "SMSF with ASG + Partners",
+              currentBalance: resL.series[0] ?? null,
+              currentGrowth: resL.growthAmt,
+              smsfBalance: resR.final,
+              smsfGrowth: resR.growthAmt,
+              years: years,
+              winner: resR.final > resL.final ? "SMSF" : resR.final < resL.final ? "Current" : "Tie",
+              deltaFinal: resR.final - resL.final,
+            });
+          } catch (error) {
+            console.error("Calculation error:", error);
+          } finally {
+            calculationInProgress = false;
+            calcBtn.disabled = false;
+            calcBtn.classList.remove("loading");
+            calcBtn.innerHTML = "▶ Calculate";
+          }
+        }, 100);
+      }
+      const debouncedCalculate = debounce(calculate, DEBOUNCE_DELAY);
+
+      function resetExample(doCalc = true) {
+        setScenario("left", {
+          bal: 100000,
+          salary: 40000,
+          employer: 0.12,
+          growth: 0.05,
+          years: 10,
+          ssEnabled: false,
+          ssPct: 5,
+        });
+        setScenario("right", {
+          bal: 100000,
+          salary: 40000,
+          employer: 0.12,
+          growth: 0.1,
+          years: 10,
+          ssEnabled: false,
+          ssPct: 0,
+        });
+        if (doCalc) calculate();
+        history.replaceState(null, "", location.pathname);
+        localStorage.removeItem(STORAGE_KEY);
+        getEl("share-tip").textContent = "";
+      }
+
+      function copyShareLink() {
+        const url = saveStateToStorage();
+        navigator.clipboard
+          .writeText(url)
+          .then(() => {
+            getEl("share-tip").textContent = "Link copied.";
+            setTimeout(() => (getEl("share-tip").textContent = ""), 2000);
+          })
+          .catch(() => {
+            getEl("share-tip").textContent = "Copy failed.";
+            setTimeout(() => (getEl("share-tip").textContent = ""), 2000);
+          });
+      }
+
+      function attachEvents() {
+        ["left", "right"].forEach((side) => {
+          setupNumberInput(side, "balance", 10000, 0, MAX_BALANCE);
+          setupNumberInput(side, "salary", 5000, 0, MAX_SALARY);
+          setupPercentInput(side, "ss", 1, 0, 100);
+
+          getEl(`${side}-ss-toggle`).addEventListener("change", () => {
+            toggleSSInput(side);
+            saveStateToStorage();
+            debouncedCalculate();
+          });
+
+          getEl(`${side}-balance`).addEventListener("blur", (e) => {
+            formatCurrencyInput(e.target);
+            saveStateToStorage();
+            debouncedCalculate();
+          });
+          getEl(`${side}-salary`).addEventListener("blur", (e) => {
+            formatCurrencyInput(e.target);
+            saveStateToStorage();
+            debouncedCalculate();
+          });
+
+          getEl(`${side}-balance`).addEventListener("input", debouncedCalculate);
+          getEl(`${side}-salary`).addEventListener("input", debouncedCalculate);
+
+          getEl(`${side}-ss`).addEventListener("blur", (e) => {
+            const n = parsePercent(e.target.value);
+            if (!isNaN(n)) e.target.value = String(clamp(n, 0, 100));
+            saveStateToStorage();
+            debouncedCalculate();
+          });
+          getEl(`${side}-ss`).addEventListener("input", debouncedCalculate);
+
+          ["employer", "growth", "years"].forEach((field) => {
+            getEl(`${side}-${field}`).addEventListener("change", () => {
+              saveStateToStorage();
+              debouncedCalculate();
+            });
+          });
+        });
+
+        getEl("copy-right-balance").addEventListener("click", () =>
+          copyCurrencyInput(getEl("left-balance"), getEl("right-balance")),
+        );
+        getEl("copy-right-salary").addEventListener("click", () =>
+          copyCurrencyInput(getEl("left-salary"), getEl("right-salary")),
+        );
+
+        getEl("calc-btn").addEventListener("click", calculate);
+        getEl("reset-btn").addEventListener("click", () => resetExample(true));
+        getEl("csv-btn").addEventListener("click", () => {
+          const L = readScenario("left");
+          const R = readScenario("right");
+          if (!(validateScenario("left", L) && validateScenario("right", R))) return;
+          const resL = projectYearlySeries(L.bal, L.salary, L.employer, L.ssEnabled, L.ssPct, L.growth, L.years);
+          const resR = projectYearlySeries(R.bal, R.salary, R.employer, R.ssEnabled, R.ssPct, R.growth, R.years);
+          const years = Math.min(L.years, R.years);
+          exportCSV(resL, resR, years);
+        });
+        getEl("share-btn").addEventListener("click", copyShareLink);
+      }
+
+      // Init
+      attachEvents();
+      loadState();
+      if (getEl("left-balance").value && getEl("right-balance").value) {
+        toggleSSInput("left");
+        toggleSSInput("right");
+        setTimeout(() => {
+          calculate();
+        }, 100);
+      } else {
+        resetExample(true);
+      }
+
+      // ── CRM ↔ SMSF Message Bridge ──────────────────────────────────
+      // Signal ready to parent window
+      try {
+        window.parent.postMessage({ type: "SMSF_READY" }, "*");
+      } catch {
+        /* cross-origin — ignore */
+      }
+
+      // Send calculation results back to CRM
+      function sendResultToCRM(result) {
+        try {
+          window.parent.postMessage(
+            {
+              type: "SMSF_RESULT",
+              payload: {
+                projectedBalance: result?.projectedBalance ?? null,
+                contributions: result?.contributions ?? null,
+                strategy: result?.strategy ?? null,
+                timestamp: Date.now(),
+                currentBalance: result?.currentBalance ?? null,
+                currentGrowth: result?.currentGrowth ?? null,
+                smsfBalance: result?.smsfBalance ?? null,
+                smsfGrowth: result?.smsfGrowth ?? null,
+                years: result?.years ?? null,
+                winner: result?.winner ?? null,
+                deltaFinal: result?.deltaFinal ?? null,
+              },
+            },
+            "*",
+          );
+        } catch {
+          /* silently ignore */
+        }
+      }
+
+      // Listen for messages from CRM
+      window.addEventListener("message", function (e) {
+        if (!e.data || !e.data.type) return;
+
+        if (e.data.type === "LOAD_CLIENT") {
+          const payload = e.data.payload || {};
+          try {
+            if (payload.name) {
+              // Could populate a client name field here in future
+              console.log("[SMSF] Client name:", payload.name);
+            }
+            if (typeof payload.income === "number" && payload.income > 0) {
+              const fmt = new Intl.NumberFormat("en-AU", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(payload.income);
+              getEl("left-salary").value = fmt;
+              getEl("right-salary").value = fmt;
+            }
+            if (typeof payload.balance === "number" && payload.balance > 0) {
+              const fmt = new Intl.NumberFormat("en-AU", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(payload.balance);
+              getEl("left-balance").value = fmt;
+              getEl("right-balance").value = fmt;
+            }
+            saveStateToStorage();
+            debouncedCalculate();
+          } catch (err) {
+            console.warn("[SMSF] Error handling LOAD_CLIENT:", err);
+          }
+        }
+
+        if (e.data.type === "CRM_CONTEXT") {
+          console.log("[SMSF] CRM context received:", e.data.payload);
+        }
+
+        if (e.data.type === "RESTORE_STATE") {
+          const s = e.data.payload || {};
+          const checkboxIds = ["left-ss-toggle", "right-ss-toggle"];
+          try {
+            Object.keys(s).forEach(function (id) {
+              const el = document.getElementById(id);
+              if (!el) return;
+              if (checkboxIds.indexOf(id) !== -1) {
+                el.checked = !!s[id];
+              } else {
+                el.value = s[id];
+              }
+            });
+            ["left", "right"].forEach(function (side) {
+              toggleSSInput(side);
+            });
+            debouncedCalculate();
+          } catch (err) {
+            console.warn("[SMSF] Error handling RESTORE_STATE:", err);
+          }
+        }
+      });
+
+      // ── State persistence: emit SMSF_STATE on any input change ─────────────
+      (function () {
+        var INPUT_IDS = [
+          "left-balance","left-salary","left-ss",
+          "right-balance","right-salary","right-ss"
+        ];
+        var SELECT_IDS = [
+          "left-employer","left-growth","left-years",
+          "right-employer","right-growth","right-years"
+        ];
+        var CHECKBOX_IDS = ["left-ss-toggle","right-ss-toggle"];
+
+        function gatherState() {
+          var state = {};
+          INPUT_IDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) state[id] = el.value;
+          });
+          SELECT_IDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) state[id] = el.value;
+          });
+          CHECKBOX_IDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) state[id] = el.checked;
+          });
+          return state;
+        }
+
+        var stateTimer = null;
+        function debouncedSendState() {
+          clearTimeout(stateTimer);
+          stateTimer = setTimeout(function () {
+            try {
+              window.parent.postMessage({ type: "SMSF_STATE", payload: gatherState() }, "*");
+            } catch (e) { /* cross-origin — ignore */ }
+          }, 500);
+        }
+
+        document.addEventListener("input", debouncedSendState);
+        document.addEventListener("change", debouncedSendState);
+      })();
+    </script>
+  </body>
+</html>

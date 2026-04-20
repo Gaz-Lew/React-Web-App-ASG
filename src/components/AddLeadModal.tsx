@@ -3,6 +3,7 @@ import { Lead } from "../types";
 import { useAppStore } from "../stores/appStore";
 import { useLeads } from "../hooks/useFirebase";
 import { sanitizePhone } from "../lib/utils";
+import { generateLeadId } from "../lib/idGenerator";
 import { SuburbInput } from "./SuburbInput";
 import { X, UserPlus } from "lucide-react";
 
@@ -24,7 +25,7 @@ const EMPTY: Partial<Lead> = {
   postcode: "",
   ownership: "",
   superannuation: "",
-  status: "DQ",
+  status: "new",
   leadDate: new Date().toISOString().split("T")[0],
 };
 
@@ -64,9 +65,13 @@ export function AddLeadModal({ onClose, onSave }: AddLeadModalProps) {
 
   // --- Google Places Autocomplete ---
   useEffect(() => {
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let mounted = true;
+
     const w = window as AnyWindow;
     const initAutocomplete = () => {
-      if (!addressInputRef.current || !w.google?.maps?.places) return;
+      if (!mounted || !addressInputRef.current || !w.google?.maps?.places) return;
       const autocomplete = new w.google.maps.places.Autocomplete(addressInputRef.current, {
         componentRestrictions: { country: "au" },
         fields: ["address_components", "geometry"],
@@ -90,27 +95,51 @@ export function AddLeadModal({ onClose, onSave }: AddLeadModalProps) {
       });
     };
 
+    const cleanup = () => {
+      mounted = false;
+      if (pollInterval) clearInterval(pollInterval);
+      if (pollTimeout) clearTimeout(pollTimeout);
+    };
+
     if (w.google?.maps?.places) {
       initAutocomplete();
-    } else {
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (!existingScript) {
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCoxDjRMuDT6NO661xzrgYvvnjo7P6isS8&libraries=places`;
-        script.async = true;
-        script.onload = initAutocomplete;
-        document.head.appendChild(script);
-      } else {
-        // Script already loading — poll until Places is available
-        const poll = setInterval(() => {
-          if (w.google?.maps?.places) {
-            clearInterval(poll);
-            initAutocomplete();
-          }
-        }, 200);
-        return () => clearInterval(poll);
-      }
+      return cleanup;
     }
+
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (!existingScript) {
+      const script = document.createElement("script");
+      const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        console.error("VITE_GOOGLE_PLACES_API_KEY environment variable is not set");
+        return cleanup;
+      }
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.onload = initAutocomplete;
+      script.onerror = () => {
+        console.error("Failed to load Google Maps API script");
+      };
+      document.head.appendChild(script);
+    } else {
+      // Script already loading — poll until Places is available with timeout
+      pollInterval = setInterval(() => {
+        if (w.google?.maps?.places) {
+          if (pollInterval) clearInterval(pollInterval);
+          initAutocomplete();
+        }
+      }, 200);
+
+      // Stop polling after 15 seconds to prevent infinite loop
+      pollTimeout = setTimeout(() => {
+        if (pollInterval) clearInterval(pollInterval);
+        if (!w.google?.maps?.places) {
+          console.warn("Google Places API failed to load within 15s. Autocomplete disabled.");
+        }
+      }, 15000);
+    }
+
+    return cleanup;
   }, []);
 
   // --- Duplicate address detection ---
@@ -159,7 +188,7 @@ export function AddLeadModal({ onClose, onSave }: AddLeadModalProps) {
     if (phoneError) return;
     if (!validate()) return;
     const newLead: Lead = {
-      id: Date.now(),
+      id: generateLeadId(),
       name: form.name!.trim(),
       phone: form.phone!.trim(),
       email: form.email?.trim() || undefined,
@@ -170,7 +199,7 @@ export function AddLeadModal({ onClose, onSave }: AddLeadModalProps) {
       ownership: form.ownership || undefined,
       superannuation: form.superannuation || undefined,
       dqRep: form.dqRep!,
-      status: form.status || "DQ",
+      status: form.status || "new",
       leadDate: form.leadDate,
       createdAt: Date.now(),
       callHistory: [],
@@ -345,7 +374,7 @@ export function AddLeadModal({ onClose, onSave }: AddLeadModalProps) {
                   value={form.status}
                   onChange={(e) => update("status", e.target.value)}
                 >
-                  {["DQ", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"].map((s) => (
+                  {["new", "contacted", "qualified", "booked", "lost"].map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>

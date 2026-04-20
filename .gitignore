@@ -31,3 +31,13 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# AI/dev tool configs
+.claude/
+.qwen/
+
+# Cloud Functions compiled output
+functions/lib/
+
+# Source maps
+*.map

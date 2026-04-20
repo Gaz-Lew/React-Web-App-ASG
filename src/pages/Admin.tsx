@@ -70,7 +70,22 @@ import {
   ArrowUpDown,
   ArrowDownCircle,
   ArrowUpCircle,
+  BookOpen,
+  Palette,
+  FlaskConical,
+  Search,
+  ShieldX,
+  HeartPulse,
+  History,
 } from "lucide-react";
+import { KnowledgeLayout } from "../components/KnowledgeLayout";
+import { SystemSettingsPanel } from "../components/SystemSettingsPanel";
+import { SystemHealthPanel } from "../components/SystemHealthPanel";
+import { SettingsHistoryPanel } from "../components/SettingsHistoryPanel";
+import { DailyReportDashboard } from "../components/DailyReportDashboard";
+import { ADMIN_GUIDE_SECTIONS } from "../data/knowledgeBase";
+import { AUTOMATION_RULES } from "../lib/automation";
+import { isOverdue } from "../lib/followUp";
 
 // ── Shared rep avatar (photo > initials fallback) ─────────────────────────────
 function RepAvatar({
@@ -1549,6 +1564,7 @@ function RepRow({
   const [showOnCalendar, setShowOnCalendar] = useState(rep.showOnCalendar !== false);
   const [availableForBookings, setAvailableForBookings] = useState(rep.availableForBookings !== false);
   const [allowedServiceTypes, setAllowedServiceTypes] = useState<string[]>(rep.allowedServiceTypes ?? []);
+  const [alertsEnabled, setAlertsEnabled] = useState(rep.alertsEnabled ?? false);
   const [showApptTypes, setShowApptTypes] = useState(false);
   const { serviceTypes: allServiceTypes } = useServiceTypes();
   const { showToast } = useToast();
@@ -1618,6 +1634,7 @@ function RepRow({
       showOnCalendar: showOnCalendar,
       availableForBookings: availableForBookings,
       allowedServiceTypes: allowedServiceTypes.length > 0 ? allowedServiceTypes : undefined,
+      alertsEnabled: alertsEnabled,
     });
     setEditing(false);
     setExpanded(false);
@@ -1638,6 +1655,7 @@ function RepRow({
     setShowOnCalendar(rep.showOnCalendar !== false);
     setAvailableForBookings(rep.availableForBookings !== false);
     setAllowedServiceTypes(rep.allowedServiceTypes ?? []);
+    setAlertsEnabled(rep.alertsEnabled ?? false);
     setEditing(false);
     setExpanded(false);
   };
@@ -1869,6 +1887,27 @@ function RepRow({
                 Available for Bookings
               </label>
             </div>
+          </div>
+
+          {/* ── Performance Alerts ── */}
+          <div className="col-span-full">
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Performance Alerts
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={alertsEnabled}
+                onChange={(e) => setAlertsEnabled(e.target.checked)}
+                className="rounded accent-amber-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Enable Performance Alerts
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+              When enabled, this rep receives in-app nudges for activity targets — low activity warnings, target progress, and end-of-day summaries.
+            </p>
           </div>
 
           {/* ── Login credentials (admin-visible) ── */}
@@ -3273,6 +3312,517 @@ function DataToolsSection({
 }
 
 // ── Main Admin page ───────────────────────────────────────────────────────────
+// ── System Health Section ─────────────────────────────────────────────────────
+function SystemHealthSection({ leads }: { leads: Lead[] }) {
+  const today = new Date().toISOString().split("T")[0];
+
+  const stats = useMemo(() => {
+    const active = leads.filter((l) => l.status !== "_deleted");
+    const noContact = active.filter((l) => !l.callHistory?.length);
+    const overdueFollowUps = active.filter(
+      (l) => l.nextContactDate && isOverdue(l.nextContactDate),
+    );
+    const stale14 = active.filter((l) => {
+      if (!l.lastCall && !l.callHistory?.length) return false; // never contacted — different metric
+      const lastTs = l.lastCall ? new Date(l.lastCall).getTime() : 0;
+      return Date.now() - lastTs > 14 * 24 * 60 * 60 * 1000;
+    });
+    const withFollowUp = active.filter((l) => l.nextContactDate);
+
+    return {
+      total: active.length,
+      noContact: noContact.length,
+      overdueFollowUps: overdueFollowUps.length,
+      stale14: stale14.length,
+      withFollowUp: withFollowUp.length,
+    };
+  }, [leads, today]);
+
+  const healthCards = [
+    {
+      label: "Total Active Leads",
+      value: stats.total,
+      icon: <Users size={18} className="text-gray-500" />,
+      bg: "bg-gray-50 dark:bg-slate-800/40",
+      border: "border-gray-200 dark:border-slate-700",
+      text: "text-gray-900 dark:text-white",
+      sub: "in system (excl. deleted)",
+    },
+    {
+      label: "No Contact Yet",
+      value: stats.noContact,
+      icon: <PhoneCall size={18} className="text-amber-500" />,
+      bg: stats.noContact > 0 ? "bg-amber-50 dark:bg-amber-900/20" : "bg-gray-50 dark:bg-slate-800/40",
+      border: stats.noContact > 0 ? "border-amber-200 dark:border-amber-900/50" : "border-gray-200 dark:border-slate-700",
+      text: stats.noContact > 0 ? "text-amber-700 dark:text-amber-300" : "text-gray-900 dark:text-white",
+      sub: "leads with no call history",
+    },
+    {
+      label: "Overdue Follow-Ups",
+      value: stats.overdueFollowUps,
+      icon: <AlertCircle size={18} className="text-red-500" />,
+      bg: stats.overdueFollowUps > 0 ? "bg-red-50 dark:bg-red-900/20" : "bg-gray-50 dark:bg-slate-800/40",
+      border: stats.overdueFollowUps > 0 ? "border-red-200 dark:border-red-900/50" : "border-gray-200 dark:border-slate-700",
+      text: stats.overdueFollowUps > 0 ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white",
+      sub: "nextContactDate is past",
+    },
+    {
+      label: "Stale (14+ days)",
+      value: stats.stale14,
+      icon: <Clock size={18} className="text-orange-500" />,
+      bg: stats.stale14 > 0 ? "bg-orange-50 dark:bg-orange-900/20" : "bg-gray-50 dark:bg-slate-800/40",
+      border: stats.stale14 > 0 ? "border-orange-200 dark:border-orange-900/50" : "border-gray-200 dark:border-slate-700",
+      text: stats.stale14 > 0 ? "text-orange-700 dark:text-orange-300" : "text-gray-900 dark:text-white",
+      sub: "last call was 14+ days ago",
+    },
+    {
+      label: "Follow-Ups Scheduled",
+      value: stats.withFollowUp,
+      icon: <CalendarCheck size={18} className="text-green-500" />,
+      bg: "bg-green-50 dark:bg-green-900/20",
+      border: "border-green-200 dark:border-green-900/50",
+      text: "text-green-700 dark:text-green-300",
+      sub: "leads with nextContactDate set",
+    },
+  ];
+
+  const healthScore = stats.total > 0
+    ? Math.round(((stats.total - stats.noContact - stats.overdueFollowUps) / stats.total) * 100)
+    : 100;
+
+  return (
+    <div className="space-y-6">
+      {/* Overall score */}
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <HeartPulse size={15} className="text-red-500" />
+              Pipeline Health Score
+            </h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Based on contact rate and follow-up compliance
+            </p>
+          </div>
+          <div className="text-right">
+            <span
+              className={`text-3xl font-black ${
+                healthScore >= 80
+                  ? "text-green-600 dark:text-green-400"
+                  : healthScore >= 60
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {healthScore}%
+            </span>
+          </div>
+        </div>
+        <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${
+              healthScore >= 80
+                ? "bg-green-500"
+                : healthScore >= 60
+                  ? "bg-amber-400"
+                  : "bg-red-500"
+            }`}
+            style={{ width: `${healthScore}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        {healthCards.map((card) => (
+          <div
+            key={card.label}
+            className={`rounded-xl border p-4 ${card.bg} ${card.border}`}
+          >
+            <div className="flex items-center gap-2 mb-2">{card.icon}</div>
+            <div className={`text-2xl font-bold ${card.text}`}>{card.value}</div>
+            <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-0.5">
+              {card.label}
+            </div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{card.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Status Config Section ─────────────────────────────────────────────────────
+function StatusConfigSection() {
+  const { statusColors, setStatusColors } = useAppStore();
+  const { save: saveSettings } = useSaveSettings();
+  const [localColors, setLocalColors] = useState<Record<string, string>>({ ...statusColors });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const statuses = ["DQ", "Live", "Booked", "Revisit", "Not Interested", "Wrong Number", "No Answer"];
+
+  const handleColorChange = (status: string, color: string) => {
+    setLocalColors((prev) => ({ ...prev, [status]: color }));
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await saveSettings({ statusColors: localColors });
+    setStatusColors(localColors);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleReset = (status: string) => {
+    const defaultColor = DEFAULT_STATUS_COLORS[status] ?? "#9ca3af";
+    setLocalColors((prev) => ({ ...prev, [status]: defaultColor }));
+    setSaved(false);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <Palette size={15} className="text-amber-500" />
+              Status Colours
+            </h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Changes persist to Firestore and apply immediately across all devices.
+            </p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-400 transition disabled:opacity-50"
+          >
+            {saving ? (
+              <RefreshCw size={13} className="animate-spin" />
+            ) : saved ? (
+              <Check size={13} />
+            ) : (
+              <Check size={13} />
+            )}
+            {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {statuses.map((status) => {
+            const current = localColors[status] ?? DEFAULT_STATUS_COLORS[status] ?? "#9ca3af";
+            const isDefault = current === (DEFAULT_STATUS_COLORS[status] ?? "#9ca3af");
+            return (
+              <div
+                key={status}
+                className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-[var(--surface)] border border-gray-100 dark:border-white/[0.05]"
+              >
+                {/* Colour swatch */}
+                <div
+                  className="w-8 h-8 rounded-lg border-2 border-white/20 flex-shrink-0 shadow-sm"
+                  style={{ backgroundColor: current }}
+                />
+
+                {/* Status name */}
+                <span className="text-sm font-semibold text-gray-800 dark:text-white w-28 flex-shrink-0">
+                  {status}
+                </span>
+
+                {/* Badge preview */}
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: current + "26", color: current, border: `1px solid ${current}55` }}
+                >
+                  {status}
+                </span>
+
+                {/* Hex input */}
+                <input
+                  type="text"
+                  value={current}
+                  maxLength={7}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (/^#[0-9a-fA-F]{0,6}$/.test(v)) handleColorChange(status, v);
+                  }}
+                  className="w-24 px-2 py-1 text-xs font-mono rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+
+                {/* Colour picker */}
+                <input
+                  type="color"
+                  value={current}
+                  onChange={(e) => handleColorChange(status, e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent flex-shrink-0"
+                  title="Pick colour"
+                />
+
+                {/* Reset to default */}
+                {!isDefault && (
+                  <button
+                    onClick={() => handleReset(status)}
+                    className="text-xs text-gray-400 hover:text-amber-500 transition ml-auto flex-shrink-0"
+                    title="Reset to default"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Automation Rules Section ──────────────────────────────────────────────────
+function AutomationRulesSection() {
+  return (
+    <div className="space-y-5">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-5">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-1">
+          <FlaskConical size={15} className="text-amber-500" />
+          Active Automation Rules
+        </h3>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+          Rules run client-side when a lead is opened. If conditions are met and no manual override
+          exists, the lead is updated automatically. Rules are defined in{" "}
+          <code className="text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1 py-0.5 rounded text-[10px]">
+            src/lib/automation.ts
+          </code>
+        </p>
+
+        <div className="space-y-3">
+          {AUTOMATION_RULES.map((rule) => (
+            <div
+              key={rule.id}
+              className={`p-4 rounded-xl border ${
+                rule.active
+                  ? "border-green-200 bg-green-50 dark:border-green-900/50 dark:bg-green-900/10"
+                  : "border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/40"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${
+                      rule.active ? "bg-green-500 animate-pulse" : "bg-gray-400"
+                    }`}
+                  />
+                  <span className="text-sm font-semibold text-gray-800 dark:text-white">{rule.name}</span>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    rule.active
+                      ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                      : "bg-gray-100 dark:bg-slate-700 text-gray-500"
+                  }`}
+                >
+                  {rule.active ? "Active" : "Disabled"}
+                </span>
+              </div>
+
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
+                {rule.description}
+              </p>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-white/60 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.04]">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex-shrink-0 mt-0.5">
+                    Trigger
+                  </span>
+                  <span className="text-[11px] text-gray-600 dark:text-gray-400">{rule.trigger}</span>
+                </div>
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-white/60 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.04]">
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wide flex-shrink-0 mt-0.5">
+                    Action
+                  </span>
+                  <span className="text-[11px] text-gray-600 dark:text-gray-400">{rule.action}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Future rules placeholder */}
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-dashed border-gray-200 dark:border-slate-700 p-5">
+        <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-3">
+          <Zap size={13} />
+          Planned Rules
+        </h4>
+        <div className="space-y-2">
+          {[
+            "Booked lead → no FC date after 48h → alert rep",
+            "No contact in 7 days → escalate to admin",
+            "Callback date missed → re-queue as high priority",
+          ].map((rule) => (
+            <div
+              key={rule}
+              className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 py-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-slate-600 flex-shrink-0" />
+              {rule}
+              <span className="ml-auto text-[10px] bg-gray-100 dark:bg-slate-700 text-gray-400 px-1.5 py-0.5 rounded">
+                Coming soon
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Data Inspector Section ────────────────────────────────────────────────────
+function DataInspectorSection({ leads, reps }: { leads: Lead[]; reps: Rep[] }) {
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return leads.slice(0, 100); // cap display to 100 for performance
+    return leads
+      .filter(
+        (l) =>
+          l.name?.toLowerCase().includes(q) ||
+          l.phone?.includes(q) ||
+          l.suburb?.toLowerCase().includes(q) ||
+          l.status?.toLowerCase().includes(q),
+      )
+      .slice(0, 100);
+  }, [leads, search]);
+
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search
+          size={14}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
+        />
+        <input
+          type="text"
+          placeholder="Search leads by name, phone, suburb or status…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[var(--surface)] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+        />
+      </div>
+
+      <div className="text-xs text-gray-400 dark:text-gray-500">
+        Showing {filtered.length} of {leads.length} leads
+        {!search && leads.length > 100 && " — search to find specific leads"}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-[var(--surface)]">
+                <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Name
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">
+                  Rep
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Calls
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">
+                  Follow-up
+                </th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-white/[0.04]">
+              {filtered.map((lead) => {
+                const rep = reps.find((r) => r.id === lead.dqRep)?.name ?? "—";
+                const isExpanded = expandedId === lead.id;
+                return (
+                  <React.Fragment key={lead.id}>
+                    <tr
+                      className="hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors"
+                      onClick={() => setExpandedId(isExpanded ? null : lead.id)}
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                        {lead.name || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={lead.status} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                        {rep}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
+                        {lead.callHistory?.length ?? 0}
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {lead.nextContactDate ? (
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              isOverdue(lead.nextContactDate)
+                                ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400"
+                                : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400"
+                            }`}
+                          >
+                            {lead.nextContactDate}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-gray-300 dark:text-gray-600 text-base">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={6} className="px-4 pb-3">
+                          <pre className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-[var(--surface)] rounded-lg p-3 overflow-x-auto max-h-64 overflow-y-auto border border-gray-100 dark:border-white/[0.04]">
+                            {JSON.stringify(lead, null, 2)}
+                          </pre>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin Guide Section ───────────────────────────────────────────────────────
+function AdminGuideSection() {
+  return (
+    <div
+      className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.06]"
+      style={{ height: "620px" }}
+    >
+      <KnowledgeLayout
+        title="Admin Technical Guide"
+        subtitle="System Reference"
+        sections={ADMIN_GUIDE_SECTIONS}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void } = {}) {
   const { reps, setReps } = useAppStore();
   const { leads } = useLeads();
@@ -3293,6 +3843,10 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
     | "sync"
     | "data-tools"
     | "settings"
+    | "system-settings"
+    | "settings-history"
+    | "system-health"
+    | "daily-report"
     | "audit"
     | "calendar-settings"
   >("reps");
@@ -3404,6 +3958,10 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
     { id: "sync" as const, label: "Sync", icon: <RefreshCw size={14} /> },
     { id: "data-tools" as const, label: "Data Tools", icon: <Database size={14} /> },
     { id: "settings" as const, label: "Settings", icon: <Settings size={14} /> },
+    { id: "system-settings" as const, label: "System Settings", icon: <Zap size={14} /> },
+    { id: "settings-history" as const, label: "Settings History", icon: <History size={14} /> },
+    { id: "system-health" as const, label: "System Health", icon: <HeartPulse size={14} /> },
+    { id: "daily-report" as const, label: "Daily Report", icon: <BarChart2 size={14} /> },
     { id: "audit" as const, label: "Audit Log", icon: <ClipboardList size={14} /> },
     { id: "calendar-settings" as const, label: "Calendar", icon: <CalendarDays size={14} /> },
   ];
@@ -3635,6 +4193,14 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
       )}
 
       {activeTab === "settings" && <SettingsSection settings={settings} reps={reps} onSave={saveSettings} />}
+
+      {activeTab === "system-settings" && <SystemSettingsPanel />}
+
+      {activeTab === "settings-history" && <SettingsHistoryPanel />}
+
+      {activeTab === "system-health" && <SystemHealthPanel />}
+
+      {activeTab === "daily-report" && <DailyReportDashboard />}
 
       {activeTab === "audit" && <AuditLogSection />}
 

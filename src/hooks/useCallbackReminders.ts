@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Lead } from '../types';
+import { useEffect, useRef } from "react";
+import { Lead } from "../types";
 
 // Module-level flag — only request permission once per page load
 let permissionRequested = false;
@@ -13,14 +13,14 @@ export function useCallbackReminders(leads: Lead[]) {
   const scheduledIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!('Notification' in window)) return;
+    if (!("Notification" in window)) return;
 
     const schedule = () => {
       const now = Date.now();
       const in24h = now + 24 * 60 * 60 * 1000;
 
       leads
-        .filter((l) => l.status === 'Revisit' && l.callbackDate && l.callbackTime)
+        .filter((l) => l.status === "contacted" && l.callbackDate && l.callbackTime)
         .forEach((lead) => {
           const key = `${lead.id}-${lead.callbackDate}-${lead.callbackTime}`;
           if (scheduledIds.current.has(key)) return; // already scheduled
@@ -31,10 +31,10 @@ export function useCallbackReminders(leads: Lead[]) {
           if (ms > 0 && dt.getTime() <= in24h) {
             scheduledIds.current.add(key);
             setTimeout(() => {
-              if (Notification.permission === 'granted') {
+              if (Notification.permission === "granted") {
                 new Notification(`📞 Callback due: ${lead.name}`, {
                   body: `${lead.suburb} — ${lead.callbackTime}`,
-                  icon: '/favicon.ico',
+                  icon: "/favicon.ico",
                   tag: String(lead.id), // dedups if browser re-shows
                 });
               }
@@ -43,12 +43,12 @@ export function useCallbackReminders(leads: Lead[]) {
         });
     };
 
-    if (Notification.permission === 'granted') {
+    if (Notification.permission === "granted") {
       schedule();
-    } else if (Notification.permission === 'default' && !permissionRequested) {
+    } else if (Notification.permission === "default" && !permissionRequested) {
       permissionRequested = true;
       Notification.requestPermission().then((perm) => {
-        if (perm === 'granted') schedule();
+        if (perm === "granted") schedule();
       });
     }
     // If denied, silently skip (banner in Leads.tsx guides user to enable)
