@@ -23,13 +23,15 @@ import {
   limit,
   getDocs,
   writeBatch,
+  addDoc,
 } from "firebase/firestore";
-import { db, functions } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { encrypt, decrypt } from "../lib/encryption";
-import { httpsCallable } from "firebase/functions";
+import { loadPIAReportsByClient } from "../lib/piaReports";
 import { useAppStore } from "../stores/appStore";
 import { useToast } from "../context/ToastContext";
 import { useClientNotes } from "../hooks/useClientNotes";
+import { useLeadAppointments, useClientDealDocuments } from "../hooks/useFirebase";
 import { useRepSettings } from "../hooks/useDashboard";
 import { useAIGuidance } from "../hooks/useAIGuidance";
 import { AIGuidanceCard } from "../components/AIGuidanceCard";
@@ -70,17 +72,16 @@ import type { LucideIcon } from "lucide-react";
  * Types
  * ───────────────────────────────────────────────────────────────────────────── */
 
-type ClientTab = "overview" | "notes" | "appointments" | "deals" | "documents" | "reports";
+type ClientTab = "overview" | "notes" | "appointments" | "deals" | "documents" | "reports" | "history";
 
-interface LinkedDocument {
-  id: string;
-  name: string;
+interface AuditLogEntry {
   type: string;
-  fileUrl: string;
-  storagePath?: string;
-  createdAt: number;
-  clientId?: string;
+  entityId: number;
+  previousValue: string;
+  newValue: string;
+  timestamp: number;
 }
+
 
 interface SavedReport {
   id: string;
@@ -102,6 +103,7 @@ const TABS: { key: ClientTab; label: string; icon: LucideIcon }[] = [
   { key: "deals", label: "Deals", icon: Briefcase },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "reports", label: "Reports", icon: BarChart3 },
+  { key: "history", label: "History", icon: Clock },
 ];
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -174,7 +176,7 @@ function apptLabel(appt: Appointment): string {
 }
 
 /** Unified card class — uses CSS variables so it respects light/dark mode */
-const CARD = "rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4" as const;
+const CARD = "rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 shadow-sm hover:shadow-md transition-shadow" as const;
 /** @deprecated Use CARD instead */
 const cardCls = CARD;
 const cardStyle = {} as const;
@@ -281,40 +283,14 @@ function DocumentLibraryModal({
   onLink: (docId: string) => void;
   clientId: string;
 }) {
-  const [docs, setDocs] = useState<LinkedDocument[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { documents: docs, loading } = useClientDealDocuments(clientId);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const qClient = query(collection(db, "dealDocuments"), where("clientId", "==", clientId));
-    const unsub = onSnapshot(
-      qClient,
-      (snap) => {
-        const loaded: LinkedDocument[] = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          loaded.push({
-            id: d.id,
-            name: (data.name as string) || "Untitled",
-            type: (data.type as string) || "other",
-            fileUrl: (data.fileUrl as string) || "",
-            storagePath: data.storagePath as string | undefined,
-            createdAt: (data.createdAt as number) || 0,
-            clientId: data.clientId as string | undefined,
-          });
-        });
-        setDocs(loaded.sort((a, b) => b.createdAt - a.createdAt));
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return () => unsub();
-  }, [clientId]);
-
   const filtered = useMemo(() => {
-    if (!search.trim()) return docs;
+    const sorted = [...docs].sort((a, b) => b.createdAt - a.createdAt);
+    if (!search.trim()) return sorted;
     const term = search.toLowerCase();
-    return docs.filter((d) => d.name.toLowerCase().includes(term) || d.type.includes(term));
+    return sorted.filter((d) => d.name.toLowerCase().includes(term) || d.type.includes(term));
   }, [docs, search]);
 
   return (
@@ -464,12 +440,10 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
   const [activeTab, setActiveTab] = useState<ClientTab>("overview");
   const [showLibrary, setShowLibrary] = useState(false);
   const [showCoupleModal, setShowCoupleModal] = useState(false);
-  const [linkedDocs, setLinkedDocs] = useState<LinkedDocument[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [piaDocs, setPiaDocs] = useState<any[]>([]);
+  const [clientPiaReports, setClientPiaReports] = useState<any[]>([]);
   const [piaReports, setPiaReports] = useState<SavedReport[]>([]);
   const [smsfReports, setSmsfReports] = useState<SavedReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
@@ -497,6 +471,54 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
 
   // ── Client notes hook ───────────────────────────────────────────────────
   const { notes: clientNotes, loading: loadingNotes, addNote, toggleImportant } = useClientNotes(clientIdStr);
+  const [optimisticNotes, setOptimisticNotes] = useState<ClientNote[]>([]);
+
+  useEffect(() => {
+    if (optimisticNotes.length === 0) return;
+    setOptimisticNotes((prev) =>
+      prev.filter(
+        (opt) =>
+          !clientNotes.some(
+            (real) =>
+              real.createdAt === opt.createdAt &&
+              real.content === opt.content &&
+              real.createdBy === opt.createdBy,
+          ),
+      ),
+    );
+  }, [clientNotes]);
+
+  const displayNotes = useMemo(() => [...optimisticNotes, ...clientNotes], [optimisticNotes, clientNotes]);
+
+  const [auditHistory, setAuditHistory] = useState<AuditLogEntry[] | null>(null);
+  const prevClientIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (client?.id !== prevClientIdRef.current) {
+      prevClientIdRef.current = client?.id;
+      setAuditHistory(null);
+      return;
+    }
+    if (activeTab !== "history" || !client?.id || auditHistory !== null) return;
+    let mounted = true;
+    getDocs(
+      query(
+        collection(db, "auditLogs"),
+        where("entityId", "==", client.id),
+        orderBy("timestamp", "desc"),
+        limit(20),
+      ),
+    )
+      .then((snap) => {
+        if (!mounted) return;
+        setAuditHistory(snap.docs.map((d) => d.data() as AuditLogEntry));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setAuditHistory([]);
+      });
+    return () => { mounted = false; };
+  }, [activeTab, client?.id, auditHistory]);
 
   // ── AI Brief (non-blocking) ──────────────────────────────────────────────
   const [clientBrief, setClientBrief] = useState<ClientBrief | null>(null);
@@ -507,49 +529,11 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
       .catch(() => setClientBrief(null));
   }, [clientIdStr]);
 
-  // ── Appointments listener ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!clientIdStr) return;
-    const q = query(collection(db, "appointments"), where("linkedLeadId", "==", clientId));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const appts: Appointment[] = [];
-        snap.forEach((d) => appts.push({ id: d.id, ...d.data() } as Appointment));
-        appts.sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
-        setAppointments(appts);
-      },
-      () => {},
-    );
-    return () => unsub();
-  }, [clientIdStr, clientId]);
+  // ── Appointments ────────────────────────────────────────────────────────
+  const { appointments } = useLeadAppointments(clientId);
 
   // ── Linked documents ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!client) { setLoadingDocs(false); return; }
-    const q = query(collection(db, "dealDocuments"), where("clientId", "==", String(client.id)));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const loaded: LinkedDocument[] = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          loaded.push({
-            id: d.id,
-            name: (data.name as string) || "Untitled",
-            type: (data.type as string) || "other",
-            fileUrl: (data.fileUrl as string) || "",
-            storagePath: data.storagePath as string | undefined,
-            createdAt: (data.createdAt as number) || 0,
-          });
-        });
-        setLinkedDocs(loaded.sort((a, b) => b.createdAt - a.createdAt));
-        setLoadingDocs(false);
-      },
-      () => setLoadingDocs(false),
-    );
-    return () => unsub();
-  }, [client]);
+  const { documents: linkedDocs, loading: loadingDocs } = useClientDealDocuments(clientId);
 
   // ── PIA reports for this client (filtered by clientId or clientGroupId) ──
   useEffect(() => {
@@ -587,15 +571,24 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
     return () => unsubscribers.forEach(unsub => unsub());
   }, [client]);
 
+  // ── Load normalized PIA reports for this client ──
+  useEffect(() => {
+    if (!client?.id) {
+      setClientPiaReports([]);
+      return;
+    }
+
+    loadPIAReportsByClient(String(client.id))
+      .then(setClientPiaReports)
+      .catch(() => setClientPiaReports([]));
+  }, [client?.id]);
+
   // ── SMSF Financials (decrypted via Cloud Function) ──────────────────────────
   useEffect(() => {
     if (!client?.id) return;
 
-    const fn = httpsCallable(functions, "getSmsfFinancials");
-
-    fn({ clientId: client.id }).then((res: any) => {
-      setSmsfFinancials(res.data);
-    });
+    // Cloud Functions disabled — stub out
+    void client.id;
   }, [client?.id]);
 
   // ── PIA + SMSF reports (loaded when reports tab opens) ──────────────────
@@ -698,8 +691,20 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
   const handleAddNote = useCallback(async () => {
     if (!noteText.trim() || !client || !currentUser) return;
     setAddingNote(true);
+    const enhancedContent = enhanceNoteContent(noteText.trim());
+    const now = Date.now();
+    const tempNote: ClientNote = {
+      id: `temp-${now}`,
+      clientId: String(client.id),
+      content: enhancedContent,
+      source: "manual",
+      createdBy: String(currentUser.id),
+      repName: currentUser.name,
+      createdAt: now,
+    };
+    setOptimisticNotes((prev) => [tempNote, ...prev]);
+    setNoteText("");
     try {
-      const enhancedContent = enhanceNoteContent(noteText.trim());
       await addNote({
         clientId: String(client.id),
         content: enhancedContent,
@@ -707,9 +712,18 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
         createdBy: String(currentUser.id),
         repName: currentUser.name,
       });
-      setNoteText("");
+      void addDoc(collection(db, "auditLogs"), {
+        type: "note_create",
+        entityId: client.id,
+        previousValue: "",
+        newValue: enhancedContent.slice(0, 200),
+        userId: String(currentUser?.id ?? "unknown"),
+        timestamp: Date.now(),
+      }).catch((err) => console.warn("[audit]", err));
       showToast("✅ Note added", "success");
     } catch {
+      setOptimisticNotes((prev) => prev.filter((n) => n.id !== tempNote.id));
+      setNoteText(noteText);
       showToast("❌ Failed to add note", "error");
     } finally {
       setAddingNote(false);
@@ -790,13 +804,8 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
     bsb: string;
     accountNumber: string;
   }) => {
-    const fn = httpsCallable(functions, "saveSmsfFinancials");
-    await fn({
-      clientId,
-      accountName: data.accountName,
-      bsb: data.bsb,
-      accountNumber: data.accountNumber,
-    });
+    // Cloud Functions disabled — stub out
+    void clientId; void data;
   };
 
   const handleCall = useCallback(() => {
@@ -995,7 +1004,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <MessageSquare size={12} className="text-[var(--text-muted)]" />
           <span className="text-[var(--text-muted)]">Notes:</span>
-          <span className="text-gray-700 dark:text-gray-300 font-medium">{clientNotes.length}</span>
+          <span className="text-gray-700 dark:text-gray-300 font-medium">{displayNotes.length}</span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <Briefcase size={12} className="text-[var(--text-muted)]" />
@@ -1071,7 +1080,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
             {/* Next Action (prominent) */}
             {nextAction && nextAction.type !== "none" && (
               <div
-                className="rounded-xl p-4 flex items-center gap-4 border"
+                className="rounded-xl p-4 flex items-center gap-4 border shadow-sm hover:shadow-md transition-shadow"
                 style={{
                   background:
                     nextAction.priority === "high"
@@ -1144,7 +1153,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
               {fcRepName && <StatTile label="FC Rep" value={fcRepName} />}
               <StatTile label="Lead Date" value={client.leadDate || "—"} />
               <StatTile label="Last Contact" value={timeAgo(lastContactMs)} />
-              <StatTile label="Notes" value={String(clientNotes.length)} />
+              <StatTile label="Notes" value={String(displayNotes.length)} />
               <StatTile label="Appointments" value={String(appointments.length)} />
             </div>
 
@@ -1240,7 +1249,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
             )}
 
             {/* Last 3 notes */}
-            {clientNotes.length > 0 && (
+            {displayNotes.length > 0 && (
               <div className={CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5">
@@ -1254,7 +1263,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {clientNotes
+                  {displayNotes
                     .slice()
                     .sort((a, b) => b.createdAt - a.createdAt)
                     .slice(0, 3)
@@ -1332,8 +1341,8 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
             )}
 
             {/* SMSF Financials */}
-            {["admin", "director"].includes(currentUser?.role) && smsfFinancials && (
-              <div className="mt-4 p-4 rounded-xl border border-[#2a2a2e] bg-[#1a1a1d]">
+            {["admin", "director"].includes(currentUser?.role ?? "") && smsfFinancials && (
+              <div className="mt-4 p-4 rounded-xl border border-[#2a2a2e] bg-[#1a1a1d] shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold text-white">SMSF Financials</p>
 
@@ -1360,7 +1369,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
             )}
 
             {/* Empty state */}
-            {!nextAction && clientNotes.length === 0 && appointments.length === 0 && (
+            {!nextAction && displayNotes.length === 0 && appointments.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-sm text-[var(--text-muted)]">No activity yet for this client.</p>
                 <p className="text-xs text-gray-600 mt-1">Log a note or book an appointment to get started.</p>
@@ -1411,7 +1420,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
                   style={{ borderColor: amber, borderTopColor: "transparent" }}
                 />
               </div>
-            ) : clientNotes.length === 0 ? (
+            ) : displayNotes.length === 0 ? (
               <div className="text-center py-10">
                 <MessageSquare size={32} className="mx-auto mb-3 text-gray-600" />
                 <p className="text-sm text-[var(--text-muted)]">No notes yet</p>
@@ -1420,12 +1429,12 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
             ) : (
               <div className="space-y-2">
                 {/* Important notes first */}
-                {clientNotes.some((n) => n.isImportant) && (
+                {displayNotes.some((n) => n.isImportant) && (
                   <>
                     <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide px-1">
                       Pinned
                     </p>
-                    {clientNotes
+                    {displayNotes
                       .filter((n) => n.isImportant)
                       .sort((a, b) => b.createdAt - a.createdAt)
                       .map((note) => (
@@ -1437,12 +1446,61 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
                     </p>
                   </>
                 )}
-                {clientNotes
+                {displayNotes
                   .filter((n) => !n.isImportant)
                   .sort((a, b) => b.createdAt - a.createdAt)
                   .map((note) => (
                     <NoteCard key={note.id} note={note} onToggleImportant={toggleImportant} />
                   ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── HISTORY ───────────────────────────────────────────────────── */}
+        {activeTab === "history" && (
+          <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
+            {auditHistory === null ? (
+              <div className="flex justify-center py-8">
+                <div
+                  className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                  style={{ borderColor: amber, borderTopColor: "transparent" }}
+                />
+              </div>
+            ) : auditHistory.length === 0 ? (
+              <div className="text-center py-10">
+                <Clock size={32} className="mx-auto mb-3 text-gray-600" />
+                <p className="text-sm text-[var(--text-muted)]">No activity yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {auditHistory.map((entry) => {
+                  const typeMap: Record<string, { badge: string; color: string; bg: string; label: string }> = {
+                    status_change:   { badge: "Status",   color: "#b8933a", bg: "rgba(184,147,58,0.12)", label: `${entry.previousValue} → ${entry.newValue}` },
+                    callback_update: { badge: "Callback", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", label: `${entry.previousValue || "—"} → ${entry.newValue || "—"}` },
+                    note_create:     { badge: "Note",     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  label: "Note added" },
+                  };
+                  const t = typeMap[entry.type] ?? {
+                    badge: "Event",
+                    color: "var(--text-muted)",
+                    bg: "var(--hover)",
+                    label: entry.type.replace(/_/g, " "),
+                  };
+                  return (
+                    <div key={`${entry.type}-${entry.timestamp}`} className={`${CARD} flex items-center gap-3`}>
+                      <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ color: t.color, background: t.bg }}
+                      >
+                        {t.badge}
+                      </span>
+                      <span className="text-xs text-[var(--text)] flex-1 min-w-0 truncate">{t.label}</span>
+                      <span className="text-[11px] text-[var(--text-muted)] flex-shrink-0">
+                        {timeAgo(entry.timestamp)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1763,6 +1821,77 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
               </div>
             ) : (
               <>
+                {/* Client-Linked PIA Reports */}
+                {clientPiaReports.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5">
+                        <Home size={13} style={{ color: amber }} /> Client PIA Reports
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {clientPiaReports.map((r) => {
+                        const result = r.inputs || r.result || {};
+                        const handleLoadReport = () => {
+                          const { setReportToLoad } = useAppStore.getState();
+                          setReportToLoad(result || {});
+                          onNavigate?.("pia");
+                        };
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={handleLoadReport}
+                            className={`${CARD} text-left transition-all hover:shadow-lg hover:border-[#b8933a] cursor-pointer`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">PIA Analysis</p>
+                              <p className="text-[10px] text-[var(--text-muted)]">{fmtDate(r.createdAt)}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {result.propertyValue != null && (
+                                <div>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Property Value</p>
+                                  <p className="text-xs font-semibold text-[var(--text)]">
+                                    {fmtAUD(result.propertyValue)}
+                                  </p>
+                                </div>
+                              )}
+                              {result.netPosition != null && (
+                                <div>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Net Position</p>
+                                  <p
+                                    className="text-xs font-semibold"
+                                    style={{ color: result.netPosition >= 0 ? "#22c55e" : "#ef4444" }}
+                                  >
+                                    {fmtAUD(result.netPosition)}/wk
+                                  </p>
+                                </div>
+                              )}
+                              {result.grossYield != null && (
+                                <div>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Gross Yield</p>
+                                  <p className="text-xs font-semibold text-[var(--text)]">
+                                    {result.grossYield.toFixed(2)}%
+                                  </p>
+                                </div>
+                              )}
+                              {result.equity != null && (
+                                <div>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Equity</p>
+                                  <p className="text-xs font-semibold text-[var(--text)]">
+                                    {fmtAUD(result.equity)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-2">By {r.consultantName || r.userName}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* PIA Reports */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
