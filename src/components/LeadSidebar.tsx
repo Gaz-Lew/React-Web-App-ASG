@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
 import { Lead, FormTemplate, CustomPinType } from "../types";
+import { StatusBadge } from "./ui/StatusBadge";
 import { useAppStore } from "../stores/appStore";
 import { sanitizePhone } from "../lib/utils";
 import { SuburbInput } from "./SuburbInput";
@@ -113,6 +114,7 @@ export function LeadSidebar({
   const { reps, currentUser } = useAppStore();
   const [form, setForm] = useState<Lead>(lead);
   const [addressStr, setAddressStr] = useState<string>(buildAddress(lead));
+  const [optimisticCallbackDate, setOptimisticCallbackDate] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [otherViewers, setOtherViewers] = useState<string[]>([]);
@@ -229,6 +231,7 @@ export function LeadSidebar({
     if (!form.name.trim()) return;
     onSave(form);
     setDirty(false);
+    setOptimisticCallbackDate(null);
   };
 
   const handleClose = () => {
@@ -425,9 +428,12 @@ export function LeadSidebar({
           {/* ── Header ─────────────────────────────────────────────────────── */}
           <div className="flex items-start justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-200 dark:border-white/[0.06] flex-shrink-0">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">
-                {lead.name}
-              </h2>
+              <div className="flex items-center gap-2 mb-0.5">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">
+                  {lead.name}
+                </h2>
+                {dirty && <StatusBadge variant="loading" className="flex-shrink-0" />}
+              </div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                 {dqRepName} · {lead.status}
                 {lead.dnqFellOver && (
@@ -927,8 +933,12 @@ export function LeadSidebar({
                       <input
                         type="date"
                         className={inputCls}
-                        value={form.callbackDate || ""}
-                        onChange={(e) => update("callbackDate", e.target.value)}
+                        value={optimisticCallbackDate ?? form.callbackDate ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setOptimisticCallbackDate(value);
+                          update("callbackDate", value);
+                        }}
                       />
                     </Field>
                     <Field label="Callback Time">
