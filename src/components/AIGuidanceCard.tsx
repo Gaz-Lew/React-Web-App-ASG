@@ -113,7 +113,7 @@ export function AIGuidanceCard({
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
-    <div      className="rounded-xl border border-[#2a2a2e] bg-[#1a1a1d] shadow-sm hover:shadow-md hover:scale-[1.01] transition-all duration-150"
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm hover:shadow-md hover:scale-[1.01] transition-all duration-150"
       role="complementary"
       aria-label="AI guidance"
     >
@@ -170,10 +170,10 @@ export function AIGuidanceCard({
               </button>
 
               {scriptOpen && (
-                <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
                   <p className="text-xs text-gray-400 italic leading-relaxed whitespace-pre-wrap">{script}</p>
                   {/* Script actions */}
-                  <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-white/[0.04]">
+                  <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-[var(--border)]">
                     <button
                       onClick={handleCopy}
                       className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-300 transition-colors duration-100"
@@ -205,7 +205,7 @@ export function AIGuidanceCard({
           {/* Dismiss button */}
           <button
             onClick={onDismiss}
-            className="p-1 rounded-lg hover:bg-white/[0.06] text-gray-600 hover:text-gray-400 transition-colors duration-100 flex-shrink-0 -mt-0.5 -mr-0.5"
+            className="p-1 rounded-lg hover:bg-[var(--hover)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors duration-100 flex-shrink-0 -mt-0.5 -mr-0.5"
             title="Dismiss guidance"
             aria-label="Dismiss AI guidance"
           >
