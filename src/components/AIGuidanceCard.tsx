@@ -10,6 +10,8 @@ export interface AIGuidanceCardProps {
   objection?: "risk" | "price" | "trust" | "timing" | undefined;
   /** Optional coaching message */
   coaching?: string | undefined;
+  /** Optional: shown when profile data supports the suggestion ("Based on your recent success with…") */
+  confidenceHint?: string;
   onDismiss: () => void;
   /** Optional: called when rep clicks "Use Script" — e.g. populate a note field */
   onUseScript?: (script: string) => void;
@@ -22,6 +24,7 @@ export function AIGuidanceCard({
   script,
   objection,
   coaching,
+  confidenceHint,
   onDismiss,
   onUseScript,
 }: AIGuidanceCardProps) {
@@ -150,6 +153,11 @@ export function AIGuidanceCard({
 
           {/* Suggestion */}
           <p className="text-xs text-gray-300 leading-relaxed mb-2">{suggestion}</p>
+
+          {/* Confidence hint — only present when profile data backs the suggestion */}
+          {confidenceHint && (
+            <p className="text-[10px] text-gray-500 italic -mt-1 mb-2">{confidenceHint}</p>
+          )}
 
           {/* Objection badge */}
           {objection && (

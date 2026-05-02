@@ -1,6 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Lead } from "../types";
 import { NextAction } from "../lib/nextAction";
+import { useUserProfile } from "./useUserProfile";
+import type { UserProfile } from "../services/userProfileService";
+import { getActionStats, getGlobalActionStats } from "../services/learningService";
+import type { ActionStats } from "../services/learningService";
+import { updateUserProfile } from "../services/userProfileService";
 
 /**
  * useAIGuidance.ts — Rule-based sales guidance for client profiles.
@@ -13,6 +18,7 @@ export interface AIGuidance {
   objection?: { type: "risk" | "price" | "trust" | "timing"; confidence: number };
   script?: string;
   coaching?: string;
+  confidenceHint?: string;
 }
 
 /**
@@ -31,7 +37,42 @@ export function useAIGuidance(
   client: Lead | null,
   nextAction: NextAction | null,
   recentNotes: string[] = [], // ← recent notes (last 5) are now supported
+  userId?: string,
 ): AIGuidance | null {
+  const profile = useUserProfile(userId ?? null);
+  const lastProfileUpdateRef = useRef<number>(0);
+  const updateInFlightRef = useRef<boolean>(false);
+  const [globalStats, setGlobalStats] = useState<ActionStats[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (updateInFlightRef.current) return;
+    if (Date.now() - lastProfileUpdateRef.current < 5 * 60 * 1000) return;
+
+    updateInFlightRef.current = true;
+    (async () => {
+      try {
+        const { stats, latestTimestamp } = await getActionStats(userId);
+        const lastProcessed = profile?.lastProcessedTimestamp ?? 0;
+        if (latestTimestamp <= lastProcessed) return;
+        if (stats.length === 0) {
+          lastProfileUpdateRef.current = Date.now();
+          return;
+        }
+        await updateUserProfile(userId, stats, latestTimestamp);
+        lastProfileUpdateRef.current = Date.now();
+      } catch (err) {
+        console.warn("[useAIGuidance] profile update failed", err);
+      } finally {
+        updateInFlightRef.current = false;
+      }
+    })();
+  }, [userId, profile?.lastProcessedTimestamp]);
+
+  useEffect(() => {
+    getGlobalActionStats().then(setGlobalStats);
+  }, []);
+
   return useMemo<AIGuidance | null>(() => {
     if (!client || !nextAction) return null;
 
@@ -143,7 +184,6 @@ export function useAIGuidance(
 
     let script: string;
     if (objection) {
-      // Simple random selection (light variation)
       const scriptsMap: Record<string, string[]> = {
         risk: riskScripts,
         price: priceScripts,
@@ -151,7 +191,9 @@ export function useAIGuidance(
         timing: timingScripts,
       };
       const scripts = scriptsMap[objection.type as keyof typeof scriptsMap] ?? [];
-      const idx = Math.floor(Math.random() * scripts.length);
+      // Profile-biased variant selection: higher preference → more direct script (index 0)
+      // Falls back to random when profile is unavailable
+      const idx = selectScriptIndex(scripts.length, nextAction.type, profile, globalStats);
       script = scripts[idx];
     } else {
       script = defaultScript;
@@ -168,8 +210,24 @@ export function useAIGuidance(
     if (coaching) {
       result.coaching = coaching;
     }
+
+    // Confidence hint — only when profile shows a meaningful track record for
+    // this action type (score > 2 proxies attempts >= 5 at >= 50% success rate)
+    if (profile) {
+      const prefKey = actionTypeToPrefKey(nextAction.type);
+      if (prefKey && profile.actionPreferences[prefKey] > 2) {
+        const label =
+          prefKey === "call"
+            ? "calling"
+            : prefKey === "followup"
+              ? "following up"
+              : "booking appointments";
+        result.confidenceHint = `Based on your recent success with ${label}`;
+      }
+    }
+
     return result;
-  }, [client, nextAction, recentNotes]);
+  }, [client, nextAction, recentNotes, profile, globalStats]);
 }
 
 /* ── Private helpers ────────────────────────────────────────────────────────────── */
@@ -198,4 +256,53 @@ function ownerOrRenter(lead: Lead): string {
   if (lead.ownership === "Investor") return "investors";
   if (lead.ownership === "Renting") return "renters";
   return "Australians";
+}
+
+// Maps NextAction type to the matching actionPreferences key.
+// Returns null for types with no preference bucket (terminal states, none).
+function actionTypeToPrefKey(
+  type: string,
+): keyof UserProfile["actionPreferences"] | null {
+  if (type === "call" || type === "callback") return "call";
+  if (type === "followup" || type === "confirm") return "followup";
+  if (type === "booked") return "book";
+  return null;
+}
+
+// Blends user preference and global success rate into a [0, 1] score.
+// Weights: user 70%, global 30% when both present.
+// Gracefully degrades to single source, or 0.5 (mid-index) when neither is available.
+function blendedScoreForAction(
+  prefKey: keyof UserProfile["actionPreferences"] | null,
+  profile: UserProfile | null,
+  globalStats: ActionStats[],
+): number {
+  const userScore = profile !== null && prefKey !== null
+    ? profile.actionPreferences[prefKey]
+    : null;
+  const userRate = userScore !== null ? (userScore + 5) / 10 : null; // [-5,+5] → [0,1]
+
+  const globalStat = prefKey !== null
+    ? globalStats.find((s) => s.action === prefKey)
+    : null;
+  const globalRate = globalStat?.successRate ?? null; // [0,1]
+
+  if (userRate !== null && globalRate !== null) return userRate * 0.7 + globalRate * 0.3;
+  if (userRate !== null) return userRate;
+  if (globalRate !== null) return globalRate;
+  return 0.5; // neither available — middle index
+}
+
+// Selects a script variant index biased by the blended user+global score.
+// Higher score → index 0 (most direct/confident script).
+function selectScriptIndex(
+  count: number,
+  actionType: string,
+  profile: UserProfile | null,
+  globalStats: ActionStats[],
+): number {
+  if (count <= 1) return 0;
+  const prefKey = actionTypeToPrefKey(actionType);
+  const score = blendedScoreForAction(prefKey, profile, globalStats);
+  return Math.round((1 - score) * (count - 1));
 }

@@ -31,6 +31,8 @@ import { doc, setDoc, deleteDoc, collection, onSnapshot, addDoc } from "firebase
 import { db } from "../lib/firebase";
 import { uploadFile, formatFileSize, fileTypeIcon } from "../lib/storage";
 import { getNextAction, deriveLastActivityAt, ACTION_COLORS } from "../lib/nextAction";
+import { useAIGuidance } from "../hooks/useAIGuidance";
+import { AIGuidanceCard } from "./AIGuidanceCard";
 import { isOverdue, isDueToday, formatFollowUpDate } from "../lib/followUp";
 import { applyAutomation } from "../lib/automation";
 import {
@@ -71,6 +73,7 @@ interface LeadSidebarProps {
   customPinTypes?: CustomPinType[];
   /** 'modal' (default) = fixed overlay with backdrop; 'panel' = inline, fills parent */
   mode?: "modal" | "panel";
+  onAIScriptUsed?: (leadId: string | number, action: string) => void;
 }
 
 const SUPER_OPTIONS = ["$0-75k", "$75k to 150k", "$150k+", "Other"];
@@ -110,6 +113,7 @@ export function LeadSidebar({
   onCall,
   customPinTypes,
   mode = "modal",
+  onAIScriptUsed,
 }: LeadSidebarProps) {
   const { reps, currentUser } = useAppStore();
   const [form, setForm] = useState<Lead>(lead);
@@ -140,6 +144,7 @@ export function LeadSidebar({
 
   // Files & Documents panel (opens as a modal so it doesn't crush the lead details)
   const [showFilesPanel, setShowFilesPanel] = useState(false);
+  const [guidanceDismissed, setGuidanceDismissed] = useState(false);
 
   const docInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -157,6 +162,7 @@ export function LeadSidebar({
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const isUsingAIScriptRef = useRef(false);
 
   // Linked appointments
   const { appointments: linkedAppointments } = useLeadAppointments(lead.id);
@@ -167,6 +173,7 @@ export function LeadSidebar({
     setAddressStr(buildAddress(lead));
     setDirty(false);
     setConfirmDelete(false);
+    setGuidanceDismissed(false);
   }, [lead.id]);
 
   // Presence
@@ -360,13 +367,26 @@ export function LeadSidebar({
   /** Submits a new note to the leads/{id}/notes subcollection */
   const handleAddNote = async () => {
     if (!noteText.trim() || !currentUser) return;
+    const usedAIScript = isUsingAIScriptRef.current;
+    isUsingAIScriptRef.current = false;
+    const noteContent = noteText.trim();
     setAddingNote(true);
     await addLeadNote(String(lead.id), {
-      text: noteText.trim(),
+      text: noteContent,
       createdAt: Date.now(),
       createdBy: currentUser.name,
       createdById: currentUser.id,
     });
+    void addDoc(collection(db, "auditLogs"), {
+      type: "note_create",
+      entityId: lead.id,
+      previousValue: "",
+      newValue: noteContent.slice(0, 200),
+      userId: String(currentUser.id),
+      timestamp: Date.now(),
+      source: usedAIScript ? "ai" : "manual",
+      ...(usedAIScript && guidance?.action ? { contextAction: guidance.action } : {}),
+    }).catch((err) => console.warn("[audit]", err));
     setNoteText("");
     setAddingNote(false);
     noteInputRef.current?.focus();
@@ -390,6 +410,35 @@ export function LeadSidebar({
     () => getNextAction(lead, linkedAppointments),
     [lead.id, lead.status, lead.lastCall, lead.callHistory, linkedAppointments],
   );
+
+  // ── AI Guidance ───────────────────────────────────────────────────────────
+  const recentNotes = useMemo(
+    () => leadNotes.slice(-5).map((n) => n.text),
+    [leadNotes],
+  );
+  const guidance = useAIGuidance(lead, nextAction, recentNotes, currentUser ? String(currentUser.id) : undefined);
+
+  const handleUseScript = (script: string) => {
+    isUsingAIScriptRef.current = true;
+    if (guidance?.action) {
+      onAIScriptUsed?.(lead.id, guidance.action);
+    }
+    setNoteText(script);
+    setTimeout(() => {
+      noteInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      noteInputRef.current?.focus();
+    }, 50);
+  };
+
+  // NextActionType uses "booked"; AIGuidanceCard uses "book" — normalize here once
+  const guidanceActionType: "call" | "followup" | "book" | null =
+    nextAction.type === "call"
+      ? "call"
+      : nextAction.type === "followup"
+        ? "followup"
+        : nextAction.type === "booked"
+          ? "book"
+          : null;
 
   const isPanel = mode === "panel";
 
@@ -586,6 +635,22 @@ export function LeadSidebar({
                       <Edit3 size={13} /> Log Note
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* ── AI Guidance Card ────────────────────────────────────────── */}
+              {guidance && !guidanceDismissed && (
+                <div className="mb-3">
+                  <AIGuidanceCard
+                    suggestion={guidance.action}
+                    actionType={guidanceActionType}
+                    script={guidance.script}
+                    objection={guidance.objection?.type}
+                    coaching={guidance.coaching}
+                    confidenceHint={guidance.confidenceHint}
+                    onDismiss={() => setGuidanceDismissed(true)}
+                    onUseScript={handleUseScript}
+                  />
                 </div>
               )}
 
