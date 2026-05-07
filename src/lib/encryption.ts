@@ -1,16 +1,10 @@
-import CryptoJS from "crypto-js";
+// Encryption is handled server-side via Firebase Functions (AES-256-GCM).
+// These stubs are kept to avoid breaking any remaining import sites during migration.
 
-const SECRET = "REPLACE_WITH_ENV_SECRET";
-
-export function encrypt(text: string) {
-  return CryptoJS.AES.encrypt(text, SECRET).toString();
+export function encrypt(_text: string): string {
+  throw new Error("Client-side encryption removed — use saveSmsfFinancials cloud function");
 }
 
-export function decrypt(cipher: string) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(cipher, SECRET);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch {
-    return "";
-  }
+export function decrypt(_cipher: string): string {
+  throw new Error("Client-side decryption removed — use getSmsfFinancials cloud function");
 }

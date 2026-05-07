@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { Lead, FilterOptions, LeadStatus, DEFAULT_STATUS_COLORS } from "../types";
-import { LEAD_STATUS_OPTIONS } from "../lib/statusConfig";
+import { Lead, FilterOptions, LeadStatus } from "../types";
+import { LEAD_STATUS_OPTIONS, getStatusColor } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
 import { useToast } from "../context/ToastContext";
 import { Phone, Clock, Eye, ChevronDown, ChevronRight, Columns, Bookmark } from "lucide-react";
 import { formatDateSmart, formatDateRelative, formatDateFull, timeAgo } from "../lib/dates";
 import { normalizeAUPhone, formatPhoneForDisplay } from "../lib/utils";
 import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 
 interface DataTableProps {
   leads: Lead[];
@@ -19,6 +20,9 @@ interface DataTableProps {
   flashedLeadId?: number | null;
   currentUserId?: number;
   isAdmin?: boolean;
+  loadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
 }
 
 // ── Skeleton row (shown during initial Firestore load) ────────────────────────
@@ -242,6 +246,9 @@ export function DataTable({
   flashedLeadId,
   currentUserId,
   isAdmin,
+  loadMore,
+  hasMore,
+  loadingMore,
 }: DataTableProps) {
   const { reps, statusColors } = useAppStore();
   const { showToast } = useToast();
@@ -249,6 +256,7 @@ export function DataTable({
   const [sortBy, setSortBy] = useState<keyof Lead>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedLeads, setSelectedLeads] = useState<Set<number>>(new Set());
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [myLeadsOnly, setMyLeadsOnly] = useState<boolean>(() => {
     const stored = localStorage.getItem("asgMyLeadsOnly");
     if (stored !== null) return stored === "true";
@@ -257,6 +265,33 @@ export function DataTable({
   const [searchTerm, setSearchTerm] = useState(""); // debounced — used for actual filtering
   const [searchInput, setSearchInput] = useState(""); // live input value shown in the box
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sentinelDesktopRef = useRef<HTMLDivElement>(null);
+  const sentinelMobileRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const hasMoreRef = useRef(hasMore ?? true);
+  useEffect(() => { hasMoreRef.current = hasMore ?? true; }, [hasMore]);
+
+  useEffect(() => {
+    if (!loadMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        Promise.resolve(loadMore()).finally(() => {
+          if (hasMoreRef.current) observer.observe(entry.target);
+        });
+      },
+      { root: null, rootMargin: "200px", threshold: 0 },
+    );
+    observerRef.current = observer;
+    if (sentinelDesktopRef.current) observer.observe(sentinelDesktopRef.current);
+    if (sentinelMobileRef.current) observer.observe(sentinelMobileRef.current);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [loadMore]);
   const [filters, setFilters] = useState<FilterOptions>({});
   const [currentTab, setCurrentTab] = useState<LeadStatus | "all">(() => {
     const stored = localStorage.getItem("asgActiveTab");
@@ -270,6 +305,56 @@ export function DataTable({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupSortOrder, setGroupSortOrder] = useState<"newest" | "oldest">("newest");
   const [groupShowAll, setGroupShowAll] = useState<Set<string>>(new Set());
+  const [optimisticStatuses, setOptimisticStatuses] = useState<Record<number, string>>({});
+  const [optimisticCallbackDates, setOptimisticCallbackDates] = useState<Record<number, string>>({});
+  const [conflictStatuses, setConflictStatuses] = useState<Record<number, boolean>>({});
+  const { hasPendingWrites } = useNetworkStatus();
+
+  useEffect(() => {
+    if (hasPendingWrites) return;
+    setConflictStatuses((prev) => {
+      const next: Record<number, boolean> = {};
+      leads.forEach((lead) => {
+        const optimistic = optimisticStatuses[lead.id];
+        if (optimistic !== undefined && optimistic !== lead.status) {
+          next[lead.id] = true;
+        }
+      });
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (
+        prevKeys.length === nextKeys.length &&
+        nextKeys.every((k) => prev[Number(k)] === next[Number(k)])
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [leads, optimisticStatuses, hasPendingWrites]);
+
+  useEffect(() => {
+    setOptimisticStatuses((prev) => {
+      const next = { ...prev };
+      leads.forEach((lead) => {
+        if (next[lead.id] === lead.status) {
+          delete next[lead.id];
+        }
+      });
+      return next;
+    });
+  }, [leads]);
+
+  useEffect(() => {
+    setOptimisticCallbackDates((prev) => {
+      const next = { ...prev };
+      leads.forEach((lead) => {
+        if (next[lead.id] !== undefined && next[lead.id] === lead.callbackDate) {
+          delete next[lead.id];
+        }
+      });
+      return next;
+    });
+  }, [leads]);
 
   // ── Feature 3: Column visibility ───────────────────────────────────────────
   const [colVis, setColVis] = useState<Record<string, boolean>>(() => {
@@ -621,16 +706,21 @@ export function DataTable({
     sortBy === col ? <span className="ml-1 text-amber-500">{sortOrder === "asc" ? "↑" : "↓"}</span> : null;
 
   const thCls =
-    "px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide cursor-pointer select-none hover:text-[var(--text)] transition whitespace-nowrap";
+    "px-3 py-3 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide cursor-pointer select-none hover:text-[var(--text)] transition whitespace-nowrap";
   const thStatic =
-    "px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap";
+    "px-3 py-3 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap";
 
   return (
-    <div className="w-full h-full flex flex-col bg-[var(--surface)]">
+    <div className="w-full h-full flex flex-col bg-[var(--surface)]" onKeyDown={(e) => { if (e.key === "Escape") setSelectedId(null); }}>
       {/* ── Toolbar ── */}
-      <div className="border-b border-[var(--border)] p-4 space-y-3 flex-shrink-0">
+      <div className="border-b border-[var(--border)] flex-shrink-0">
+        {/* Header row — title + total count */}
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+          <span className="text-sm font-semibold text-[var(--text)]">Leads</span>
+          <span className="text-xs text-[var(--text-muted)] tabular-nums">{leads.length.toLocaleString()} records</span>
+        </div>
         {/* Search & Filters */}
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap items-center px-4 pb-3">
           {/* My Leads / All Leads toggle */}
           <button
             onClick={() => setMyLeadsOnly((v) => !v)}
@@ -793,7 +883,7 @@ export function DataTable({
 
         {/* Feature 4: Preset name input (shown when savingPreset) */}
         {savingPreset && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap px-4 pb-3">
             <span className="text-sm text-[var(--text-muted)]">Preset name:</span>
             <input
               autoFocus
@@ -830,11 +920,11 @@ export function DataTable({
         )}
 
         {/* Status Tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+        <div className="flex gap-1 overflow-x-auto px-4 py-2 border-t border-[var(--border)] scrollbar-none">
           {STATUS_TABS.map((tab) => {
             const hex =
               tab.value !== "all"
-                ? (statusColors[tab.value] ?? DEFAULT_STATUS_COLORS[tab.value] ?? "#9ca3af")
+                ? getStatusColor(tab.value, statusColors)
                 : "#9ca3af";
             const isActive = currentTab === tab.value;
             return (
@@ -866,36 +956,45 @@ export function DataTable({
       </div>
 
       {/* ── Desktop Table ── */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto hidden lg:block">
+      <div className="flex-1 overflow-x-auto overflow-y-auto hidden lg:block scroll-smooth" onClick={() => setSelectedId(null)}>
         {loading && leads.length === 0 ? (
           <table className="w-full border-collapse" style={{ minWidth: "1000px" }}>
+            <thead className="sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] z-10">
+              <tr>
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <th key={i} className="px-3 py-3">
+                    <div className="h-3 rounded skeleton-shimmer" style={{ width: i === 0 ? 16 : i === 1 ? 60 : 80 }} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <SkeletonRow key={i} cols={8} />
               ))}
             </tbody>
           </table>
         ) : sortedLeads.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
-            <div className="text-center py-16">
-              <div className="text-5xl mb-3">📭</div>
-              <p className="font-medium text-[var(--text-muted)]">No leads found</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4 opacity-60">📭</div>
+              <p className="font-semibold text-[var(--text)] mb-1">No leads found</p>
               {myLeadsOnly && !searchTerm ? (
-                <p className="text-sm mt-1">
+                <p className="text-sm text-[var(--text-muted)] mt-1">
                   No leads assigned to you yet.{" "}
                   <button onClick={() => setMyLeadsOnly(false)} className="text-amber-500 hover:underline font-medium">
                     View all leads
                   </button>
                 </p>
               ) : searchTerm && currentTab !== "all" ? (
-                <p className="text-sm mt-1">
+                <p className="text-sm text-[var(--text-muted)] mt-1">
                   No results on this tab.{" "}
                   <button onClick={() => setCurrentTab("all")} className="text-amber-500 hover:underline font-medium">
                     Search all statuses
                   </button>
                 </p>
               ) : (
-                <p className="text-sm mt-1">Try adjusting your search or filters</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Try adjusting your search or filters</p>
               )}
             </div>
           </div>
@@ -1027,15 +1126,25 @@ export function DataTable({
                         return (
                           <>
                             {displayedLeads.map((lead) => {
-                              const priority = getRowPriority(lead);
+                              const effectiveLead = optimisticCallbackDates[lead.id] !== undefined
+                                ? { ...lead, callbackDate: optimisticCallbackDates[lead.id] }
+                                : lead;
+                              const priority = getRowPriority(effectiveLead);
+                              const rowAction = getNextAction(effectiveLead);
+                              const hasAISignal = rowAction.priority !== "low";
                               return (
                                 <tr
                                   key={lead.id}
-                                  onClick={() => onSelectLead(lead)}
-                                  className={`border-b border-[var(--border)] hover:bg-[var(--hover)] transition cursor-pointer group ${priority.bg} ${priority.border} ${flashedLeadId === lead.id ? "asg-row-flash" : ""}`}
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); setSelectedId(lead.id); onSelectLead(lead); }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") { setSelectedId(lead.id); onSelectLead(lead); }
+                                    if (e.key === "ArrowRight" && hasAISignal) { e.preventDefault(); setSelectedId(lead.id); onSelectLead(lead); }
+                                  }}
+                                  className={`border-b border-[var(--border)] hover:bg-[var(--surface-2,var(--hover))] hover:shadow-[inset_2px_0_0_var(--brass)] transition-all cursor-pointer group focus:outline-none ${selectedId === lead.id ? "bg-[var(--hover)] shadow-[inset_2px_0_0_var(--brass)] ring-1 ring-inset ring-[var(--border)]" : priority.bg} ${priority.border} ${flashedLeadId === lead.id ? "asg-row-flash" : ""}`}
                                 >
                                   {/* Checkbox */}
-                                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                  <td className="px-3 py-3.5" onClick={(e) => e.stopPropagation()}>
                                     <input
                                       type="checkbox"
                                       checked={selectedLeads.has(lead.id)}
@@ -1046,19 +1155,19 @@ export function DataTable({
 
                                   {/* Date */}
                                   {isColVisible("date") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
                                       {formatShortDate(lead.leadDate)}
                                     </td>
                                   )}
 
                                   {/* Name — always visible */}
-                                  <td className="px-3 py-2.5 font-medium text-[var(--text)]">
+                                  <td className="px-3 py-3.5 font-medium text-[var(--text)]">
                                     <span className="truncate block max-w-[150px]">{lead.name}</span>
                                   </td>
 
                                   {/* Contact — tel: link */}
                                   {isColVisible("phone") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)]">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)]">
                                       <a
                                         href={`tel:${lead.phone.replace(/\s/g, "")}`}
                                         className="text-amber-600 hover:underline text-sm"
@@ -1071,7 +1180,7 @@ export function DataTable({
 
                                   {/* Address */}
                                   {isColVisible("address") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm">
                                       <span className="block max-w-[190px] truncate" title={buildAddress(lead)}>
                                         {buildAddress(lead)}
                                       </span>
@@ -1080,21 +1189,21 @@ export function DataTable({
 
                                   {/* Renter/Owner */}
                                   {isColVisible("ownership") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
                                       {lead.ownership || "—"}
                                     </td>
                                   )}
 
                                   {/* Superannuation */}
                                   {isColVisible("super") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
                                       {lead.superannuation || "—"}
                                     </td>
                                   )}
 
                                   {/* Last Contact Rep */}
                                   {isColVisible("lastContact") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm">
                                       <span className="truncate block max-w-[120px]" title={getLastContactRep(lead)}>
                                         {getLastContactRep(lead)}
                                       </span>
@@ -1103,21 +1212,32 @@ export function DataTable({
 
                                   {/* Status */}
                                   {isColVisible("status") && (
-                                    <td className="px-3 py-2.5 whitespace-nowrap">
-                                      <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                        style={statusBadgeStyle(
-                                          statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
+                                    <td className="px-3 py-3.5 whitespace-nowrap">
+                                      <div className="flex items-center gap-1.5">
+                                        <span
+                                          className={`inline-flex items-center justify-center min-w-[76px] px-2.5 py-1 rounded-full text-xs font-semibold ${conflictStatuses[lead.id] ? "ring-1 ring-offset-1 ring-yellow-400" : ""}`}
+                                          style={statusBadgeStyle(
+                                            getStatusColor(optimisticStatuses[lead.id] ?? lead.status, statusColors),
+                                          )}
+                                        >
+                                          {optimisticStatuses[lead.id] ?? lead.status}
+                                        </span>
+                                        {hasAISignal && (
+                                          <span
+                                            role="button"
+                                            tabIndex={-1}
+                                            title={`AI: ${rowAction.label}`}
+                                            onClick={(e) => { e.stopPropagation(); setSelectedId(lead.id); onSelectLead(lead); }}
+                                            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 bg-violet-400 dark:bg-violet-500 cursor-pointer hover:scale-110 transition-[opacity,transform] ${selectedId === lead.id ? "opacity-100" : "opacity-30 group-hover:opacity-60"}`}
+                                          />
                                         )}
-                                      >
-                                        {lead.status}
-                                      </span>
+                                      </div>
                                     </td>
                                   )}
 
                                   {/* Notes (most recent call, truncated) */}
                                   {isColVisible("notes") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm">
                                       <span className="block max-w-[190px] truncate" title={getLastNotes(lead)}>
                                         {getLastNotes(lead)}
                                       </span>
@@ -1126,7 +1246,7 @@ export function DataTable({
 
                                   {/* Last Call */}
                                   {isColVisible("lastCall") && (
-                                    <td className="px-3 py-2.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-sm whitespace-nowrap">
                                       <span className="flex items-center gap-1">
                                         <Clock size={12} />
                                         {daysSinceCall(lead.lastCall)}
@@ -1136,14 +1256,14 @@ export function DataTable({
 
                                   {/* Next Action — always visible, clickable */}
                                   <td
-                                    className="px-3 py-2.5 text-sm whitespace-nowrap"
+                                    className="px-3 py-3.5 text-sm whitespace-nowrap"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onNextAction?.(lead);
                                     }}
                                   >
                                     {(() => {
-                                      const action = getNextAction(lead);
+                                      const action = getNextAction(effectiveLead);
                                       const colors = ACTION_COLORS[action.priority] ?? ACTION_COLORS.low;
                                       return (
                                         <div
@@ -1167,6 +1287,7 @@ export function DataTable({
                                         title="Quick: No Answer"
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "new" }));
                                           const now = new Date();
                                           onUpdateLead({
                                             ...lead,
@@ -1196,6 +1317,7 @@ export function DataTable({
                                         title="Quick: Wrong Number"
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "lost" }));
                                           const now = new Date();
                                           onUpdateLead({
                                             ...lead,
@@ -1267,10 +1389,19 @@ export function DataTable({
             </tbody>
           </table>
         )}
+        <div ref={sentinelDesktopRef} className="h-4" />
+        {loadingMore && (
+          <div className="flex justify-center py-3">
+            <span className="w-4 h-4 rounded-full border-2 border-[var(--border)] border-t-amber-500 animate-spin" />
+          </div>
+        )}
+        <div className={`flex justify-center py-3 transition-opacity duration-300 ${!hasMore && !loadingMore ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+          <span className="text-xs text-[var(--text-muted)]">You're all caught up</span>
+        </div>
       </div>
 
       {/* ── Mobile Card list ── */}
-      <div className="flex-1 overflow-y-auto lg:hidden">
+      <div className="flex-1 overflow-y-auto lg:hidden scroll-smooth" onClick={() => setSelectedId(null)}>
         {loading && leads.length === 0 ? (
           <div>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -1278,26 +1409,26 @@ export function DataTable({
             ))}
           </div>
         ) : sortedLeads.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
-            <div className="text-center py-16">
-              <div className="text-5xl mb-3">📭</div>
-              <p className="font-medium text-[var(--text-muted)]">No leads found</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4 opacity-60">📭</div>
+              <p className="font-semibold text-[var(--text)] mb-1">No leads found</p>
               {myLeadsOnly && !searchTerm ? (
-                <p className="text-sm mt-1">
+                <p className="text-sm text-[var(--text-muted)] mt-1">
                   No leads assigned to you yet.{" "}
                   <button onClick={() => setMyLeadsOnly(false)} className="text-amber-500 hover:underline font-medium">
                     View all leads
                   </button>
                 </p>
               ) : searchTerm && currentTab !== "all" ? (
-                <p className="text-sm mt-1">
+                <p className="text-sm text-[var(--text-muted)] mt-1">
                   No results on this tab.{" "}
                   <button onClick={() => setCurrentTab("all")} className="text-amber-500 hover:underline font-medium">
                     Search all statuses
                   </button>
                 </p>
               ) : (
-                <p className="text-sm mt-1">Try adjusting your search or filters</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Try adjusting your search or filters</p>
               )}
             </div>
           </div>
@@ -1329,7 +1460,10 @@ export function DataTable({
                       return (
                         <ul className="divide-y divide-gray-100 dark:divide-slate-800">
                           {displayedLeads.map((lead) => {
-                            const priority = getRowPriority(lead);
+                            const effectiveLead = optimisticCallbackDates[lead.id] !== undefined
+                              ? { ...lead, callbackDate: optimisticCallbackDates[lead.id] }
+                              : lead;
+                            const priority = getRowPriority(effectiveLead);
                             return (
                               <li
                                 key={lead.id}
@@ -1353,17 +1487,17 @@ export function DataTable({
                                       {lead.name}
                                     </span>
                                     <span
-                                      className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                      className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${conflictStatuses[lead.id] ? "ring-1 ring-offset-1 ring-yellow-400" : ""}`}
                                       style={statusBadgeStyle(
-                                        statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#9ca3af",
+                                        getStatusColor(optimisticStatuses[lead.id] ?? lead.status, statusColors),
                                       )}
                                     >
-                                      {lead.status}
+                                      {optimisticStatuses[lead.id] ?? lead.status}
                                     </span>
                                   </div>
                                   {/* Next Action */}
                                   {(() => {
-                                    const action = getNextAction(lead);
+                                    const action = getNextAction(effectiveLead);
                                     const colors = ACTION_COLORS[action.priority] ?? ACTION_COLORS.low;
                                     return (
                                       <div
@@ -1415,6 +1549,7 @@ export function DataTable({
                                     title="Quick: No Answer"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "new" }));
                                       const now = new Date();
                                       onUpdateLead({
                                         ...lead,
@@ -1443,6 +1578,7 @@ export function DataTable({
                                     title="Quick: Wrong Number"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "lost" }));
                                       const now = new Date();
                                       onUpdateLead({
                                         ...lead,
@@ -1504,6 +1640,17 @@ export function DataTable({
                 </div>
               );
             })}
+          </div>
+        )}
+        <div ref={sentinelMobileRef} className="h-4 lg:hidden" />
+        {loadingMore && (
+          <div className="flex justify-center py-3 lg:hidden">
+            <span className="w-4 h-4 rounded-full border-2 border-[var(--border)] border-t-amber-500 animate-spin" />
+          </div>
+        )}
+        {!hasMore && !loadingMore && (
+          <div className="flex justify-center py-3 lg:hidden">
+            <span className="text-xs text-[var(--text-muted)]">You're all caught up</span>
           </div>
         )}
       </div>

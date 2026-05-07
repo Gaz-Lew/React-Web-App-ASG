@@ -2450,19 +2450,20 @@
       };
       function resetToDefaults() {
         if (!confirm("Reset all inputs to default values?")) return;
-        Object.entries(INPUT_DEFAULTS).forEach(([id, val]) => {
+        const clearedIds = ["client-name","prop-address","prop-desc","prop-price","initial-invest","weekly-rent"];
+        clearedIds.forEach((id) => {
           const el = document.getElementById(id);
-          if (el) el.value = val;
+          if (el) el.value = "";
         });
-        document.getElementById("interest-only").checked = true;
-        document.getElementById("show-detailed").checked = true;
-        document.getElementById("show-cashflow").checked = true;
-        document.getElementById("show-projections").checked = true;
-        document.getElementById("show-tax").checked = true;
-        document.getElementById("show-charts").checked = true;
-        document.getElementById("consultant-name").value = "Blake Duffield";
+        const defaults = window.__piaDefaultValues || {};
+        Object.entries(defaults).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (el.type === "checkbox" || el.type === "radio") el.checked = !!val;
+          else el.value = val;
+        });
         updateCombinedIncome();
-        calculateAnalysis();
+        debouncedRecalc();
       }
 
       // ── Stamp Duty Calculator ─────────────────────────────────────────────────
@@ -2789,7 +2790,7 @@
         const consultant = document.getElementById("consultant-name").value;
         const price = parseFloat(document.getElementById("prop-price").value) || 0;
         const initial = parseFloat(document.getElementById("initial-invest").value) || 0;
-        const weeklyRent = parseFloat(document.getElementById("weekly-rent").value) || 0;
+        const weeklyRent = parseFloat(document.getElementById("weekly-rent")?.value) || 0;
         const rate = parseFloat(document.getElementById("interest-rate").value) / 100;
         const growth = parseFloat(document.getElementById("cap-growth").value) / 100;
         const inflation = parseFloat(document.getElementById("inflation").value) / 100;
@@ -2797,7 +2798,9 @@
         const council = parseFloat(document.getElementById("council-rates").value) || 0;
         const insurance = parseFloat(document.getElementById("insurance").value) || 0;
         const maint = parseFloat(document.getElementById("maintenance").value) || 0;
-        const vacancyPct = parseFloat(document.getElementById("vacancy-rate").value) / 100;
+        const vacancyRate = parseFloat(document.getElementById("vacancy-rate")?.value) || 0;
+        const vacancyDecimal = Math.min(vacancyRate / 100, 1);
+        const vacancyPct = vacancyDecimal;
         const invIncome = parseFloat(document.getElementById("inv-taxable-income").value) || 0;
         const parIncome = parseFloat(document.getElementById("par-taxable-income").value) || 0;
         const taxableIncome = invIncome + parIncome;
@@ -2826,8 +2829,8 @@
         const monthlyPayment = annualInterest / 12;
 
         const potentialRent = weeklyRent * 52;
-        const annualRent = potentialRent * (1 - vacancyPct);
-        const grossYield = (potentialRent / price) * 100;
+        const annualRent = weeklyRent * 52 * (1 - vacancyDecimal);
+        const grossYield = price > 0 ? (annualRent / price) * 100 : 0;
 
         // Expenses
         const agentComm = annualRent * mgmtPct;
@@ -3692,7 +3695,28 @@
       // Initialize
       document.addEventListener("DOMContentLoaded", () => {
         loadConsultants();
-        calculateAnalysis();
+        const clearedIds = new Set(["client-name","prop-address","prop-desc","prop-price","initial-invest","weekly-rent"]);
+        const defaultValues = {};
+        document.querySelectorAll("input, select").forEach((el) => {
+          if (!el.id || clearedIds.has(el.id)) return;
+          if (el.type === "checkbox" || el.type === "radio") {
+            defaultValues[el.id] = el.checked;
+          } else {
+            defaultValues[el.id] = el.value;
+          }
+        });
+        window.__piaDefaultValues = defaultValues;
+        Object.entries(defaultValues).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (el.type === "checkbox" || el.type === "radio") el.checked = !!val;
+          else el.value = val;
+        });
+        clearedIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        debouncedRecalc();
       });
 
       // ── CRM ↔ PIA Message Bridge ───────────────────────────────────

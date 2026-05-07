@@ -13,7 +13,7 @@
  * forward-compatibility if negative scores are introduced later.
  */
 
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { ActionStats } from "./learningService";
 
@@ -27,6 +27,7 @@ export interface UserProfile {
   };
   updatedAt: number;
   lastProcessedTimestamp: number;
+  voiceSampleUrl?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,5 +93,24 @@ export async function updateUserProfile(
     });
   } catch (err) {
     console.warn("[userProfileService] updateUserProfile failed:", err);
+  }
+}
+
+/**
+ * Persists a voice sample URL onto the user profile without touching any
+ * other fields. Creates the document if it doesn't exist yet (merge: true).
+ */
+export async function saveVoiceSampleUrl(userId: string, url: string): Promise<void> {
+  try {
+    const ref = doc(db, "userProfiles", userId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, { voiceSampleUrl: url, updatedAt: Date.now() });
+    } else {
+      await setDoc(ref, { voiceSampleUrl: url, updatedAt: Date.now() }, { merge: true });
+    }
+  } catch (err) {
+    console.warn("[userProfileService] saveVoiceSampleUrl failed:", err);
+    throw err;
   }
 }

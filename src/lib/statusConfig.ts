@@ -8,19 +8,22 @@
 
 import { DEFAULT_STATUS_COLORS } from "../types";
 
+const FALLBACK_COLOR = '#9ca3af';
+
+// Colour precedence: customColors → DEFAULT_STATUS_COLORS → FALLBACK_COLOR
 /**
  * Returns the hex colour for a given lead status string.
  *
  * Priority:
  *   1. Admin-configured override (from Firestore settings → Zustand statusColors)
  *   2. Built-in default from DEFAULT_STATUS_COLORS
- *   3. Neutral grey fallback (#9ca3af)
+ *   3. Neutral grey fallback (FALLBACK_COLOR)
  *
  * @param status       - LeadStatus string (e.g. "DQ", "Booked")
  * @param customColors - Optional overrides from useAppStore().statusColors
  */
 export function getStatusColor(status: string, customColors?: Record<string, string>): string {
-  return customColors?.[status] ?? DEFAULT_STATUS_COLORS[status] ?? "#9ca3af";
+  return customColors?.[status] ?? DEFAULT_STATUS_COLORS[status] ?? FALLBACK_COLOR;
 }
 
 /**

@@ -12,6 +12,7 @@
 
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import { Rep, Lead, AppSettings, RepTarget, DEFAULT_STATUS_COLORS, ServiceType, SyncConfig } from "../types";
+import { getStatusColor } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
 import {
   useAuditLog,
@@ -30,7 +31,8 @@ import { exportAsCSV, exportLeadsCSV, exportCallHistoryCSV } from "../lib/utils"
 import { uploadFile } from "../lib/storage";
 import { DEFAULT_SERVICE_TYPES } from "./Calendar";
 import { useToast } from "../context/ToastContext";
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../lib/firebase";
 import {
   UserPlus,
   Pencil,
@@ -86,6 +88,7 @@ import { DailyReportDashboard } from "../components/DailyReportDashboard";
 import { ADMIN_GUIDE_SECTIONS } from "../data/knowledgeBase";
 import { AUTOMATION_RULES } from "../lib/automation";
 import { isOverdue } from "../lib/followUp";
+import { VoiceRecorder } from "../components/VoiceRecorder";
 
 // ── Shared rep avatar (photo > initials fallback) ─────────────────────────────
 function RepAvatar({
@@ -207,7 +210,7 @@ function SummaryCard({
 // ── StatusBadge (shared) ───────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const { statusColors } = useAppStore();
-  const hex = statusColors[status] ?? DEFAULT_STATUS_COLORS[status] ?? "#9ca3af";
+  const hex = getStatusColor(status, statusColors);
   return (
     <span
       className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
@@ -364,7 +367,7 @@ function LeadStatsSection({ leads }: { leads: Lead[] }) {
                     className="h-full rounded-full transition-all"
                     style={{
                       width: `${(count / maxStatusCount) * 100}%`,
-                      backgroundColor: statusColors[s] ?? DEFAULT_STATUS_COLORS[s] ?? "#9ca3af",
+                      backgroundColor: getStatusColor(s, statusColors),
                     }}
                   />
                 </div>
@@ -2139,7 +2142,6 @@ function RepRow({
                   type="button"
                   onClick={async () => {
                     try {
-                      const auth = getAuth();
                       await sendPasswordResetEmail(auth, email.trim());
                       showToast(`Password reset email sent to ${email.trim()}`, "success");
                     } catch (e: unknown) {
@@ -4192,7 +4194,15 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
         />
       )}
 
-      {activeTab === "settings" && <SettingsSection settings={settings} reps={reps} onSave={saveSettings} />}
+      {activeTab === "settings" && (
+        <div className="space-y-8 p-6">
+          <SettingsSection settings={settings} reps={reps} onSave={saveSettings} />
+          <div>
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-3">Voice Sample</p>
+            <VoiceRecorder />
+          </div>
+        </div>
+      )}
 
       {activeTab === "system-settings" && <SystemSettingsPanel />}
 

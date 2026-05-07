@@ -3,7 +3,7 @@
  */
 
 import { create } from "zustand";
-import { Lead, Rep, AppSettings, DrapsEntry, CommissionEntry, AuditEntry, DEFAULT_STATUS_COLORS } from "../types";
+import { Lead, Rep, AppSettings, DrapsEntry, CommissionEntry, AuditEntry, DEFAULT_STATUS_COLORS, Region } from "../types";
 
 interface AppState {
   leads: Lead[];
@@ -14,6 +14,10 @@ interface AppState {
   drapsEntries: DrapsEntry[];
   commissions: CommissionEntry[];
   auditLog: AuditEntry[];
+  reportToLoad: Record<string, any> | null;
+  piaPrefillClientId: string | null;
+  piaPrefillClientName: string | null;
+  activeRegion: Region;
 
   // Actions
   setLeads: (leads: Lead[]) => void;
@@ -26,6 +30,10 @@ interface AppState {
   setDrapsEntries: (entries: DrapsEntry[]) => void;
   setCommissions: (entries: CommissionEntry[]) => void;
   setAuditLog: (entries: AuditEntry[]) => void;
+  setReportToLoad: (report: Record<string, any> | null) => void;
+  setPiaPrefillContext: (clientId: string | null, clientName: string | null) => void;
+  clearPiaPrefillContext: () => void;
+  setActiveRegion: (region: Region) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -72,6 +80,10 @@ export const useAppStore = create<AppState>((set) => ({
   drapsEntries: [],
   commissions: [],
   auditLog: [],
+  reportToLoad: null,
+  piaPrefillClientId: null,
+  piaPrefillClientName: null,
+  activeRegion: "brisbane",
 
   setLeads: (leads) => set({ leads }),
 
@@ -109,4 +121,13 @@ export const useAppStore = create<AppState>((set) => ({
   setDrapsEntries: (drapsEntries) => set({ drapsEntries }),
   setCommissions: (commissions) => set({ commissions }),
   setAuditLog: (auditLog) => set({ auditLog }),
+  setReportToLoad: (reportToLoad) => set({ reportToLoad }),
+
+  setPiaPrefillContext: (clientId, clientName) =>
+    set({ piaPrefillClientId: clientId, piaPrefillClientName: clientName }),
+
+  clearPiaPrefillContext: () =>
+    set({ piaPrefillClientId: null, piaPrefillClientName: null }),
+
+  setActiveRegion: (activeRegion) => set({ activeRegion }),
 }));

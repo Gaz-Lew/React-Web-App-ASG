@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, X, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Sparkles, X, Copy, Check, ChevronDown, ChevronUp, Play, Square } from "lucide-react";
 
 /* ── Public interface ────────────────────────────────────────────────────────── */
 export interface AIGuidanceCardProps {
@@ -31,7 +31,28 @@ export function AIGuidanceCard({
   const [scriptOpen, setScriptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [rate, setRate] = useState(1.0);
+  const [pitch, setPitch] = useState(1.0);
   const pulseTimeout = useRef<number | null>(null);
+
+  const speak = useCallback((text: string) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+    setIsPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  }, [rate, pitch]);
+
+  const stopSpeech = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+  }, []);
+
+  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
 
   /* ── Helper: compute priority badge info ─────────────────────────────────── */
   const computePriority = () => {
@@ -180,8 +201,40 @@ export function AIGuidanceCard({
               {scriptOpen && (
                 <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
                   <p className="text-xs text-gray-400 italic leading-relaxed whitespace-pre-wrap">{script}</p>
+
+                  {/* TTS sliders */}
+                  <div className="flex items-center gap-4 mt-2.5 pt-2 border-t border-[var(--border)]">
+                    <label className="flex items-center gap-1.5 text-[10px] text-gray-500 whitespace-nowrap">
+                      Speed
+                      <input
+                        type="range" min={0.5} max={2} step={0.1}
+                        value={rate}
+                        onChange={(e) => setRate(Number(e.target.value))}
+                        className="w-16 accent-amber-500"
+                      />
+                      <span className="w-6 text-right tabular-nums">{rate.toFixed(1)}</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[10px] text-gray-500 whitespace-nowrap">
+                      Pitch
+                      <input
+                        type="range" min={0.5} max={2} step={0.1}
+                        value={pitch}
+                        onChange={(e) => setPitch(Number(e.target.value))}
+                        className="w-16 accent-amber-500"
+                      />
+                      <span className="w-6 text-right tabular-nums">{pitch.toFixed(1)}</span>
+                    </label>
+                  </div>
+
                   {/* Script actions */}
-                  <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-[var(--border)]">
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[var(--border)]">
+                    <button
+                      onClick={() => isPlaying ? stopSpeech() : speak(script)}
+                      className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-300 transition-colors duration-100"
+                    >
+                      {isPlaying ? <Square size={10} className="text-amber-500" /> : <Play size={10} />}
+                      {isPlaying ? "Stop" : "Play"}
+                    </button>
                     <button
                       onClick={handleCopy}
                       className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-300 transition-colors duration-100"
@@ -193,10 +246,7 @@ export function AIGuidanceCard({
                       <button
                         onClick={handleUseScript}
                         className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md transition-all duration-150 active:scale-[0.97]"
-                        style={{
-                          background: "rgba(184,147,58,0.12)",
-                          color: "#b8933a",
-                        }}
+                        style={{ background: "rgba(184,147,58,0.12)", color: "#b8933a" }}
                       >
                         Use Script
                       </button>

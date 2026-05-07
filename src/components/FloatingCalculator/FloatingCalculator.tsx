@@ -346,24 +346,29 @@ export function FloatingCalculator() {
           />
           {/* Drag handle — moves panel via position offset */}
           <div
-            className="absolute bottom-2 right-2 w-6 h-6 rounded-full cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100"
-            style={{ background: "#b8933a", zIndex: 10000, touchAction: "none" }}
+            className="absolute bottom-2 right-2 w-4 h-4 rounded-full cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 bg-[var(--border)]"
+            style={{ zIndex: 10000, touchAction: "none" }}
             onPointerDown={(e) => {
               e.stopPropagation();
+              const handle = e.currentTarget as HTMLElement;
+              handle.setPointerCapture(e.pointerId);
               const startX = e.clientX;
               const startY = e.clientY;
               const startPos = { x: position.x, y: position.y };
 
               const move = (ev: PointerEvent) => {
+                if (!handle.hasPointerCapture(ev.pointerId)) return;
                 setPosition({
                   x: startPos.x + (ev.clientX - startX),
                   y: startPos.y + (ev.clientY - startY),
                 });
               };
 
-              const up = () => {
+              const up = (ev: PointerEvent) => {
+                if (!handle.hasPointerCapture(ev.pointerId)) return;
                 window.removeEventListener("pointermove", move);
                 window.removeEventListener("pointerup", up);
+                handle.releasePointerCapture(ev.pointerId);
               };
 
               window.addEventListener("pointermove", move);

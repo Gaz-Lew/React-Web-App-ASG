@@ -6,6 +6,10 @@
 
 export type CallResult = "connected" | "no_answer" | "callback" | "booked" | "not_interested" | "wrong_number";
 
+export type Region = "brisbane" | "perth";
+
+export const effectiveRegion = (region?: Region): Region => region ?? "brisbane";
+
 // ── Simplified Lead Statuses ──────────────────────────────────────────────────
 // New canonical values for writes; legacy values retained in the type for
 // backward-compat with existing Firestore documents that still contain them.
@@ -152,6 +156,7 @@ export interface Lead {
   callingRep?: number;
   dealValue?: number;
   income?: number;
+  balance?: number; // current financial balance for SMSF/investment planning
   deposit?: number;
   timelyAdded?: boolean;
 
@@ -197,8 +202,12 @@ export interface Lead {
 
   // Metadata
   createdAt?: number;
+  updatedAt?: number;
   callHistory?: CallHistory[];
   activities?: Activity[];
+
+  // Region partitioning — optional for backward compat; undefined treated as "brisbane"
+  region?: Region;
 }
 
 export interface Activity {
@@ -246,6 +255,7 @@ export interface Rep {
   allowedServiceTypes?: string[]; // undefined/empty = all types; array = restricted IDs
   // Performance alerts (Feature 4)
   alertsEnabled?: boolean; // true = rep receives in-app + push performance alerts
+  teamId?: string;
 }
 
 // ── DRAPS (Daily Reporting & Performance Stats) ───────────────────────────────
@@ -332,6 +342,7 @@ export interface AuditEntry {
   detail: string; // human-readable description
   leadId?: number;
   leadName?: string;
+  region?: Region;
 }
 
 export interface RepTarget {

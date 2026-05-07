@@ -1,78 +1,75 @@
-/**
- * Firebase Initialization (Modular SDK v10)
- *
- * Uses environment variables from .env
- * Enables offline persistence via the modern FirestoreSettings.cache API
- */
+// src/lib/firebase.ts
 
-import { initializeApp } from 'firebase/app';
-import { initializeFirestore, memoryLocalCache } from 'firebase/firestore';
-import { persistentLocalCache, persistentMultipleTabManager } from '@firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { initializeFirestore, getFirestore, Firestore, persistentLocalCache } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
+import { getAuth, signInAnonymously, onAuthStateChanged, Auth } from "firebase/auth";
+import { getFunctions, Functions } from "firebase/functions";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+type RequiredEnv = {
+  VITE_FIREBASE_API_KEY: string | undefined;
+  VITE_FIREBASE_AUTH_DOMAIN: string | undefined;
+  VITE_FIREBASE_PROJECT_ID: string | undefined;
+  VITE_FIREBASE_STORAGE_BUCKET: string | undefined;
+  VITE_FIREBASE_MESSAGING_SENDER_ID: string | undefined;
+  VITE_FIREBASE_APP_ID: string | undefined;
 };
 
-const app = initializeApp(firebaseConfig);
+const env: RequiredEnv = {
+  VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+  VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
-// Modern offline persistence — replaces deprecated enableIndexedDbPersistence()
-// persistentMultipleTabManager allows multiple tabs simultaneously.
-// Falls back to memory cache if IndexedDB is unavailable (Safari private mode, etc.)
-function buildLocalCache() {
-  try {
-    return persistentLocalCache({ tabManager: persistentMultipleTabManager() });
-  } catch {
-    console.warn('[firebase] IndexedDB unavailable — falling back to memory cache (offline writes will not persist)');
-    return memoryLocalCache();
-  }
+const missing = Object.entries(env)
+  .filter(([, v]) => !v)
+  .map(([k]) => k);
+
+if (missing.length > 0) {
+  throw new Error(`Missing Firebase env vars: ${missing.join(", ")}`);
 }
 
-export const db = initializeFirestore(app, {
-  localCache: buildLocalCache(),
+const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY!,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN!,
+  projectId: env.VITE_FIREBASE_PROJECT_ID!,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: env.VITE_FIREBASE_APP_ID!,
+};
+
+let app: FirebaseApp;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0];
+}
+
+export const db: Firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache(),
 });
-
-export const storage = getStorage(app);
-
-export const auth = getAuth(app);
+export const storage: FirebaseStorage = getStorage(app);
+export const auth: Auth = getAuth(app);
+export const functions: Functions = getFunctions(app);
 
 /**
  * authReady — resolves once Firebase Auth has determined the initial state.
  *
- * All Firestore listeners gate on this promise so that security rules
- * (which require request.auth != null) evaluate correctly.
- *
  * If anonymous sign-in fails (e.g. provider disabled in Firebase Console),
- * authReady still resolves so the app doesn't hang. Firestore access then
- * depends on the deployed security rules — the current rules use `if true;`
- * as a temporary workaround while Anonymous Auth is being configured.
- *
- * ─── To restore full auth-gated security ─────────────────────────────────
- *  1. Firebase Console → Authentication → Sign-in methods → Anonymous → Enable
- *     https://console.firebase.google.com/project/_/authentication/providers
- *  2. In firestore.rules, replace every `if true;` with `if isAuthenticated();`
- *  3. Run: firebase deploy --only firestore:rules
- * ─────────────────────────────────────────────────────────────────────────
+ * authReady still resolves so the app doesn't hang.
  */
 export const authReady: Promise<void> = new Promise((resolve) => {
   const unsub = onAuthStateChanged(auth, (user) => {
-    unsub(); // one-shot — only care about initial state
+    unsub();
 
     if (user) {
-      // Existing session (anonymous or otherwise) — nothing to do
       resolve();
     } else {
-      // No session — attempt anonymous sign-in
       signInAnonymously(auth)
-        .then(() => {
-          resolve();
-        })
+        .then(() => resolve())
         .catch((err: { code: string; message: string }) => {
           if (err.code === 'auth/admin-restricted-operation') {
             console.warn(
@@ -91,8 +88,6 @@ export const authReady: Promise<void> = new Promise((resolve) => {
               err.message,
             );
           }
-          // Resolve regardless — authReady should never block the app from loading.
-          // Whether Firestore succeeds depends on the deployed security rules.
           resolve();
         });
     }

@@ -21,9 +21,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   collection,
-  onSnapshot,
-  query,
-  orderBy,
   addDoc,
   updateDoc,
   doc,
@@ -34,7 +31,7 @@ import {
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { useAppSettings } from "../hooks/useAppSettings";
-import { useDealDocuments } from "../hooks/useFirebase";
+import { useDealDocuments, useDeals } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
 import { Rep, Lead, CallHistory, DealDocumentType, DealDocument } from "../types";
 import { OADocumentEditor } from "../components/OADocumentEditor";
@@ -126,29 +123,6 @@ export interface TimelineEntry {
 // ─────────────────────────────────────────────────────────────────────────────
 // Firestore Hooks
 // ─────────────────────────────────────────────────────────────────────────────
-
-function useDeals() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    const q = query(collection(db, "deals"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        setDeals(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Deal));
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching deals:", err);
-        setError("Failed to load deals");
-        setLoading(false);
-      },
-    );
-    return () => unsubscribe();
-  }, []);
-  return { deals, loading, error };
-}
 
 function useLinkedLead(leadId: string | null) {
   const [lead, setLead] = useState<Lead | null>(null);

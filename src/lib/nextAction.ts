@@ -48,12 +48,15 @@ export function getNextAction(lead: Lead, appointments: Appointment[] = []): Nex
   const lastCallMs = lead.lastCall ? new Date(lead.lastCall).getTime() : 0;
   const daysSinceContact = lastCallMs > 0 ? (Date.now() - lastCallMs) / 86_400_000 : Infinity;
   const isSettled = SETTLED_STATUSES.has(lead.status) || SETTLED_STATUSES.has(lead.leadDate ?? "");
-  const todayStr = getTodayISODate();
   const callbackDateValid =
     !!lead.callbackDate &&
     /^\d{4}-\d{2}-\d{2}$/.test(lead.callbackDate) &&
-    !isNaN(new Date(lead.callbackDate).getTime());
-  const callbackIsOverdue = callbackDateValid && lead.callbackDate! < todayStr;
+    !isNaN(new Date(lead.callbackDate + "T00:00:00").getTime());
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const callbackIsOverdue =
+    callbackDateValid &&
+    new Date(lead.callbackDate! + "T00:00:00") < todayMidnight;
 
   // ── TERMINAL: Settled or lost ──────────────────────────────────────────────
   if (lead.status === "settled" || lead.settlementDate) {
@@ -176,10 +179,6 @@ export const ACTION_COLORS: Record<string, { bg: string; text: string; badge: st
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
-function getTodayISODate(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function _parseCallTimestamp(date?: string, time?: string): number | undefined {
   if (!date) return undefined;

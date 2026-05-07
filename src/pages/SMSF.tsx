@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { db } from "../lib/firebase";
+import { db, functions } from "../lib/firebase";
 import { collection, addDoc, doc, setDoc, getDocs, query, where } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { useToast } from "../context/ToastContext";
 import { useAppStore } from "../stores/appStore";
 
@@ -28,13 +29,19 @@ const fmtAUD = (v: number | null) => {
   }).format(v);
 };
 
-export function SMSFPage() {
+const saveFn = httpsCallable(functions, "saveSmsfFinancials");
+const loadFn = httpsCallable(functions, "getSmsfFinancials");
+
+function SMSFPage() {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [smsfResult, setSmsfResult] = useState<SMSFResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [linkedToClient, setLinkedToClient] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [scale, setScale] = useState(1);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeContainerRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
   const { currentUser, leads } = useAppStore();
 
@@ -225,7 +232,35 @@ export function SMSFPage() {
     return () => clearTimeout(timer);
   }, [loaded]);
 
-  // Save result to Firestore
+  // Auto-load selected client data into SMSF iframe
+  useEffect(() => {
+    if (!linkedToClient) return;
+    if (!selectedClientId) return;
+    if (!iframeRef.current || !loaded) return;
+
+    const selectedClient = (leads || []).find(
+      (l) => String(l.id) === String(selectedClientId)
+    );
+
+    if (!selectedClient) return;
+
+    try {
+      (window as any).__smsfLoadClient?.({
+        name: selectedClient.name ?? "",
+        income: selectedClient.income ?? 0,
+        balance: selectedClient.balance ?? 0,
+      });
+    } catch {
+      // silent fail
+    }
+  }, [selectedClientId, linkedToClient, leads, loaded]);
+
+  // Memoize selected client lookup
+  const selectedClient = (leads || []).find(
+    (l) => String(l.id) === String(selectedClientId)
+  ) || null;
+
+  // Save result to Firestore (report metadata) + encrypt sensitive fields via cloud function
   const handleSave = useCallback(async () => {
     if (!smsfResult) return;
     if (!currentUser) {
@@ -239,13 +274,14 @@ export function SMSFPage() {
 
     setSaving(true);
     try {
+      const encrypted = await saveFn(smsfResult);
       await addDoc(collection(db, "smsfReports"), {
         userId: currentUser.id,
         userName: currentUser.name,
         clientId: selectedClientId ?? null,
         clientGroupId: selectedClient?.clientGroupId ?? null,
         type: "smsf",
-        result: smsfResult,
+        encrypted: encrypted.data,
         createdAt: Date.now(),
       });
       showToast("✅ SMSF report saved", "success");
@@ -256,6 +292,52 @@ export function SMSFPage() {
       setSaving(false);
     }
   }, [smsfResult, currentUser, showToast, selectedClientId, leads]);
+
+  // Ctrl+wheel to zoom iframe only
+  useEffect(() => {
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.05 : 0.05;
+      setScale((prev) => clamp(prev + delta, 0.75, 1.5));
+    };
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // Pinch to zoom iframe only
+  useEffect(() => {
+    const container = iframeContainerRef.current;
+    if (!container) return;
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    let lastDist = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        lastDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+      }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const delta = (dist - lastDist) / 200;
+      lastDist = dist;
+      setScale((prev) => clamp(prev + delta, 0.75, 1.5));
+    };
+    container.addEventListener("touchstart", handleTouchStart, { passive: true });
+    container.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--bg)] text-[var(--text)] overflow-hidden">
@@ -303,7 +385,7 @@ export function SMSFPage() {
             )}
             <button
               onClick={handleSave}
-              disabled={!smsfResult || saving}
+              disabled={!smsfResult || saving || (linkedToClient && !selectedClientId)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "#b8933a" }}
             >
@@ -321,12 +403,43 @@ export function SMSFPage() {
                   Saving…
                 </>
               ) : (
-                "Save to Client"
+                "Save"
               )}
             </button>
           </div>
         </div>
       </header>
+
+      {/* Select Client to Link — Primary workflow */}
+      <div className="flex-shrink-0 bg-[var(--surface)] px-4 sm:px-6 py-3">
+        <div className="border border-[var(--border)] rounded-xl p-3 mb-4">
+          <label className="text-xs sm:text-sm font-medium text-[var(--text)] block mb-2">Select Client to Link</label>
+          <select
+            value={selectedClientId || ""}
+            onChange={(e) => {
+              const clientId = e.target.value || null;
+              setSelectedClientId(clientId);
+              if (clientId) {
+                setLinkedToClient(true);
+              }
+            }}
+            className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[#b8933a]"
+          >
+            <option value="">Select a client…</option>
+            {(leads || []).map((lead) => (
+              <option key={lead.id} value={lead.id}>
+                {lead.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] sm:text-xs text-[var(--text-muted)] mt-1.5">Fields will auto-fill once a client is selected</p>
+          {selectedClient && linkedToClient && (
+            <div className="mt-2 text-xs text-green-500">
+              ✔ Linked to: <span className="font-medium">{selectedClient.name}</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Result summary bar (mobile) */}
       {smsfResult && (
@@ -379,24 +492,37 @@ export function SMSFPage() {
           </div>
         )}
 
-        {/* Iframe */}
-        <iframe
-          ref={iframeRef}
-          src="/smsf/index.html"
-          title="SMSF Calculator"
-          className="w-full h-full border-0"
-          style={{
-            opacity: loaded ? 1 : 0,
-            transition: "opacity 0.4s ease-in-out",
-            background: "var(--bg)",
-          }}
-          onLoad={() => {
-            // The iframe will postMessage when ready; fallback handles the rest
-          }}
-          onError={() => setHasError(true)}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        />
+        {/* Iframe — wrapped for independent scaling */}
+        <div ref={iframeContainerRef} className="absolute inset-0 overflow-hidden">
+          <div
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top center",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <iframe
+              ref={iframeRef}
+              src="/smsf/index.html"
+              title="SMSF Calculator"
+              className="w-full h-full border-0"
+              style={{
+                opacity: loaded ? 1 : 0,
+                transition: "opacity 0.4s ease-in-out",
+                background: "var(--bg)",
+              }}
+              onLoad={() => {
+                // The iframe will postMessage when ready; fallback handles the rest
+              }}
+              onError={() => setHasError(true)}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+export default SMSFPage;

@@ -576,7 +576,7 @@ function DayView({
                     // Build the "FR · Joe" tag shown below client name
                     const st = serviceTypes.find((s) => s.id === ev.appointmentData?.serviceTypeId);
                     const abbr = st ? getServiceAbbr(st.name) : null;
-                    const repFirst = rep?.name.split(" ")[0].toUpperCase() ?? null;
+                    const repFirst = rep?.name?.split(" ")[0]?.toUpperCase() ?? null;
                     const typeRepTag = abbr && repFirst ? `${abbr} · ${repFirst}` : (abbr ?? repFirst ?? null);
 
                     // For lead overlays (dashed), keep simpler styling
@@ -714,7 +714,7 @@ function WeekView({ events, focusDate, reps, serviceTypes, onSlotClick, onEventC
                   const st = serviceTypes.find((s) => s.id === ev.appointmentData?.serviceTypeId);
                   const rep = reps.find((r) => r.id === ev.repId);
                   const abbr = st ? getServiceAbbr(st.name) : null;
-                  const repFirst = rep?.name.split(" ")[0].toUpperCase();
+                  const repFirst = rep?.name?.split(" ")[0]?.toUpperCase();
                   const tag = abbr && repFirst ? `${abbr} · ${repFirst}` : (abbr ?? repFirst ?? null);
                   const blockColor = ev.color; // service type colour
                   const repColor = rep?.color ?? ev.color;
@@ -903,7 +903,7 @@ interface RunSheetModalProps {
 
 function RunSheetModal({ events, focusDate, reps, serviceTypes, repFilter, onClose }: RunSheetModalProps) {
   const todayEvents = useMemo(() => {
-    return events.filter((e) => e.date === focusDate).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return events.filter((e) => e.date === focusDate).sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
   }, [events, focusDate]);
 
   const repName = repFilter === "all" ? "All Staff" : (reps.find((r) => r.id === repFilter)?.name ?? "Unknown");

@@ -5,36 +5,76 @@ import { ToastProvider, useToast } from "./context/ToastContext";
 import { LeadsPage } from "./pages/Leads"; // eager — it's the landing page
 import { db } from "./lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
+import { useAppStore } from "./stores/appStore";
+import {
+  useReps,
+  useSaveRep,
+  useSaveLead,
+  useLeads,
+  useAppSettings,
+  useSaveSettings,
+  useAddAuditEntry,
+} from "./hooks/useFirebase";
+import {
+  LayoutDashboard,
+  MessageCircle,
+  MapPin,
+  CalendarDays,
+  Users,
+  ClipboardList,
+  BarChart3,
+  Briefcase,
+  TrendingUp,
+  DollarSign,
+  FolderOpen,
+  BookOpen,
+  GraduationCap,
+  Calculator,
+  UserCircle,
+  BarChart2,
+  Settings,
+  Shield,
+  Sun,
+  Moon,
+  LogOut,
+  X,
+  Menu,
+  ArrowLeftRight,
+  FileUp,
+  Download,
+  Plus,
+  Sparkles,
+  Inbox,
+} from "lucide-react";
+import { exportLeadsCSV, exportCallHistoryCSV, normalizeAUPhone } from "./lib/utils";
 
 // ── Lazy-loaded pages (split into separate JS chunks) ─────────────────────────
 const DashboardPage = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.DashboardPage })));
 const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.AdminPage })));
 const DrapsPage = lazy(() => import("./pages/Draps").then((m) => ({ default: m.DrapsPage })));
 const CommissionsPage = lazy(() => import("./pages/Commissions").then((m) => ({ default: m.CommissionsPage })));
-const MapPage = lazy(() => import("./pages/Map").then((m) => ({ default: m.MapPage })));
+const Map = lazy(() => import("./pages/Map"));
 const DQImportPage = lazy(() => import("./pages/DQImport").then((m) => ({ default: m.DQImportPage })));
 const TeamChatPage = lazy(() => import("./pages/TeamChat").then((m) => ({ default: m.TeamChatPage })));
 const KnowledgeBasePage = lazy(() => import("./pages/KnowledgeBase").then((m) => ({ default: m.KnowledgeBasePage })));
-const DocumentCentrePage = lazy(() =>
-  import("./pages/DocumentCentre").then((m) => ({ default: m.DocumentCentrePage })),
-);
+const DocumentCentre = lazy(() => import("./pages/DocumentCentre"));
 const DealDashboardPage = lazy(() => import("./pages/DealDashboard").then((m) => ({ default: m.DealDashboardPage })));
 const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
 const ClientHubPage = lazy(() => import("./pages/ClientHub").then((m) => ({ default: m.ClientHubPage })));
 const ClientProfilePage = lazy(() =>
   import("./pages/ClientProfilePage").then((m) => ({ default: m.ClientProfilePage })),
 );
-const PIAPage = lazy(() => import("./pages/PIA").then((m) => ({ default: m.PIAPage })));
-const SMSFPage = lazy(() => import("./pages/SMSF").then((m) => ({ default: m.SMSFPage })));
+const PIA = lazy(() => import("./pages/PIA"));
+const SMSF = lazy(() => import("./pages/SMSF"));
 const ReportsDashboardPage = lazy(() =>
   import("./pages/ReportsDashboard").then((m) => ({ default: m.ReportsDashboardPage })),
 );
 const TrainingHubPage = lazy(() => import("./pages/TrainingHub").then((m) => ({ default: m.TrainingHubPage })));
 const AdminGuidePage = lazy(() => import("./pages/AdminGuide").then((m) => ({ default: m.AdminGuidePage })));
-const RepDashboardPage = lazy(() =>
-  import("./components/RepDashboard").then((m) => ({ default: m.RepDashboard })),
-);
+const RepDashboardPage = lazy(() => import("./components/RepDashboard").then((m) => ({ default: m.RepDashboard })));
 const MyDashboardPage = lazy(() => import("./pages/MyDashboard").then((m) => ({ default: m.MyDashboardPage })));
+const AssistantPage = lazy(() => import("./pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
+const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
 const RepSettingsPanel = lazy(() =>
   import("./components/RepSettingsPanel").then((m) => ({ default: m.RepSettingsPanel })),
 );
@@ -45,16 +85,34 @@ const SheetsSyncModal = lazy(() =>
   import("./components/SheetsSyncModal").then((m) => ({ default: m.SheetsSyncModal })),
 );
 
+// App-level components (must stay in sync with JSX usage)
 import { FloatingCalculator } from "./components/FloatingCalculator/FloatingCalculator";
 import { FloatingCalendar } from "./components/FloatingCalendar/FloatingCalendar";
+import { OfflineIndicator } from "./components/OfflineIndicator";
+import { LearningDebugPanel } from "./components/dev/LearningDebugPanel";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { useNotifications } from "./hooks/useNotifications";
 import { useOfflineQueue } from "./hooks/useOfflineQueue";
-import { ConnectionStatus } from "./components/ConnectionStatus";
+import { useNetworkStatus } from "./hooks/useNetworkStatus";
 
 // ── Google Sheets Quick Pull constants ───────────────────────────────────────
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY as string;
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY ?? "";
+
+if (!GOOGLE_API_KEY) {
+  console.warn(
+    "Missing Google Sheets API key — set VITE_GOOGLE_SHEETS_API_KEY env var. Quick Pull may not work without OAuth.",
+  );
+}
+
+// ── Page loader fallback ──────────────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[#b8933a] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 // ── Dark mode (class-based, persisted) ───────────────────────────────────────
 function useDarkMode(): [boolean, () => void] {
@@ -123,7 +181,9 @@ type Page =
   | "rep-settings"
   | "pia"
   | "smsf"
-  | "rep-dashboard";
+  | "rep-dashboard"
+  | "assistant"
+  | "inbox";
 
 // ── Login screen ──────────────────────────────────────────────────────────────
 type LoginStep = "select" | "access-code" | "setup" | "pin" | "forgot" | "new-pin" | "admin";
@@ -765,6 +825,7 @@ function AppShell() {
   const { leads: allLeads } = useLeads();
   const { showToast } = useToast();
   const { isOnline: queueOnline, isSyncing, queueLength } = useOfflineQueue();
+  const { isProbablyOffline } = useNetworkStatus();
   const [dark, toggleDark] = useDarkMode();
   const [uiScale, setUiScale] = useUiScale();
 
@@ -1016,7 +1077,7 @@ function AppShell() {
       const get = (row: string[], idx: number) => (idx >= 0 ? (row[idx] ?? "").trim() : "");
 
       // Build phone→lead map from current leads
-      const phoneMap = new Map<string, (typeof allLeads)[0]>();
+      const phoneMap = new globalThis.Map<string, Lead>();
       allLeads.forEach((l) => {
         const p = normalizeAUPhone(l.phone ?? "");
         if (p) phoneMap.set(p, l);
@@ -1171,6 +1232,21 @@ function AppShell() {
     }).length;
   }, [allLeads, currentUser, isAdmin]);
 
+  const followUpBadge = useMemo(() => {
+    if (!currentUser) return 0;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    return allLeads.filter((l) => {
+      if (!l.nextContactDate) return false;
+
+      const isMyLead = l.dqRep === currentUser.id;
+      if (!isAdmin && !isMyLead) return false;
+
+      return l.nextContactDate <= today;
+    }).length;
+  }, [allLeads, currentUser, isAdmin]);
+
   // ── NOW it's safe to return early ──────────────────────────────────────────
   if (!currentUser) {
     return <LoginScreen onLoginRep={handleLoginRep} onAdminBypass={handleAdminBypass} />;
@@ -1181,6 +1257,22 @@ function AppShell() {
     <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto scrollbar-none bg-[#0B0B0C]">
       {/* Top section (no label) */}
       <div className="space-y-1">
+        {canSee("assistant") && (
+          <SidebarItem
+            icon={<Sparkles size={15} />}
+            label="Assistant"
+            active={effectivePage === "assistant"}
+            onClick={() => onNav("assistant")}
+          />
+        )}
+        {canSee("inbox") && (
+          <SidebarItem
+            icon={<Inbox size={15} />}
+            label="Inbox"
+            active={effectivePage === "inbox"}
+            onClick={() => onNav("inbox")}
+          />
+        )}
         {canSee("dashboard") && (
           <SidebarItem
             icon={<LayoutDashboard size={15} />}
@@ -1224,7 +1316,7 @@ function AppShell() {
               label="Leads"
               active={effectivePage === "leads"}
               onClick={() => onNav("leads")}
-              badge={callbackBadge}
+              badge={callbackBadge + followUpBadge}
             />
           )}
           {canSee("dq-import") && (
@@ -1508,6 +1600,26 @@ function AppShell() {
 
   return (
     <div className="h-screen flex overflow-hidden">
+      {isProbablyOffline && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: "#1a1a1a",
+            color: "#e5e5e5",
+            fontSize: "12px",
+            fontWeight: 500,
+            textAlign: "center",
+            padding: "5px 12px",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Offline mode — changes will sync when connection returns
+        </div>
+      )}
       {/* ── Desktop Sidebar ───────────────────────────────────────────────── */}
       <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-[#0B0B0C] border-r border-white/[0.06] overflow-hidden">
         {/* Brand */}
@@ -1583,6 +1695,22 @@ function AppShell() {
             </span>
           )}
 
+          {/* Follow-ups Today badge */}
+          {followUpBadge > 0 && (
+            <button
+              onClick={() => setPage("leads")}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition hover:opacity-80"
+              style={{
+                background: "rgba(184,147,58,0.15)",
+                color: "#b8933a",
+                border: "1px solid rgba(184,147,58,0.3)",
+              }}
+              title="Follow-ups due today"
+            >
+              {followUpBadge} Follow-up{followUpBadge === 1 ? "" : "s"} Today
+            </button>
+          )}
+
           {/* Sheets sync */}
           <button
             onClick={() => setSheetsSyncOpen(true)}
@@ -1636,89 +1764,101 @@ function AppShell() {
                 <span className="hidden sm:inline">Add Lead</span>
               </button>
             </>
-)}
-         </header>
- 
-         {/* Page content — flex-1 so it fills height after the 56px topbar */}
-         <div className="app-scale-root flex-1 overflow-hidden flex flex-col">
-           <main className="flex-1 overflow-hidden flex flex-col">
-          {effectivePage === "leads" && (
-            <LeadsPage
-              addLeadOpen={addLeadOpen}
-              onAddLeadOpenChange={setAddLeadOpen}
-              pendingCallLeadId={pendingCallLeadId}
-              onPendingCallLeadConsumed={() => setPendingCallLeadId(null)}
-              initialFilter={leadsFilter}
-              onFilterCleared={() => setLeadsFilter(null)}
-            />
           )}
-          <Suspense fallback={<PageLoader />}>
-            {effectivePage === "client-hub" && (
-              <ClientHubPage
-                initialFilter={clientsFilter}
-                onFilterCleared={() => setClientsFilter(null)}
-                onOpenProfile={(leadId) => setSelectedClientId(leadId)}
+        </header>
+
+        {/* Page content — flex-1 so it fills height after the 56px topbar */}
+        <div className="app-scale-root flex-1 overflow-hidden flex flex-col">
+          <main className="flex-1 overflow-hidden flex flex-col">
+            {effectivePage === "leads" && (
+              <LeadsPage
+                addLeadOpen={addLeadOpen}
+                onAddLeadOpenChange={setAddLeadOpen}
+                pendingCallLeadId={pendingCallLeadId}
+                onPendingCallLeadConsumed={() => setPendingCallLeadId(null)}
+                initialFilter={leadsFilter}
+                onFilterCleared={() => setLeadsFilter(null)}
               />
             )}
-            {effectivePage === "dashboard" && (
-              <DashboardPage onCallLead={handleCallFromDashboard} onNavigate={handleNavigateFromDashboard} />
-            )}
-            {effectivePage === "calendar" && <CalendarPage onViewClientProfile={(_lead) => setPage("client-hub")} />}
-            {effectivePage === "deal-dashboard" && <DealDashboardPage />}
-            {effectivePage === "reports" && <ReportsDashboardPage />}
-            {effectivePage === "training" && <TrainingHubPage />}
-            {effectivePage === "dq-import" && <DQImportPage />}
-            {effectivePage === "map" && <MapPage />}
-            {effectivePage === "draps" && <DrapsPage />}
-            {effectivePage === "commissions" && <CommissionsPage />}
-            {effectivePage === "admin" && isAdmin && <AdminPage onOpenSheetsSync={() => setSheetsSyncOpen(true)} />}
-            {effectivePage === "team-chat" && <TeamChatPage />}
-            {effectivePage === "knowledge-base" && <KnowledgeBasePage />}
-            {effectivePage === "document-centre" && <DocumentCentrePage />}
-            {effectivePage === "pia" && <PIAPage />}
-            {effectivePage === "smsf" && <SMSFPage />}
-            {effectivePage === "admin-guide" && isAdmin && <AdminGuidePage />}
-            {effectivePage === "my-dashboard" && <MyDashboardPage />}
-            {effectivePage === "rep-dashboard" && <RepDashboardPage />}
-            {effectivePage === "rep-settings" && (
-              <Suspense fallback={<PageLoader />}>
-                <RepSettingsPanel />
-              </Suspense>
-            )}
+            <Suspense fallback={<PageLoader />}>
+              {effectivePage === "client-hub" && (
+                <ClientHubPage
+                  initialFilter={clientsFilter}
+                  onFilterCleared={() => setClientsFilter(null)}
+                  onOpenProfile={(leadId) => setSelectedClientId(leadId)}
+                />
+              )}
+              {effectivePage === "dashboard" && (
+                <DashboardPage onCallLead={handleCallFromDashboard} onNavigate={handleNavigateFromDashboard} />
+              )}
+              {effectivePage === "calendar" && <CalendarPage onViewClientProfile={(_lead) => setPage("client-hub")} />}
+              {effectivePage === "deal-dashboard" && <DealDashboardPage />}
+              {effectivePage === "reports" && <ReportsDashboardPage />}
+              {effectivePage === "training" && <TrainingHubPage />}
+              {effectivePage === "dq-import" && <DQImportPage />}
+              {effectivePage === "map" && <Map />}
+              {effectivePage === "draps" && <DrapsPage />}
+              {effectivePage === "commissions" && <CommissionsPage />}
+              {effectivePage === "admin" && isAdmin && <AdminPage onOpenSheetsSync={() => setSheetsSyncOpen(true)} />}
+              {effectivePage === "team-chat" && <TeamChatPage />}
+              {effectivePage === "knowledge-base" && <KnowledgeBasePage />}
+              {effectivePage === "document-centre" && <DocumentCentre />}
+              {effectivePage === "pia" && <PIA />}
+              {effectivePage === "smsf" && <SMSF />}
+              {effectivePage === "admin-guide" && isAdmin && <AdminGuidePage />}
+              {effectivePage === "my-dashboard" && <MyDashboardPage />}
+              {effectivePage === "assistant" && <AssistantPage />}
+              {effectivePage === "inbox" && <InboxPage />}
+              {effectivePage === "rep-dashboard" && <RepDashboardPage />}
+              {effectivePage === "rep-settings" && (
+                <Suspense fallback={<PageLoader />}>
+                  <RepSettingsPanel />
+                </Suspense>
+              )}
+            </Suspense>
+          </main>
+        </div>
+
+        {/* ── Client Profile Overlay ────────────────────────────────────────── */}
+        {selectedClientId !== null && (
+          <Suspense fallback={<PageLoader />}>
+            <ClientProfilePage
+              clientId={selectedClientId}
+              onClose={() => setSelectedClientId(null)}
+              onNavigate={(page) => {
+                if (page === "pia") {
+                  const client = allLeads.find((l) => l.id === selectedClientId);
+                  if (client) {
+                    const { setPiaPrefillContext } = useAppStore.getState();
+                    setPiaPrefillContext(String(client.id), client.name);
+                  }
+                  setSelectedClientId(null);
+                  setPage("pia");
+                }
+              }}
+            />
           </Suspense>
-        </main>
-      </div>
+        )}
 
-      {/* ── Client Profile Overlay ────────────────────────────────────────── */}
-      {selectedClientId !== null && (
-        <Suspense fallback={<PageLoader />}>
-          <ClientProfilePage
-            clientId={selectedClientId}
-            onClose={() => setSelectedClientId(null)}
-          />
+        {/* ── Floating Tools ────────────────────────────────────────────────── */}
+        <FloatingCalculator />
+        <FloatingCalendar />
+
+        {/* ── Onboarding ────────────────────────────────────────────────────── */}
+        {showOnboarding && checkedOnboarding && (
+          <OnboardingFlow onComplete={handleOnboardingComplete} onNavigate={handleOnboardingNavigate} />
+        )}
+
+        {/* ── Modals ────────────────────────────────────────────────────────── */}
+        <Suspense fallback={null}>
+          {csvImportOpen && <CSVImportModal onClose={() => setCSVImportOpen(false)} onImport={handleCSVImportSave} />}
+          {sheetsSyncOpen && <SheetsSyncModal onClose={() => setSheetsSyncOpen(false)} />}
         </Suspense>
-      )}
-
-      {/* ── Floating Tools ────────────────────────────────────────────────── */}
-      <FloatingCalculator />
-      <FloatingCalendar />
-
-      {/* ── Onboarding ────────────────────────────────────────────────────── */}
-      {showOnboarding && checkedOnboarding && (
-        <OnboardingFlow
-          onComplete={handleOnboardingComplete}
-          onNavigate={handleOnboardingNavigate}
-        />
-      )}
-
-      {/* ── Modals ────────────────────────────────────────────────────────── */}
-      <Suspense fallback={null}>
-        {csvImportOpen && <CSVImportModal onClose={() => setCSVImportOpen(false)} onImport={handleCSVImportSave} />}
-        {sheetsSyncOpen && <SheetsSyncModal onClose={() => setSheetsSyncOpen(false)} />}
-</Suspense>
-     </div>
-     </div>
-   );
+        <OfflineIndicator />
+        <LearningDebugPanel />
+      </div>
+    </div>
+  );
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────

@@ -11,10 +11,11 @@
 
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import type { Region } from "../types";
 
-// ── Module-level cache for global stats ──────────────────────────────────────
-let globalStatsCache: ActionStats[] | null = null;
-let globalStatsUpdatedAt = 0;
+// ── Module-level cache for global stats (keyed by region) ────────────────────
+const globalStatsCacheByRegion: Partial<Record<Region, ActionStats[]>> = {};
+const globalStatsUpdatedAtByRegion: Partial<Record<Region, number>> = {};
 const GLOBAL_CACHE_TTL = 5 * 60 * 1000;
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -42,7 +43,7 @@ export interface ActionStatsResult {
  *
  * Returns [] on empty data or Firestore error — never throws.
  */
-export async function getActionStats(userId: string): Promise<ActionStatsResult> {
+export async function getActionStats(userId: string, region: Region): Promise<ActionStatsResult> {
   try {
     const q = query(
       collection(db, "auditLogs"),
@@ -58,6 +59,11 @@ export async function getActionStats(userId: string): Promise<ActionStatsResult>
 
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
+
+      // Strict region filter — backfill guarantees all docs have region.
+      const entryRegion = data.region as string | undefined;
+      if (entryRegion !== region) continue;
+
       const ts = (data.timestamp as number | undefined) ?? 0;
       if (ts > latestTimestamp) latestTimestamp = ts;
 
@@ -103,9 +109,11 @@ export async function getActionStats(userId: string): Promise<ActionStatsResult>
  * Results are cached for GLOBAL_CACHE_TTL to avoid redundant reads.
  * Returns [] on empty data or Firestore error — never throws.
  */
-export async function getGlobalActionStats(): Promise<ActionStats[]> {
-  if (globalStatsCache !== null && Date.now() - globalStatsUpdatedAt < GLOBAL_CACHE_TTL) {
-    return globalStatsCache;
+export async function getGlobalActionStats(region: Region): Promise<ActionStats[]> {
+  const cached = globalStatsCacheByRegion[region];
+  const cachedAt = globalStatsUpdatedAtByRegion[region] ?? 0;
+  if (cached !== undefined && Date.now() - cachedAt < GLOBAL_CACHE_TTL) {
+    return cached;
   }
 
   try {
@@ -119,6 +127,11 @@ export async function getGlobalActionStats(): Promise<ActionStats[]> {
 
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
+
+      // Strict region filter — backfill guarantees all docs have region.
+      const entryRegion = data.region as string | undefined;
+      if (entryRegion !== region) continue;
+
       const contextAction = data.contextAction as string | undefined;
       if (!contextAction) continue;
 
@@ -145,11 +158,11 @@ export async function getGlobalActionStats(): Promise<ActionStats[]> {
 
     stats.sort((a, b) => b.successRate - a.successRate);
 
-    globalStatsCache = stats;
-    globalStatsUpdatedAt = Date.now();
+    globalStatsCacheByRegion[region] = stats;
+    globalStatsUpdatedAtByRegion[region] = Date.now();
     return stats;
   } catch (err) {
     console.warn("[learningService] getGlobalActionStats failed:", err);
-    return globalStatsCache ?? [];
+    return globalStatsCacheByRegion[region] ?? [];
   }
 }

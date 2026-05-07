@@ -19,9 +19,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   collection,
-  onSnapshot,
-  query,
-  orderBy,
   addDoc,
   updateDoc,
   doc,
@@ -31,7 +28,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
-import { useDealDocuments } from "../hooks/useFirebase";
+import { useDealDocuments, useDeals } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
 import { Rep, Lead, CallHistory, DealDocumentType, DealDocument } from "../types";
 import { OADocumentEditor } from "../components/OADocumentEditor";
@@ -112,65 +109,6 @@ export interface TimelineEntry {
 // ─────────────────────────────────────────────────────────────────────────────
 // Firestore Hooks
 // ─────────────────────────────────────────────────────────────────────────────
-
-function useDeals() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Debug log: query params
-    console.log("[useDeals] Query params:", { filters: "none (all deals)" });
-
-    try {
-      const q = query(collection(db, "deals"), orderBy("createdAt", "desc"));
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const loaded: Deal[] = [];
-          snapshot.forEach((d) => {
-            const data = d.data();
-            if (data && typeof data === "object" && "clientName" in data) {
-              loaded.push({ id: d.id, ...(data as Omit<Deal, "id">) });
-            } else {
-              console.warn("[useDeals] Skipping invalid deal document:", d.id, data);
-            }
-          });
-          setDeals(loaded);
-          setError(null);
-          setLoading(false);
-        },
-        (err) => {
-          console.error("[useDeals] Deals query failed:", err);
-          console.error("[useDeals] Error code:", (err as { code?: string })?.code);
-          console.error("[useDeals] Error message:", (err as { message?: string })?.message);
-
-          const code = (err as { code?: string })?.code;
-          let userMsg = "Unable to load deals";
-          if (code === "permission-denied") {
-            userMsg += " — you do not have permission to view deals.";
-          } else if (code === "failed-precondition") {
-            userMsg += " — a required Firestore index is missing.";
-          } else if (code === "unavailable") {
-            userMsg += " — Firestore is currently unavailable.";
-          } else {
-            userMsg += ` — ${(err as { message?: string })?.message || "unknown error"}`;
-          }
-          setError(userMsg);
-          setDeals([]);
-          setLoading(false);
-        },
-      );
-      return () => unsubscribe();
-    } catch (err) {
-      console.error("[useDeals] Unexpected error building query:", err);
-      setError("Unable to load deals — an unexpected error occurred.");
-      setLoading(false);
-    }
-  }, []);
-
-  return { deals, loading, error };
-}
 
 // Fetch a single lead when the drawer opens (for timeline + last contact)
 function useLinkedLead(leadId: string | null) {

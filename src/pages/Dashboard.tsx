@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
-import { Lead, DEFAULT_STATUS_COLORS } from "../types";
+import { Lead } from "../types";
 import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
+import { getStatusColor } from "../lib/statusConfig";
 import { useLeads } from "../hooks/useFirebase";
 import { useAppStore } from "../stores/appStore";
 import { DonutChart } from "../components/DonutChart";
@@ -490,7 +491,7 @@ export function DashboardPage({
       .map(([label, value]) => ({
         label,
         value,
-        color: statusColors[label] ?? DEFAULT_STATUS_COLORS[label] ?? "#9ca3af",
+        color: getStatusColor(label, statusColors),
       }))
       .sort((a, b) => b.value - a.value);
   }, [leads, statusColors]);

@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Lead } from "../types";
-import { useLeads, useSaveLead, useDeleteLead } from "../hooks/useFirebase";
+import { useLeads, useSaveLead, useDeleteLead, useAddAuditEntry } from "../hooks/useFirebase";
+import { addDoc, collection } from "firebase/firestore";
+import { db } from "../lib/firebase";
 import { useCallbackReminders } from "../hooks/useCallbackReminders";
 import { useToast } from "../context/ToastContext";
 import { useAppStore } from "../stores/appStore";
@@ -8,6 +10,7 @@ import DataTable from "../components/DataTable";
 import CallLogger from "../components/CallLogger";
 import { LeadSidebar } from "../components/LeadSidebar";
 import { AddLeadModal } from "../components/AddLeadModal";
+import { reportWriteResult } from "../hooks/useNetworkStatus";
 import { Loader } from "lucide-react";
 import { getNextAction } from "../lib/nextAction";
 import { injectRowFlashStyles } from "../lib/animation";
@@ -29,11 +32,35 @@ export function LeadsPage({
   initialFilter,
   onFilterCleared,
 }: LeadsPageProps) {
-  const { leads, loading: leadsLoading, error: leadsError } = useLeads();
+  const { leads, loading: leadsLoading, error: leadsError, loadMore, hasMore, loadingMore } = useLeads();
   const { save: saveLead, loading: saveLoading, error: saveError } = useSaveLead();
   const { remove: deleteLead, loading: deleteLoading } = useDeleteLead();
+  const { add: addAudit } = useAddAuditEntry();
   const { showToast } = useToast();
   const { currentUser } = useAppStore();
+
+  // ── Phase 5.2 — Failed-write retry buffer (lead update path only) ────────
+  const [lastFailedSave, setLastFailedSave] = useState<Lead | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  // ── Phase 7 — minimal audit logger (status + callback changes) ───────────
+  const logLeadAudit = useCallback(
+    async (action: string, detail: string, leadId: number, leadName: string) => {
+      if (!currentUser) return;
+      const now = new Date();
+      await addAudit({
+        timestamp: now.getTime(),
+        date: now.toISOString().split("T")[0],
+        time: now.toTimeString().slice(0, 5),
+        user: currentUser.name,
+        action,
+        detail,
+        leadId,
+        leadName,
+      });
+    },
+    [currentUser, addAudit],
+  );
   useCallbackReminders(leads);
 
   // Inject row flash keyframes once
@@ -46,6 +73,9 @@ export function LeadsPage({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Stores the last AI-suggested action used in the sidebar, keyed by lead ID
+  // to prevent cross-lead attribution. Cleared on every status_change write.
+  const lastAIContextRef = useRef<{ leadId: string; action: string } | null>(null);
 
   const flashRow = useCallback((leadId: number) => {
     setFlashedLeadId(leadId);
@@ -57,6 +87,10 @@ export function LeadsPage({
     setActionFeedback(msg);
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => setActionFeedback(null), 2500);
+  }, []);
+
+  const handleAIScriptUsed = useCallback((leadId: string | number, action: string) => {
+    lastAIContextRef.current = { leadId: String(leadId), action };
   }, []);
 
   // Apply filter from Dashboard navigation
@@ -78,6 +112,7 @@ export function LeadsPage({
   // ── Soft delete undo state ────────────────────────────────────────────────
   const [undoLead, setUndoLead] = useState<Lead | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const originalLeadRef = useRef<Lead | null>(null);
 
   // Sync external addLeadOpen → internal close handler
   const setShowAddLead = useCallback(
@@ -103,6 +138,7 @@ export function LeadsPage({
 
   // ── Lead selection ──────────────────────────────────────────────────────────
   const handleSelectLead = useCallback((lead: Lead) => {
+    originalLeadRef.current = lead;
     setSelectedLead(lead);
     setShowSidebar(true);
     setShowCallLogger(false);
@@ -155,17 +191,83 @@ export function LeadsPage({
   // ── Sidebar save ────────────────────────────────────────────────────────────
   const handleSaveLead = useCallback(
     async (updatedLead: Lead) => {
+      const prev = originalLeadRef.current;
       const ok = await saveLead(updatedLead);
+      reportWriteResult(ok);
       if (ok) {
+        originalLeadRef.current = updatedLead;
+        setLastFailedSave(null);
         flashRow(updatedLead.id);
         showFeedback("Updated ✓");
         showToast(`✅ ${updatedLead.name} saved`, "success");
+
+        // Phase 7 — audit only field-level changes worth tracking
+        if (prev) {
+          if (prev.status !== updatedLead.status) {
+            // Read and clear atomically — lead ID guard prevents cross-lead attribution
+            const stored = lastAIContextRef.current;
+            const contextAction =
+              stored?.leadId === String(updatedLead.id) ? stored.action : undefined;
+            lastAIContextRef.current = null;
+
+            void logLeadAudit(
+              "lead_status_changed",
+              `Status: ${prev.status} → ${updatedLead.status}`,
+              updatedLead.id,
+              updatedLead.name,
+            );
+            void addDoc(collection(db, "auditLogs"), {
+              type: "status_change",
+              entityId: updatedLead.id,
+              previousValue: prev.status,
+              newValue: updatedLead.status,
+              userId: String(currentUser?.id ?? "unknown"),
+              timestamp: Date.now(),
+              source: contextAction ? "ai" : "manual",
+              ...(contextAction ? { contextAction } : {}),
+            }).catch((err) => console.warn("[audit]", err));
+          }
+          if ((prev.callbackDate || "") !== (updatedLead.callbackDate || "")) {
+            void logLeadAudit(
+              "lead_callback_updated",
+              `Callback: ${prev.callbackDate || "—"} → ${updatedLead.callbackDate || "—"}`,
+              updatedLead.id,
+              updatedLead.name,
+            );
+            void addDoc(collection(db, "auditLogs"), {
+              type: "callback_update",
+              entityId: updatedLead.id,
+              previousValue: prev.callbackDate ?? "",
+              newValue: updatedLead.callbackDate ?? "",
+              userId: String(currentUser?.id ?? "unknown"),
+              timestamp: Date.now(),
+              source: "manual",
+            }).catch((err) => console.warn("[audit]", err));
+          }
+        }
       } else {
-        showToast("❌ Failed to save. Please try again.", "error");
+        setLastFailedSave(updatedLead);
+        showToast("❌ Failed to save. Tap retry to try again.", "error");
       }
     },
-    [saveLead, showToast, flashRow, showFeedback],
+    [saveLead, showToast, flashRow, showFeedback, logLeadAudit],
   );
+
+  // ── Phase 5.2 — Retry handler ────────────────────────────────────────────
+  const handleRetrySave = useCallback(async () => {
+    if (!lastFailedSave || retrying) return;
+    setRetrying(true);
+    const ok = await saveLead(lastFailedSave);
+    reportWriteResult(ok);
+    setRetrying(false);
+    if (ok) {
+      setLastFailedSave(null);
+      flashRow(lastFailedSave.id);
+      showToast(`✅ ${lastFailedSave.name} saved`, "success");
+    } else {
+      showToast("❌ Retry failed. Check your connection.", "error");
+    }
+  }, [lastFailedSave, retrying, saveLead, flashRow, showToast]);
 
   // ── Delete ──────────────────────────────────────────────────────────────────
   const handleDeleteLead = useCallback(
@@ -334,6 +436,9 @@ export function LeadsPage({
             flashedLeadId={flashedLeadId}
             currentUserId={currentUser?.id}
             isAdmin={currentUser?.role === "admin"}
+            loadMore={loadMore}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
           />
         </div>
 
@@ -347,6 +452,7 @@ export function LeadsPage({
           onSave={handleSaveLead}
           onDelete={handleDeleteLead}
           onCall={handleAddCall}
+          onAIScriptUsed={handleAIScriptUsed}
         />
       )}
 
@@ -381,6 +487,19 @@ export function LeadsPage({
       {saveError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-sm">
           Error: {saveError}
+        </div>
+      )}
+
+      {lastFailedSave && (
+        <div className="fixed bottom-16 right-4 z-[9998] flex items-center gap-3 bg-red-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm">
+          <span>⚠️ Save failed for <strong>{lastFailedSave.name}</strong></span>
+          <button
+            onClick={handleRetrySave}
+            disabled={retrying}
+            className="ml-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white rounded-lg font-semibold text-xs transition"
+          >
+            {retrying ? "Retrying…" : "Retry"}
+          </button>
         </div>
       )}
 

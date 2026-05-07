@@ -22,7 +22,7 @@
  * - useTrainingSessions() → real-time listener for trainingSessions collection (AI Roleplay)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   collection,
   onSnapshot,
@@ -33,6 +33,7 @@ import {
   orderBy,
   query,
   limit,
+  startAfter,
   updateDoc,
   increment,
   getDocs,
@@ -40,7 +41,8 @@ import {
   getDoc,
   where,
 } from "firebase/firestore";
-import { db, authReady } from "../lib/firebase";
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { DEFAULT_STATUS_COLORS } from "../types";
 import {
@@ -69,6 +71,7 @@ import {
   DealDocumentType,
 } from "../types";
 import { deleteFile, uploadFile } from "../lib/storage";
+import { reportPendingWrites } from "./useNetworkStatus";
 
 // Firestore rejects `undefined` field values — strip them before writing (deep: handles nested objects + arrays)
 function stripUndefined<T extends object>(obj: T): Partial<T> {
@@ -88,49 +91,100 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
 
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 100;
+
 export function useLeads() {
-  const { setLeads: setStoreLeads } = useAppStore();
+  const { setLeads: setStoreLeads, currentUser, activeRegion } = useAppStore();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasPendingWrites, setHasPendingWrites] = useState(false);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const queryRef = useMemo(
+    () => query(
+      collection(db, "leads"),
+      where("region", "==", activeRegion),
+      orderBy("updatedAt", "desc"),
+      limit(PAGE_SIZE),
+    ),
+    [activeRegion],
+  );
+  const isReady = !!currentUser;
 
   useEffect(() => {
-    let unsubFirestore: (() => void) | null = null;
-    let cancelled = false;
+    if (!isReady || !queryRef) return;
 
-    // Wait for Firebase Auth to be ready before subscribing — prevents
-    // "Missing or insufficient permissions" errors caused by unauthenticated queries.
-    authReady.then(() => {
-      if (cancelled) return;
+    // Reset cursor and hasMore when region changes so loadMore doesn't straddle regions
+    setLastDoc(null);
+    setHasMore(true);
 
-      const q = collection(db, "leads");
-      unsubFirestore = onSnapshot(
-        q,
-        (snapshot) => {
-          const leadsData = snapshot.docs.map((d) => ({
-            id: Number(d.id),
-            ...d.data(),
-          })) as Lead[];
-          setLeads(leadsData);
-          // Populate AppStore so DealDashboard, ReportsDashboard, etc. have data
-          setStoreLeads(leadsData);
-          setLoading(false);
-        },
-        (err) => {
-          console.error("[useLeads] Firestore error:", err);
-          setError(err.message);
-          setLoading(false);
-        },
+    const unsub = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        const leadsData = snapshot.docs.map((d) => ({
+          id: Number(d.id),
+          ...d.data(),
+        })) as Lead[];
+        // Server-side where("region","==",activeRegion) enforces strict isolation.
+        // Client-side pass-through kept as a guard against any snapshot race.
+        const filtered = leadsData.filter((l) => l.region === activeRegion);
+        setLeads(filtered);
+        setStoreLeads(filtered);
+        setLoading(false);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1] ?? null);
+        setHasMore(snapshot.size === PAGE_SIZE);
+        // Phase 5.3 — surface pending-writes (offline queue) via network status
+        setHasPendingWrites(snapshot.metadata.hasPendingWrites);
+        reportPendingWrites(snapshot.metadata.hasPendingWrites);
+      },
+      (err) => {
+        console.error("[useLeads] Firestore error:", err);
+        setError(err.message);
+        setLoading(false);
+      },
+    );
+
+    return () => unsub();
+  }, [isReady, queryRef, setStoreLeads, activeRegion]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || !lastDoc) return;
+    setLoadingMore(true);
+    try {
+      const nextQuery = query(
+        collection(db, "leads"),
+        where("region", "==", activeRegion),
+        orderBy("updatedAt", "desc"),
+        startAfter(lastDoc),
+        limit(PAGE_SIZE),
       );
-    });
+      const snapshot = await getDocs(nextQuery);
+      setHasMore(snapshot.size === PAGE_SIZE);
+      if (snapshot.empty) return;
+      const newLeads = snapshot.docs.map((d) => ({
+        id: Number(d.id),
+        ...d.data(),
+      })) as Lead[];
+      const filtered = newLeads.filter((l) => l.region === activeRegion);
+      setLeads((prev) => {
+        const existingIds = new Set(prev.map((l) => l.id));
+        const unique = filtered.filter((l) => !existingIds.has(l.id));
+        const merged = [...prev, ...unique];
+        setStoreLeads(merged);
+        return merged;
+      });
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1] ?? null);
+    } catch (err) {
+      console.error("[useLeads] loadMore error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, lastDoc, activeRegion, setStoreLeads]);
 
-    return () => {
-      cancelled = true;
-      unsubFirestore?.();
-    };
-  }, [setStoreLeads]);
-
-  return { leads, loading, error };
+  return { leads, loading, error, hasPendingWrites, loadMore, hasMore, loadingMore };
 }
 
 export function useSaveLead() {
@@ -141,7 +195,9 @@ export function useSaveLead() {
     setLoading(true);
     setError(null);
     try {
-      await setDoc(doc(db, "leads", String(lead.id)), stripUndefined(lead), { merge: true });
+      const { activeRegion } = useAppStore.getState();
+      const leadWithRegion: Lead = { ...lead, region: lead.region ?? activeRegion, updatedAt: Date.now() };
+      await setDoc(doc(db, "leads", String(lead.id)), stripUndefined(leadWithRegion), { merge: true });
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed";
@@ -252,31 +308,28 @@ export function useCreateDeal() {
  * any device are immediately available on all other devices.
  */
 export function useReps() {
-  const { setReps } = useAppStore();
+  const { setReps, currentUser } = useAppStore();
+
+  const queryRef = useMemo(() => collection(db, "reps"), []);
+  const isReady = !!currentUser;
+
   useEffect(() => {
-    let unsubFirestore: (() => void) | null = null;
-    let cancelled = false;
+    if (!isReady || !queryRef) return;
 
-    authReady.then(() => {
-      if (cancelled) return;
-      unsubFirestore = onSnapshot(
-        collection(db, "reps"),
-        (snapshot) => {
-          if (snapshot.empty) return; // don't overwrite with empty — may not have migrated yet
-          const data = snapshot.docs.map((d) => ({ ...d.data(), id: Number(d.id) })) as Rep[];
-          setReps(data);
-        },
-        (err) => {
-          console.warn("[useReps] Firestore error:", err.message);
-        },
-      );
-    });
+    const unsub = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        if (snapshot.empty) return;
+        const data = snapshot.docs.map((d) => ({ ...d.data(), id: Number(d.id) })) as Rep[];
+        setReps(data);
+      },
+      (err) => {
+        console.warn("[useReps] Firestore error:", err.message);
+      },
+    );
 
-    return () => {
-      cancelled = true;
-      unsubFirestore?.();
-    };
-  }, [setReps]);
+    return () => unsub();
+  }, [isReady, queryRef, setReps]);
 }
 
 /** Writes a single rep to Firestore `reps/{id}` (merge). */
@@ -314,10 +367,12 @@ export function useDraps() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const queryRef = useMemo(() => query(collection(db, "draps"), orderBy("date", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "draps"), orderBy("date", "desc"));
+    if (!queryRef) return;
     const unsubscribe = onSnapshot(
-      q,
+      queryRef,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: Number(d.id), ...d.data() })) as DrapsEntry[];
         setEntries(data);
@@ -329,7 +384,7 @@ export function useDraps() {
       },
     );
     return () => unsubscribe();
-  }, []);
+  }, [queryRef]);
 
   return { entries, loading, error };
 }
@@ -367,10 +422,12 @@ export function useCommissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const queryRef = useMemo(() => query(collection(db, "commissions"), orderBy("createdAt", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "commissions"), orderBy("createdAt", "desc"));
+    if (!queryRef) return;
     const unsubscribe = onSnapshot(
-      q,
+      queryRef,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CommissionEntry[];
         setEntries(data);
@@ -382,7 +439,7 @@ export function useCommissions() {
       },
     );
     return () => unsubscribe();
-  }, []);
+  }, [queryRef]);
 
   return { entries, loading, error };
 }
@@ -420,14 +477,16 @@ export function useInvoiceDrafts() {
   const [drafts, setDrafts] = useState<InvoiceDraft[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => query(collection(db, "invoiceDrafts"), orderBy("createdAt", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "invoiceDrafts"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    if (!queryRef) return;
+    const unsub = onSnapshot(queryRef, (snap) => {
       setDrafts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as InvoiceDraft[]);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [queryRef]);
 
   return { drafts, loading };
 }
@@ -464,15 +523,20 @@ export function useAuditLog(limitCount = 200) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(
+    () => query(collection(db, "audit"), orderBy("timestamp", "desc"), limit(limitCount)),
+    [limitCount],
+  );
+
   useEffect(() => {
-    const q = query(collection(db, "audit"), orderBy("timestamp", "desc"), limit(limitCount));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (!queryRef) return;
+    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as AuditEntry[];
       setEntries(data);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [limitCount]);
+  }, [queryRef]);
 
   return { entries, loading };
 }
@@ -480,7 +544,8 @@ export function useAuditLog(limitCount = 200) {
 export function useAddAuditEntry() {
   const add = async (entry: Omit<AuditEntry, "id">): Promise<void> => {
     try {
-      await addDoc(collection(db, "audit"), entry);
+      const { activeRegion } = useAppStore.getState();
+      await addDoc(collection(db, "audit"), { ...entry, region: activeRegion });
     } catch (err) {
       console.error("Audit log error:", err);
     }
@@ -494,15 +559,17 @@ export function useKnockZones() {
   const [zones, setZones] = useState<KnockZone[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => query(collection(db, "knockZones"), orderBy("date", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "knockZones"), orderBy("date", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (!queryRef) return;
+    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
       const data = snapshot.docs.map((d) => ({ ...d.data() })) as KnockZone[];
       setZones(data);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [queryRef]);
 
   return { zones, loading };
 }
@@ -540,41 +607,36 @@ export function useAppSettings(): { settings: AppSettings | null; loading: boole
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const setStatusColors = useAppStore((s) => s.setStatusColors);
+  const currentUser = useAppStore((s) => s.currentUser);
+
+  const queryRef = useMemo(() => doc(db, "settings", "main"), []);
+  const isReady = !!currentUser;
 
   useEffect(() => {
-    let unsubFirestore: (() => void) | null = null;
-    let cancelled = false;
+    if (!isReady || !queryRef) return;
 
-    authReady.then(() => {
-      if (cancelled) return;
-      unsubFirestore = onSnapshot(
-        doc(db, "settings", "main"),
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data() as AppSettings;
-            setSettings(data);
-            // Sync status colours into global store (merge with defaults so any missing key still shows)
-            if (data.statusColors) {
-              setStatusColors({ ...DEFAULT_STATUS_COLORS, ...data.statusColors });
-            }
-          } else {
-            setSettings(null);
+    const unsub = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as AppSettings;
+          setSettings(data);
+          if (data.statusColors) {
+            setStatusColors({ ...DEFAULT_STATUS_COLORS, ...data.statusColors });
           }
-          setLoading(false);
-        },
-        (err) => {
-          console.error("[useAppSettings] Firestore error:", err);
-          setLoading(false);
-        },
-      );
-    });
+        } else {
+          setSettings(null);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useAppSettings] Firestore error:", err);
+        setLoading(false);
+      },
+    );
 
-    return () => {
-      cancelled = true;
-      unsubFirestore?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => unsub();
+  }, [isReady, queryRef, setStatusColors]);
 
   return { settings, loading };
 }
@@ -598,15 +660,19 @@ export function useSaveSettings(): { save: (s: Partial<AppSettings>) => Promise<
 export function useCustomPinTypes() {
   const [customPinTypes, setCustomPinTypes] = useState<CustomPinType[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const queryRef = useMemo(() => query(collection(db, "customPinTypes"), orderBy("createdAt", "asc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "customPinTypes"), orderBy("createdAt", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (!queryRef) return;
+    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
       const data = snapshot.docs.map((d) => ({ ...d.data() })) as CustomPinType[];
       setCustomPinTypes(data);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [queryRef]);
+
   return { customPinTypes, loading };
 }
 
@@ -643,10 +709,15 @@ export function useTeamChat(): { messages: ChatMessage[]; loading: boolean } {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(
+    () => query(collection(db, "teamChat"), orderBy("timestamp", "asc"), limit(150)),
+    [],
+  );
+
   useEffect(() => {
-    const q = query(collection(db, "teamChat"), orderBy("timestamp", "asc"), limit(150));
+    if (!queryRef) return;
     const unsubscribe = onSnapshot(
-      q,
+      queryRef,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as ChatMessage[];
         setMessages(data);
@@ -658,7 +729,7 @@ export function useTeamChat(): { messages: ChatMessage[]; loading: boolean } {
       },
     );
     return () => unsubscribe();
-  }, []);
+  }, [queryRef]);
 
   return { messages, loading };
 }
@@ -680,11 +751,15 @@ export function useDirectMessages(channelId: string): { messages: ChatMessage[];
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!channelId) return null;
+    return query(collection(db, "dmChannels", channelId, "messages"), orderBy("timestamp", "asc"), limit(150));
+  }, [channelId]);
+
   useEffect(() => {
-    if (!channelId) return;
-    const q = query(collection(db, "dmChannels", channelId, "messages"), orderBy("timestamp", "asc"), limit(150));
+    if (!queryRef) return;
     const unsubscribe = onSnapshot(
-      q,
+      queryRef,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as ChatMessage[];
         setMessages(data);
@@ -696,7 +771,7 @@ export function useDirectMessages(channelId: string): { messages: ChatMessage[];
       },
     );
     return () => unsubscribe();
-  }, [channelId]);
+  }, [queryRef]);
 
   return { messages, loading };
 }
@@ -747,12 +822,14 @@ export function useKBArticles(): { articles: KBArticle[]; loading: boolean } {
   const [articles, setArticles] = useState<KBArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Single-field orderBy avoids needing a composite Firestore index.
+  // Pinned-first sort is done client-side after the snapshot arrives.
+  const queryRef = useMemo(() => query(collection(db, "knowledgeBase"), orderBy("createdAt", "desc")), []);
+
   useEffect(() => {
-    // Single-field orderBy avoids needing a composite Firestore index.
-    // Pinned-first sort is done client-side after the snapshot arrives.
-    const q = query(collection(db, "knowledgeBase"), orderBy("createdAt", "desc"));
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as KBArticle);
         // Sort: pinned first, then by createdAt desc
@@ -770,7 +847,7 @@ export function useKBArticles(): { articles: KBArticle[]; loading: boolean } {
       },
     );
     return () => unsub();
-  }, []);
+  }, [queryRef]);
 
   return { articles, loading };
 }
@@ -816,10 +893,12 @@ export function useDocumentLibrary(): { documents: LibraryDocument[]; loading: b
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => query(collection(db, "documentLibrary"), orderBy("uploadedAt", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "documentLibrary"), orderBy("uploadedAt", "desc"));
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as LibraryDocument);
         // Respect explicit sortOrder when any item has it set; otherwise keep uploadedAt desc
@@ -837,7 +916,7 @@ export function useDocumentLibrary(): { documents: LibraryDocument[]; loading: b
       () => setLoading(false),
     );
     return () => unsub();
-  }, []);
+  }, [queryRef]);
 
   return { documents, loading };
 }
@@ -873,14 +952,18 @@ export function useLeadFiles(leadId: string): { files: LeadFile[]; loading: bool
   const [files, setFiles] = useState<LeadFile[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!leadId) return null;
+    return query(collection(db, "leads", leadId, "files"), orderBy("uploadedAt", "desc"));
+  }, [leadId]);
+
   useEffect(() => {
-    if (!leadId) {
+    if (!queryRef) {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "leads", leadId, "files"), orderBy("uploadedAt", "desc"));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         setFiles(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as LeadFile));
         setLoading(false);
@@ -888,7 +971,7 @@ export function useLeadFiles(leadId: string): { files: LeadFile[]; loading: bool
       () => setLoading(false),
     );
     return () => unsub();
-  }, [leadId]);
+  }, [queryRef]);
 
   return { files, loading };
 }
@@ -912,10 +995,12 @@ export function useFormTemplates(): { templates: FormTemplate[]; loading: boolea
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => query(collection(db, "formTemplates"), orderBy("createdAt", "desc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "formTemplates"), orderBy("createdAt", "desc"));
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as FormTemplate);
         // Respect explicit sortOrder when any item has it set; otherwise keep createdAt desc
@@ -933,7 +1018,7 @@ export function useFormTemplates(): { templates: FormTemplate[]; loading: boolea
       () => setLoading(false),
     );
     return () => unsub();
-  }, []);
+  }, [queryRef]);
 
   return { templates, loading };
 }
@@ -968,14 +1053,18 @@ export function useDealUpdates(leadId: number | null): { updates: DealUpdate[]; 
   const [updates, setUpdates] = useState<DealUpdate[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!leadId) return null;
+    return query(collection(db, "leads", String(leadId), "dealUpdates"), orderBy("timestamp", "asc"));
+  }, [leadId]);
+
   useEffect(() => {
-    if (!leadId) {
+    if (!queryRef) {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "leads", String(leadId), "dealUpdates"), orderBy("timestamp", "asc"));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         setUpdates(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as DealUpdate));
         setLoading(false);
@@ -983,7 +1072,7 @@ export function useDealUpdates(leadId: number | null): { updates: DealUpdate[]; 
       () => setLoading(false),
     );
     return () => unsub();
-  }, [leadId]);
+  }, [queryRef]);
 
   return { updates, loading };
 }
@@ -1007,10 +1096,12 @@ export function useServiceTypes(): { serviceTypes: ServiceType[]; loading: boole
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => query(collection(db, "calendarServiceTypes"), orderBy("sortOrder", "asc")), []);
+
   useEffect(() => {
-    const q = query(collection(db, "calendarServiceTypes"), orderBy("sortOrder", "asc"));
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as ServiceType);
         // Client-side sort fallback in case sortOrder is missing on some docs
@@ -1024,7 +1115,7 @@ export function useServiceTypes(): { serviceTypes: ServiceType[]; loading: boole
       },
     );
     return () => unsub();
-  }, []);
+  }, [queryRef]);
 
   return { serviceTypes, loading };
 }
@@ -1075,12 +1166,17 @@ export function useAppointments(dateRange?: { from: string; to: string }): {
   const from = dateRange?.from ?? today;
   const to = dateRange?.to ?? defaultTo;
 
+  // Order by date + startTime; client-side date range filter avoids
+  // complex Firestore range query composite index requirements
+  const queryRef = useMemo(
+    () => query(collection(db, "appointments"), orderBy("date", "asc"), orderBy("startTime", "asc")),
+    [],
+  );
+
   useEffect(() => {
-    // Order by date + startTime; client-side date range filter avoids
-    // complex Firestore range query composite index requirements
-    const q = query(collection(db, "appointments"), orderBy("date", "asc"), orderBy("startTime", "asc"));
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const all = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Appointment);
         setAppointments(all.filter((a) => a.date >= from && a.date <= to));
@@ -1093,7 +1189,7 @@ export function useAppointments(dateRange?: { from: string; to: string }): {
     );
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from, to]);
+  }, [queryRef, from, to]);
 
   return { appointments, loading };
 }
@@ -1134,14 +1230,18 @@ export function useLeadNotes(leadId: string): { notes: LeadNote[]; loading: bool
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!leadId) return null;
+    return query(collection(db, "leads", leadId, "notes"), orderBy("createdAt", "desc"));
+  }, [leadId]);
+
   useEffect(() => {
-    if (!leadId) {
+    if (!queryRef) {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "leads", leadId, "notes"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         setNotes(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as LeadNote));
         setLoading(false);
@@ -1152,7 +1252,7 @@ export function useLeadNotes(leadId: string): { notes: LeadNote[]; loading: bool
       },
     );
     return () => unsub();
-  }, [leadId]);
+  }, [queryRef]);
 
   return { notes, loading };
 }
@@ -1196,14 +1296,18 @@ export function useLeadAppointments(leadId: number | null): { appointments: Appo
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!leadId) return null;
+    return query(collection(db, "appointments"), where("linkedLeadId", "==", leadId));
+  }, [leadId]);
+
   useEffect(() => {
-    if (!leadId) {
+    if (!queryRef) {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "appointments"), where("linkedLeadId", "==", leadId));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const data = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Appointment);
         // Sort: soonest first
@@ -1217,7 +1321,7 @@ export function useLeadAppointments(leadId: number | null): { appointments: Appo
       },
     );
     return () => unsub();
-  }, [leadId]);
+  }, [queryRef]);
 
   return { appointments, loading };
 }
@@ -1238,23 +1342,24 @@ export function useTrainingSessions(repId: number | null): {
   const [sessions, setSessions] = useState<RoleplaySession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // repId filter — new sessions write numeric `repId`; legacy sessions wrote string `userId`.
-    // We query by repId (numeric) here; the RoleplayDashboard falls back to userId matching client-side if needed.
-    let q;
+  // repId filter — new sessions write numeric `repId`; legacy sessions wrote string `userId`.
+  // We query by repId (numeric) here; the RoleplayDashboard falls back to userId matching client-side if needed.
+  const queryRef = useMemo(() => {
     if (repId !== null) {
-      q = query(
+      return query(
         collection(db, "trainingSessions"),
         where("repId", "==", repId),
         orderBy("completedAt", "desc"),
         limit(200),
       );
-    } else {
-      q = query(collection(db, "trainingSessions"), orderBy("completedAt", "desc"), limit(500));
     }
+    return query(collection(db, "trainingSessions"), orderBy("completedAt", "desc"), limit(500));
+  }, [repId]);
 
+  useEffect(() => {
+    if (!queryRef) return;
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const data = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as RoleplaySession);
         setSessions(data);
@@ -1265,9 +1370,8 @@ export function useTrainingSessions(repId: number | null): {
         setLoading(false);
       },
     );
-
     return () => unsub();
-  }, [repId]);
+  }, [queryRef]);
 
   return { sessions, loading };
 }
@@ -1293,18 +1397,11 @@ export interface Deal {
  *
  * Query strategy:
  *  1. Try scoped query: where("assignedTo", "==", repId) + orderBy
- *  2. If that fails (permissions/index): fallback to orderBy only
- *  3. If fallback also fails: show error
+ *  2. If that fails (permissions/index): state flips useFallback → basic query takes over
+ *  3. Exactly ONE listener is active at any time — cleanup runs before the next attach
  *
- * Snapshot protection:
- *  - Never clear deals array on error (prevents flash)
- *  - Sets error state so UI can show it alongside existing data
- *  - Always sets loading = false
- *
- * Debug logs:
- *  - Query composition
- *  - Snapshot document count
- *  - Error source with full details
+ * useFallback persists until the component unmounts, which is correct:
+ * if the index is missing, all scoped queries will fail anyway.
  */
 export function useDeals(repId: number | null = null): {
   deals: Deal[];
@@ -1314,9 +1411,20 @@ export function useDeals(repId: number | null = null): {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [useFallback, setUseFallback] = useState(false);
+
+  const queryRef = useMemo(() => {
+    if (repId != null && (typeof repId !== "number" || isNaN(repId))) return null;
+    const base = collection(db, "deals");
+    if (repId != null && !useFallback) {
+      console.log("[useDeals] Building scoped query: assignedTo ==", repId);
+      return query(base, where("assignedTo", "==", repId), orderBy("createdAt", "desc"), limit(50));
+    }
+    console.log("[useDeals] Building basic query (no where filter)");
+    return query(base, orderBy("createdAt", "desc"), limit(50));
+  }, [repId, useFallback]);
 
   useEffect(() => {
-    // ── Validate inputs ─────────────────────────────────────────────────
     if (repId != null && (typeof repId !== "number" || isNaN(repId))) {
       console.error("[useDeals] Invalid repId:", repId, typeof repId);
       setError("Invalid user context — repId is not a valid number.");
@@ -1324,30 +1432,10 @@ export function useDeals(repId: number | null = null): {
       return;
     }
 
-    const filters = { assignedTo: repId ?? null };
-    console.log("[useDeals] Query params:", { repId, filters });
+    if (!queryRef) return;
 
-    // ── Parse error for user display ────────────────────────────────────
-    const parseError = (err: unknown): string => {
-      const code = (err as { code?: string })?.code;
-      const message = (err as { message?: string })?.message || "unknown error";
-      console.error("[useDeals] Deals query failed:", err);
-      console.error("[useDeals] Error code:", code);
-      console.error("[useDeals] Error message:", message);
+    console.log("[useDeals] Attaching onSnapshot listener");
 
-      if (code === "permission-denied") {
-        return "You do not have permission to view deals.";
-      }
-      if (code === "failed-precondition") {
-        return "A required Firestore index is missing. Check the console for details.";
-      }
-      if (code === "unavailable") {
-        return "Firestore is currently unavailable. Check your connection.";
-      }
-      return message;
-    };
-
-    // ── Snapshot data handler ───────────────────────────────────────────
     const handleSnapshot = (snap: import("firebase/firestore").QuerySnapshot) => {
       console.log("[useDeals] Snapshot received — doc count:", snap.docs.length);
       const loaded: Deal[] = [];
@@ -1360,76 +1448,42 @@ export function useDeals(repId: number | null = null): {
         }
       });
       setDeals(loaded);
-      setError(null);
+      setError(useFallback ? "Unable to apply rep filter — showing all deals." : null);
       setLoading(false);
     };
 
-    // ── Try scoped query first, fallback to basic on permission error ───
-    let unsub: (() => void) | null = null;
-    let scopedFailed = false;
+    const handleError = (err: unknown) => {
+      const code = (err as { code?: string })?.code;
+      const message = (err as { message?: string })?.message || "unknown error";
+      console.error("[useDeals] Query error — code:", code, "message:", message);
 
-    const attachScopedQuery = () => {
-      if (repId == null) {
-        // No rep filter — use basic query directly
-        attachBasicQuery();
+      // Scoped query failed — flip to fallback (triggers queryRef recalc → new effect run)
+      if (!useFallback && repId != null) {
+        console.warn("[useDeals] Switching to basic query fallback");
+        setUseFallback(true);
         return;
       }
 
-      try {
-        const base = collection(db, "deals") as import("firebase/firestore").Query;
-        console.log("[useDeals] Adding where filter: assignedTo ==", repId);
-        const scopedQ = query(base, where("assignedTo", "==", repId), orderBy("createdAt", "desc"), limit(50));
-        console.log("[useDeals] Attached scoped query (with where filter)");
-
-        unsub = onSnapshot(scopedQ, handleSnapshot, (scopedErr) => {
-          console.warn("[useDeals] Scoped query failed, falling back to basic query:", scopedErr);
-          scopedFailed = true;
-
-          // Retry with basic query (no where filter)
-          attachBasicQuery(true);
-        });
-      } catch (buildErr) {
-        console.error("[useDeals] Failed to build scoped query:", buildErr);
-        attachBasicQuery(true);
+      // Basic query also failed
+      if (code === "permission-denied") {
+        setError("You do not have permission to view deals.");
+      } else if (code === "failed-precondition") {
+        setError("A required Firestore index is missing. Check the console for details.");
+      } else if (code === "unavailable") {
+        setError("Firestore is currently unavailable. Check your connection.");
+      } else {
+        setError(message);
       }
+      setLoading(false);
     };
 
-    const attachBasicQuery = (isFallback = false) => {
-      try {
-        const base = collection(db, "deals") as import("firebase/firestore").Query;
-        const basicQ = query(base, orderBy("createdAt", "desc"), limit(50));
-        console.log("[useDeals] Attached basic query (no where filter)");
-
-        unsub = onSnapshot(
-          basicQ,
-          (snap) => {
-            handleSnapshot(snap);
-            if (isFallback) {
-              setError("Unable to apply rep filter — showing all deals.");
-            }
-          },
-          (basicErr) => {
-            const parsedMsg = parseError(basicErr);
-            setError(parsedMsg);
-            setLoading(false);
-          },
-        );
-      } catch (buildErr) {
-        console.error("[useDeals] Failed to build basic query:", buildErr);
-        setError("Unable to load deals — query construction failed.");
-        setLoading(false);
-      }
-    };
-
-    attachScopedQuery();
+    const unsub = onSnapshot(queryRef, handleSnapshot, handleError);
 
     return () => {
-      if (unsub) {
-        unsub();
-        console.log("[useDeals] onSnapshot listener cleaned up");
-      }
+      unsub();
+      console.log("[useDeals] onSnapshot listener cleaned up");
     };
-  }, [repId]);
+  }, [queryRef, repId, useFallback]);
 
   return { deals, loading, error };
 }
@@ -1447,15 +1501,19 @@ export function useUserDevices(userId: number | null): {
   const [devices, setDevices] = useState<UserDevice[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (userId == null) return null;
+    return query(collection(db, "userDevices"), where("userId", "==", userId));
+  }, [userId]);
+
   useEffect(() => {
-    if (userId == null) {
+    if (!queryRef) {
       setDevices([]);
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "userDevices"), where("userId", "==", userId));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         setDevices(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserDevice));
         setLoading(false);
@@ -1463,7 +1521,7 @@ export function useUserDevices(userId: number | null): {
       () => setLoading(false),
     );
     return () => unsub();
-  }, [userId]);
+  }, [queryRef]);
 
   return { devices, loading };
 }
@@ -1482,15 +1540,19 @@ export function useDailyStatsFirebase(date: string): {
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const queryRef = useMemo(() => {
+    if (!date) return null;
+    return query(collection(db, "dailyStats"), where("date", "==", date), orderBy("repName", "asc"));
+  }, [date]);
+
   useEffect(() => {
-    if (!date) {
+    if (!queryRef) {
       setStats([]);
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "dailyStats"), where("date", "==", date), orderBy("repName", "asc"));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         setStats(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DailyStats));
         setLoading(false);
@@ -1498,7 +1560,7 @@ export function useDailyStatsFirebase(date: string): {
       () => setLoading(false),
     );
     return () => unsub();
-  }, [date]);
+  }, [queryRef]);
 
   return { stats, loading };
 }
@@ -1544,17 +1606,21 @@ export function useDealDocuments(dealId: string) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { currentUser } = useAppStore();
 
+  const queryRef = useMemo(() => {
+    if (!dealId) return null;
+    return query(collection(db, "dealDocuments"), where("dealId", "==", dealId), orderBy("createdAt", "desc"));
+  }, [dealId]);
+
   // Real-time listener
   useEffect(() => {
-    if (!dealId) {
+    if (!queryRef) {
       setDocuments([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const q = query(collection(db, "dealDocuments"), where("dealId", "==", dealId), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
-      q,
+      queryRef,
       (snap) => {
         const loaded: DealDocument[] = [];
         snap.forEach((d) => {
@@ -1570,7 +1636,7 @@ export function useDealDocuments(dealId: string) {
       () => setLoading(false),
     );
     return () => unsub();
-  }, [dealId]);
+  }, [queryRef]);
 
   const uploadDocument = useCallback(
     async (file: File, docType: DealDocumentType, clientId?: string): Promise<DealDocumentUploadResult> => {
@@ -1652,4 +1718,55 @@ export function useDealDocuments(dealId: string) {
   }, []);
 
   return { documents, loading, uploading, deletingId, uploadDocument, deleteDocument, setDeletingId };
+}
+
+// ── Client Deal Documents (by clientId) ───────────────────────────────────────
+
+export interface LinkedDocument {
+  id: string;
+  name: string;
+  type: string;
+  fileUrl: string;
+  storagePath?: string;
+  createdAt: number;
+  clientId?: string;
+}
+
+/**
+ * useClientDealDocuments — Real-time listener for all deal documents linked to a client.
+ * Queries `dealDocuments` where clientId matches. No orderBy to avoid composite index requirements.
+ */
+export function useClientDealDocuments(clientId: string | number | null): {
+  documents: LinkedDocument[];
+  loading: boolean;
+} {
+  const [documents, setDocuments] = useState<LinkedDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const queryRef = useMemo(() => {
+    if (clientId === null) return null;
+    return query(collection(db, "dealDocuments"), where("clientId", "==", String(clientId)));
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!queryRef) {
+      setDocuments([]);
+      setLoading(false);
+      return;
+    }
+    const unsub = onSnapshot(
+      queryRef,
+      (snap) => {
+        setDocuments(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as LinkedDocument));
+        setLoading(false);
+      },
+      (err) => {
+        console.error("useClientDealDocuments error:", err);
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, [queryRef]);
+
+  return { documents, loading };
 }

@@ -18,7 +18,8 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { collection, onSnapshot, query, orderBy, doc } from "firebase/firestore";
+import { onSnapshot, doc } from "firebase/firestore";
+import { useDeals } from "../hooks/useFirebase";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { Rep, Lead, DealStatus, AppSettings } from "../types";
@@ -45,6 +46,7 @@ import {
   Award,
   Zap,
 } from "lucide-react";
+import { EmptyState } from "../components/ui/EmptyState";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
@@ -138,29 +140,6 @@ interface RiskDeal {
 // ─────────────────────────────────────────────────────────────────────────────
 // Firestore Hooks
 // ─────────────────────────────────────────────────────────────────────────────
-
-function useDeals() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    const q = query(collection(db, "deals"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setDeals(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Deal));
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching deals:", err);
-        setError("Failed to load deals");
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, []);
-  return { deals, loading, error };
-}
 
 function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -538,7 +517,7 @@ function PipelineChart({ deals }: { deals: Deal[] }) {
   }, [deals]);
 
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 shadow-sm hover:shadow-md transition-shadow">
       <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-1.5">
         <BarChart3 size={14} /> Pipeline by Stage
       </h3>
@@ -570,11 +549,15 @@ function PipelineChart({ deals }: { deals: Deal[] }) {
 function RevenueChart({ data }: { data: [string, number][] }) {
   if (data.length < 2)
     return (
-      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 shadow-sm hover:shadow-md transition-shadow">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-1.5">
           <TrendingUp size={14} /> Revenue Over Time (Weekly)
         </h3>
-        <p className="text-xs text-gray-400 text-center py-8">Not enough data for selected range</p>
+        <EmptyState
+          title="Not enough data"
+          description="for selected range"
+          icon="chart"
+        />
       </div>
     );
 
@@ -592,7 +575,7 @@ function RevenueChart({ data }: { data: [string, number][] }) {
   const areaPath = linePath + ` L ${points[points.length - 1].x} ${h - pad} L ${points[0].x} ${h - pad} Z`;
 
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 shadow-sm hover:shadow-md transition-shadow">
       <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-1.5">
         <TrendingUp size={14} /> Revenue Over Time (Weekly)
       </h3>
@@ -711,7 +694,7 @@ function KPICards({ kpis }: { kpis: KPIs }) {
 
 function ForecastSection({ forecast }: { forecast: ForecastData }) {
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 shadow-sm hover:shadow-md transition-shadow">
       <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-1.5">
         <Zap size={14} className="text-amber-500" /> Revenue Forecast (Weighted Pipeline)
       </h3>
@@ -825,7 +808,7 @@ function CompanyTargets({ deals, settings }: { deals: Deal[]; settings: AppSetti
   );
 
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-4 shadow-sm hover:shadow-md transition-shadow">
       <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-1.5">
         <Gauge size={14} className="text-blue-500" /> Company Targets (This Month)
       </h3>
@@ -874,7 +857,7 @@ function RepTargetsTable({ repTargets }: { repTargets: RepTargetData[] }) {
     "px-3 py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide";
 
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
           <Target size={14} className="text-purple-500" /> Rep Targets (This Month)
@@ -1045,7 +1028,7 @@ function RepPerfTable({ reps }: { reps: RepPerf[] }) {
   const thCls =
     "px-3 py-2.5 text-left text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide";
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
           <Users size={14} /> Rep Performance
@@ -1128,13 +1111,21 @@ function PaginatedTable({ deals, reps }: { deals: Deal[]; reps: Rep[] }) {
 
   if (deals.length === 0)
     return (
-      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] p-8 text-center text-gray-400">
-        <p className="text-sm">No deals to display</p>
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+            <FileText size={14} /> Deals Table (0)
+          </h3>
+        </div>
+        <EmptyState
+          title="No deals to display"
+          icon="document"
+        />
       </div>
     );
 
   return (
-    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+    <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-white/[0.06] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
           <FileText size={14} /> Deals Table ({deals.length})

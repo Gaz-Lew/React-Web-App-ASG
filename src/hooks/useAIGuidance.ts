@@ -6,6 +6,7 @@ import type { UserProfile } from "../services/userProfileService";
 import { getActionStats, getGlobalActionStats } from "../services/learningService";
 import type { ActionStats } from "../services/learningService";
 import { updateUserProfile } from "../services/userProfileService";
+import { useAppStore } from "../stores/appStore";
 
 /**
  * useAIGuidance.ts — Rule-based sales guidance for client profiles.
@@ -43,6 +44,7 @@ export function useAIGuidance(
   const lastProfileUpdateRef = useRef<number>(0);
   const updateInFlightRef = useRef<boolean>(false);
   const [globalStats, setGlobalStats] = useState<ActionStats[]>([]);
+  const { activeRegion } = useAppStore();
 
   useEffect(() => {
     if (!userId) return;
@@ -52,7 +54,7 @@ export function useAIGuidance(
     updateInFlightRef.current = true;
     (async () => {
       try {
-        const { stats, latestTimestamp } = await getActionStats(userId);
+        const { stats, latestTimestamp } = await getActionStats(userId, activeRegion);
         const lastProcessed = profile?.lastProcessedTimestamp ?? 0;
         if (latestTimestamp <= lastProcessed) return;
         if (stats.length === 0) {
@@ -67,11 +69,11 @@ export function useAIGuidance(
         updateInFlightRef.current = false;
       }
     })();
-  }, [userId, profile?.lastProcessedTimestamp]);
+  }, [userId, profile?.lastProcessedTimestamp, activeRegion]);
 
   useEffect(() => {
-    getGlobalActionStats().then(setGlobalStats);
-  }, []);
+    getGlobalActionStats(activeRegion).then(setGlobalStats);
+  }, [activeRegion]);
 
   return useMemo<AIGuidance | null>(() => {
     if (!client || !nextAction) return null;

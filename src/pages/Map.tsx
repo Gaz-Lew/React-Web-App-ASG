@@ -15,9 +15,10 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Polygon, OverlayView } from "@react-google-maps/api";
 import { MarkerClusterer as GMClusterer } from "@googlemaps/markerclusterer";
-import { Lead, LeadStatus, KnockResult, KnockZone, CustomPinType, DEFAULT_STATUS_COLORS } from "../types";
+import { Lead, LeadStatus, KnockResult, KnockZone, CustomPinType } from "../types";
 import { useAppStore } from "../stores/appStore";
 import { generateLeadId } from "../lib/idGenerator";
+import { getStatusColor } from "../lib/statusConfig";
 import {
   useLeads,
   useSaveLead,
@@ -57,7 +58,7 @@ const LIBRARIES: ("places" | "geometry" | "geocoding" | "visualization" | "marke
 const MAPS_MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "";
 
 if (!MAPS_API_KEY) {
-  console.error("Missing Maps API key — set VITE_GOOGLE_MAPS_API_KEY env var");
+  console.error("Missing Google Maps API key — set VITE_GOOGLE_MAPS_API_KEY or VITE_GOOGLE_PLACES_API_KEY env var");
 }
 
 // Fallback centre when geolocation is unavailable and no cached position
@@ -883,6 +884,25 @@ export function MapPage() {
   const { leads } = useLeads();
   const { zones: allZones } = useKnockZones();
 
+  // Failsafe: prevent loading script if API key is missing
+  if (!MAPS_API_KEY) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#f0f0ee] dark:bg-[#0e0e0d] p-6">
+        <div className="bg-white dark:bg-[#1a1a18] border border-[#e2e2de] dark:border-[#2e2e2b] rounded-2xl p-8 max-w-sm w-full text-center shadow-xl">
+          <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+            <MapPin className="text-red-500" size={24} />
+          </div>
+          <h2 className="text-base font-semibold text-[#1a1a18] dark:text-[#f0f0ee] mb-2">
+            Configuration Error
+          </h2>
+          <p className="text-xs text-[#6b6b65] dark:text-[#8a8a84] mb-3">
+            Google Maps API key is not configured. Please set the <code className="bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded text-[11px]">VITE_GOOGLE_MAPS_API_KEY</code> environment variable.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: MAPS_API_KEY,
     libraries: LIBRARIES as ("places" | "geometry" | "geocoding" | "visualization" | "marker")[],
@@ -1278,7 +1298,7 @@ export function MapPage() {
     const newMarkers = visibleLeads.map((lead) => {
       const color = lead.knockResult
         ? resolveKnockColor(lead.knockResult, customPinTypes)
-        : (statusColors[lead.status] ?? DEFAULT_STATUS_COLORS[lead.status] ?? "#3b82f6");
+        : getStatusColor(lead.status, statusColors);
 
       const marker = new google.maps.marker.AdvancedMarkerElement({
         position: { lat: lead.lat!, lng: lead.lng! },
@@ -1724,7 +1744,7 @@ export function MapPage() {
               {/* Status chips */}
               <div className="flex items-center gap-0.5 bg-[#111110]/90 backdrop-blur-md border border-white/[0.07] rounded-2xl px-2 py-1.5 shadow-2xl pointer-events-auto flex-wrap">
                 {ALL_STATUSES.map((s) => {
-                  const col = statusColors[s] ?? DEFAULT_STATUS_COLORS[s] ?? "#6b7280";
+                  const col = getStatusColor(s, statusColors);
                   const active = !showKnockOnly && activeStatuses.has(s);
                   return (
                     <button

@@ -219,6 +219,7 @@ export function CalculatorPanel({
   const [panelSize, setPanelSize] = useState({ width: initialWidth, height: initialHeight });
   const resizingRef = useRef(false);
   const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  const resizeRafRef = useRef<number | null>(null);
 
   // Persist history on change
   useEffect(() => {
@@ -389,21 +390,31 @@ export function CalculatorPanel({
   useEffect(() => {
     const handleMove = (e: PointerEvent) => {
       if (!resizingRef.current) return;
-      const dx = e.clientX - resizeStartRef.current.x;
-      const dy = e.clientY - resizeStartRef.current.y;
-      setPanelSize({
-        width: Math.max(260, resizeStartRef.current.w + dx),
-        height: Math.max(320, resizeStartRef.current.h + dy),
+      if (resizeRafRef.current !== null) return;
+      const { clientX, clientY } = e;
+      resizeRafRef.current = requestAnimationFrame(() => {
+        resizeRafRef.current = null;
+        const dx = clientX - resizeStartRef.current.x;
+        const dy = clientY - resizeStartRef.current.y;
+        setPanelSize({
+          width: Math.max(260, resizeStartRef.current.w + dx),
+          height: Math.max(320, resizeStartRef.current.h + dy),
+        });
       });
     };
     const handleEnd = () => {
       resizingRef.current = false;
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = null;
+      }
     };
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleEnd);
     return () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleEnd);
+      if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
     };
   }, []);
 
@@ -543,14 +554,6 @@ export function CalculatorPanel({
         {/* Display row */}
         <div className="flex items-end gap-1.5 px-4 pb-3 pt-1 flex-shrink-0">
           <div className="flex-1 flex flex-col items-end min-w-0">
-            {expression && expression !== display && (
-              <div
-                className="text-xs truncate w-full text-right mb-0.5"
-                style={{ color: t.historyColor }}
-              >
-                {expression.replace(/\*/g, "×").replace(/-/g, "−")}
-              </div>
-            )}
             <div
               className="text-right font-bold tabular-nums overflow-hidden text-ellipsis leading-tight w-full"
               style={{
@@ -558,9 +561,11 @@ export function CalculatorPanel({
                 color: t.displayColor,
                 transition: "font-size 0.2s ease, color 0.15s ease",
               }}
-              title={display}
+              title={expression || display}
             >
-              {formattedDisplay}
+              {expression && /[+\-*/]/.test(expression)
+                ? expression.replace(/\*/g, "×").replace(/-/g, "−")
+                : formattedDisplay}
             </div>
           </div>
           {/* Copy button */}

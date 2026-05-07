@@ -719,6 +719,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
         newValue: enhancedContent.slice(0, 200),
         userId: String(currentUser?.id ?? "unknown"),
         timestamp: Date.now(),
+        source: "manual",
       }).catch((err) => console.warn("[audit]", err));
       showToast("✅ Note added", "success");
     } catch {

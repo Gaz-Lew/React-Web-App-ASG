@@ -74,6 +74,8 @@ interface LeadSidebarProps {
   /** 'modal' (default) = fixed overlay with backdrop; 'panel' = inline, fills parent */
   mode?: "modal" | "panel";
   onAIScriptUsed?: (leadId: string | number, action: string) => void;
+  /** When set, scrolls the AI guidance card into view on mount */
+  initialAIIntent?: string;
 }
 
 const SUPER_OPTIONS = ["$0-75k", "$75k to 150k", "$150k+", "Other"];
@@ -114,6 +116,7 @@ export function LeadSidebar({
   customPinTypes,
   mode = "modal",
   onAIScriptUsed,
+  initialAIIntent,
 }: LeadSidebarProps) {
   const { reps, currentUser } = useAppStore();
   const [form, setForm] = useState<Lead>(lead);
@@ -150,6 +153,12 @@ export function LeadSidebar({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const guidanceCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!initialAIIntent || !guidanceCardRef.current) return;
+    guidanceCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
   const { files: leadFiles } = useLeadFiles(String(lead.id));
   const { remove: deleteLeadFile } = useDeleteLeadFile();
@@ -640,7 +649,10 @@ export function LeadSidebar({
 
               {/* ── AI Guidance Card ────────────────────────────────────────── */}
               {guidance && !guidanceDismissed && (
-                <div className="mb-3">
+                <div
+                  ref={guidanceCardRef}
+                  className={`mb-3 rounded-xl transition-shadow duration-500 ${initialAIIntent ? "ring-2 ring-amber-500/40" : ""}`}
+                >
                   <AIGuidanceCard
                     suggestion={guidance.action}
                     actionType={guidanceActionType}

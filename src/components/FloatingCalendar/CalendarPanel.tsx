@@ -313,7 +313,8 @@ export function CalendarPanel({ onClose, theme, onToggleTheme }: CalendarPanelPr
 
   const today = todayStr();
   const relLabel = relativeLabel(selectedDate);
-  const selectedDateObj = new Date(selectedDate + "T00:00:00");
+  const [year, month, day] = selectedDate.split("-").map(Number);
+  const selectedDateObj = new Date(year, month - 1, day);
   const selectedDayName =
     DAYS[(selectedDateObj.getDay() + 6) % 7] || DAYS[selectedDateObj.getDay() === 0 ? 6 : selectedDateObj.getDay() - 1];
 

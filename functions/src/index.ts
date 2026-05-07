@@ -22,6 +22,9 @@ export { createDocuSignEnvelope, docusignWebhook, resendDocuSignEnvelope, voidDo
 // ── SMSF Financials ──
 export * from "./smsfFinancials";
 
+// ── Follow-up Engine ──
+export { followUpEngine } from "./followups";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
