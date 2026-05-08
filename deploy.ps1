@@ -16,6 +16,7 @@ $StartedAt = Get-Date
 $Stamp = $StartedAt.ToString("yyyyMMdd-HHmmss")
 $LogFile = Join-Path $LogDirectory "deploy-$Stamp.log"
 $script:FailedStep = ""
+$script:CurrentCommand = ""
 $script:DeployResult = "FAILED"
 
 function Write-DeployLog {
@@ -53,6 +54,35 @@ function Fail-Deploy {
     throw $Message
 }
 
+function ConvertTo-ProcessArgument {
+    param([AllowEmptyString()][Parameter(Mandatory = $true)][string]$Argument)
+
+    if ($Argument -notmatch '[\s"]') {
+        return $Argument
+    }
+
+    return '"' + ($Argument -replace '(\\*)"', '$1$1\"' -replace '(\\+)$', '$1$1') + '"'
+}
+
+function Resolve-CommandPath {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    $command = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $command) {
+        $command = Get-Command $Name -ErrorAction SilentlyContinue | Select-Object -First 1
+    }
+
+    if (-not $command) {
+        return $Name
+    }
+
+    if ($command.Source) {
+        return $command.Source
+    }
+
+    return $command.Path
+}
+
 function Require-Command {
     param(
         [Parameter(Mandatory = $true)][string]$Name,
@@ -74,19 +104,53 @@ function Invoke-LoggedCommand {
     )
 
     $commandText = "$FilePath $($Arguments -join ' ')".Trim()
+    $script:CurrentCommand = $commandText
     Write-DeployLog "Command: $commandText"
 
-    & $FilePath @Arguments 2>&1 | ForEach-Object {
-        Write-DeployLog "  $($_.ToString())"
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = Resolve-CommandPath $FilePath
+    $psi.Arguments = ($Arguments | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
+    $psi.WorkingDirectory = $ProjectRoot
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+
+    try {
+        [void]$process.Start()
+    } catch {
+        Fail-Deploy $Step "Failed to start command: $commandText. $($_.Exception.Message)"
     }
 
-    $exitCode = $LASTEXITCODE
-    if ($null -eq $exitCode) {
-        $exitCode = 0
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    $exitCode = $process.ExitCode
+
+    if ($stdout) {
+        foreach ($line in ($stdout -split "\r?\n")) {
+            if ($line.Length -gt 0) {
+                Write-DeployLog "  [stdout] $line"
+            }
+        }
     }
+
+    if ($stderr) {
+        foreach ($line in ($stderr -split "\r?\n")) {
+            if ($line.Length -gt 0) {
+                Write-DeployLog "  [stderr] $line"
+            }
+        }
+    }
+
+    Write-DeployLog "Exit code: $exitCode"
+    $script:CurrentCommand = ""
 
     if ($exitCode -ne 0) {
-        Fail-Deploy $Step "$Step failed with exit code $exitCode."
+        Fail-Deploy $Step "$Step failed with exit code $exitCode. Command: $commandText"
     }
 }
 
@@ -245,12 +309,15 @@ try {
 catch {
     $duration = New-TimeSpan -Start $StartedAt -End (Get-Date)
     if (-not $script:FailedStep) {
-        $script:FailedStep = "Unknown"
+        $script:FailedStep = "Unexpected script error"
     }
 
     Write-DeploySection "DEPLOYMENT FAILED"
     Write-DeployLog "Result: FAILED" Red
     Write-DeployLog "Failed step: $script:FailedStep" Red
+    if ($script:CurrentCommand) {
+        Write-DeployLog "Active command: $script:CurrentCommand" Red
+    }
     Write-DeployLog "Error: $($_.Exception.Message)" Red
     Write-DeployLog "Duration: $($duration.ToString())"
     Write-DeployLog "Log file: $LogFile"

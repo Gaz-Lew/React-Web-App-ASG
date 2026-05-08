@@ -55,6 +55,10 @@ const STORAGE_KEYS = {
 } as const;
 
 const loadReps = (): Rep[] => {
+  if (!import.meta.env.DEV) {
+    return [];
+  }
+
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.REPS);
     if (stored) {
@@ -88,7 +92,11 @@ export const useAppStore = create<AppState>((set) => ({
   setLeads: (leads) => set({ leads }),
 
   setReps: (reps) => {
-    localStorage.setItem(STORAGE_KEYS.REPS, JSON.stringify(reps));
+    if (import.meta.env.DEV) {
+      localStorage.setItem(STORAGE_KEYS.REPS, JSON.stringify(reps));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.REPS);
+    }
     set({ reps });
   },
 

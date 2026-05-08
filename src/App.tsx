@@ -98,6 +98,7 @@ import { useNetworkStatus } from "./hooks/useNetworkStatus";
 // ── Google Sheets Quick Pull constants ───────────────────────────────────────
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY ?? "";
+const DEV_AUTH_BYPASS_ENABLED = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === "true";
 
 if (!GOOGLE_API_KEY) {
   console.warn(
@@ -404,6 +405,10 @@ function LoginScreen({
   // ── Step: admin bypass ───────────────────────────────────────────────────
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!DEV_AUTH_BYPASS_ENABLED) {
+      setError("Admin quick access is disabled.");
+      return;
+    }
     if (adminInitials.toUpperCase().trim() !== "GL") {
       setError("Incorrect initials");
       return;
@@ -454,19 +459,21 @@ function LoginScreen({
             Continue
           </button>
         </form>
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              go("admin");
-              setAdminInitials("");
-              setAdminCode("");
-            }}
-            className="text-xs text-slate-600 hover:text-slate-400 transition"
-          >
-            Admin Access
-          </button>
-        </div>
+        {DEV_AUTH_BYPASS_ENABLED && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                go("admin");
+                setAdminInitials("");
+                setAdminCode("");
+              }}
+              className="text-xs text-slate-600 hover:text-slate-400 transition"
+            >
+              Dev Admin Access
+            </button>
+          </div>
+        )}
       </LoginCard>
     );
 
@@ -674,7 +681,11 @@ function LoginScreen({
       </LoginCard>
     );
 
-  // Admin bypass
+  if (!DEV_AUTH_BYPASS_ENABLED) {
+    return null;
+  }
+
+  // Dev-only admin bypass
   return (
     <LoginCard>
       <p className="text-slate-300 text-sm font-medium mb-4 text-center">Admin Quick Access</p>
@@ -828,6 +839,9 @@ function AppShell() {
 
   const handleAdminBypass = useCallback(
     (rep: Rep) => {
+      if (!DEV_AUTH_BYPASS_ENABLED) {
+        return;
+      }
       localStorage.setItem("asgCurrentUserId", String(rep.id));
       const updatedRep = { ...rep, lastLoginAt: Date.now() };
       bypassAdminRef.current = true;
@@ -845,15 +859,17 @@ function AppShell() {
     if (currentUser) return; // already logged in
     const savedId = localStorage.getItem("asgCurrentUserId");
     if (!savedId || reps.length === 0) return;
-    const rep = reps.find((r) => r.id === parseInt(savedId, 10));
-    if (rep) {
-      // Restore admin bypass ref if this is the admin rep
-      if (rep.role === "admin") {
-        bypassAdminRef.current = true;
-        setBypassAdmin(true);
-      }
-      setCurrentUser(rep);
+    const parsedId = Number(savedId);
+    if (!Number.isInteger(parsedId)) {
+      localStorage.removeItem("asgCurrentUserId");
+      return;
     }
+    const rep = reps.find((r) => r.id === parsedId && r.active !== false);
+    if (!rep) {
+      localStorage.removeItem("asgCurrentUserId");
+      return;
+    }
+    setCurrentUser(rep);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reps]);
 
@@ -869,11 +885,14 @@ function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reps.length]);
 
-  // ── Magic URL auto-login (/GLadmin) ──────────────────────────────────────
-  // Visiting amplify-leads-2026.web.app/GLadmin auto-signs in as admin — no password needed
+  // Dev-only magic URL auto-login (/GLadmin). Production strips this route back to "/".
   useEffect(() => {
     const path = window.location.pathname.replace(/\/$/, ""); // strip trailing slash
-    if (path === "/GLadmin" && !bypassAdminRef.current && reps.length > 0) {
+    if (path === "/GLadmin" && !DEV_AUTH_BYPASS_ENABLED) {
+      window.history.replaceState({}, "", "/");
+      return;
+    }
+    if (path === "/GLadmin" && DEV_AUTH_BYPASS_ENABLED && !bypassAdminRef.current && reps.length > 0) {
       const adminRep = reps.find((r) => r.role === "admin") ?? reps.find((r) => r.name.toUpperCase().startsWith("G"));
       if (adminRep) {
         handleAdminBypass(adminRep);

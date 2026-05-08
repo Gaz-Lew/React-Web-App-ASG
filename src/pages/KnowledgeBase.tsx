@@ -109,7 +109,7 @@ const DEFAULT_ARTICLES: Omit<KBArticle, "id" | "createdAt" | "updatedAt" | "view
 <ol>
 <li>Select your name at the login screen and enter your PIN</li>
 <li>If first time: enter access code <strong>9090</strong>, then set your email + PIN + backup password</li>
-<li>Admin can also log in via the "Admin Access" link at the bottom of the login card</li>
+<li>Admins sign in through the normal staff login flow using their assigned profile and PIN</li>
 </ol>
 <p>Your session is remembered — you won't need to log in again on the same browser.</p>`,
   },
