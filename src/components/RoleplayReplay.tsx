@@ -13,7 +13,7 @@
  * Compatible with both v1 messages (role/text) and v3 messages (sender/content).
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { RoleplaySession, SessionMessage } from "../types";
 import {
   X,

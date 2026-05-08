@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useLeads } from "../hooks/useFirebase";
 import { useAppStore } from "../stores/appStore";
 import { getNextAction } from "../lib/nextAction";

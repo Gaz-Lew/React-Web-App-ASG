@@ -24,7 +24,6 @@ import {
   addDoc,
   updateDoc,
   doc,
-  DocumentData,
   getDoc,
   setDoc,
 } from "firebase/firestore";
@@ -33,13 +32,12 @@ import { useAppStore } from "../stores/appStore";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useDealDocuments, useDeals } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
-import { Rep, Lead, CallHistory, DealDocumentType, DealDocument } from "../types";
+import { Rep, Lead, DealDocumentType, DealDocument } from "../types";
 import { OADocumentEditor } from "../components/OADocumentEditor";
 import {
   Search,
   X,
   ChevronDown,
-  ChevronRight,
   DollarSign,
   Calendar,
   User,
@@ -53,17 +51,13 @@ import {
   ArrowDown,
   Clock,
   Phone,
-  ExternalLink,
   AlertCircle,
   History,
   Edit2,
   Eye,
   Target,
-  Menu,
-  BarChart3,
   Briefcase,
   Download,
-  Filter,
   FileText,
   Upload,
   Trash2,

@@ -101,8 +101,6 @@ export const scripts: ScriptCategory[] = [
 ];
 
 /* Placeholder for ownerOrRenter interpolation – replace with actual lead data at runtime */
-const ownerOrRenterPlaceholder = "ownerOrRenter(lead)";
-
 /* ── SCENARIOS ─────────────────────────────────────────────────────── */
 
 export const scenarios: Scenario[] = [

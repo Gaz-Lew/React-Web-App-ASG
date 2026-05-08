@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Sparkles, X, Copy, Check, ChevronDown, ChevronUp, Play, Square } from "lucide-react";
 
 /* ── Public interface ────────────────────────────────────────────────────────── */
@@ -20,7 +20,7 @@ export interface AIGuidanceCardProps {
 /* ── Component ───────────────────────────────────────────────────────────────── */
 export function AIGuidanceCard({
   suggestion,
-  actionType,
+  actionType: _actionType,
   script,
   objection,
   coaching,
@@ -30,7 +30,7 @@ export function AIGuidanceCard({
 }: AIGuidanceCardProps) {
   const [scriptOpen, setScriptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isPulsing, setIsPulsing] = useState(false);
+  const [, setIsPulsing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [rate, setRate] = useState(1.0);
   const [pitch, setPitch] = useState(1.0);
@@ -78,35 +78,6 @@ export function AIGuidanceCard({
     },
     [canUseSpeech],
   );
-
-  /* ── Helper: compute priority badge info ─────────────────────────────────── */
-  const computePriority = () => {
-    // HIGH: objection confidence > 0.7 OR coaching active
-    // MEDIUM: objection exists
-    // LOW: everything else
-    let priority = "low";
-    let bgColor = "bg-gray-500/20";
-    let color = "text-gray-400";
-
-    if (objection) {
-      const confidence = (objection as any).confidence ?? 0;
-      if (confidence > 0.7) priority = "high";
-      else priority = "medium";
-    } else if (coaching) {
-      priority = "medium";
-    }
-
-    const confidence = objection ? ((objection as any).confidence ?? 0) : 0;
-    const opacity = priority === "high" ? 1 : 0.4 + confidence * 0.6;
-
-    const bgMap = {
-      high: "bg-red-500/20",
-      medium: "bg-[#b8933a]/20",
-      low: "bg-gray-500/20",
-    };
-
-    return { priority, bg: opacity > 0 ? opacity : undefined, color: priority === "high" ? "text-red-400" : undefined };
-  };
 
   /* ── Auto‑expand / attention trigger ───────────────────────────────────── */
   useEffect(() => {

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from "react";
 import {
   useLeads,
   useSaveLead,
-  useDeleteLead,
   useAppointments,
   useSaveAppointment,
   useLeadFiles,

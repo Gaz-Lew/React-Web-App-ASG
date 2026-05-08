@@ -18,7 +18,7 @@ import { PDFDocument, PDFForm, PDFFont, StandardFonts } from "pdf-lib";
 import jsPDF from "jspdf";
 import type { OADocumentData } from "../../types";
 import { getOaPdfMappedFields, OA_SCHEMA } from "./oaFieldSchema";
-import { validatePdfMapping, validatePdfTemplate, type PdfValidationResult } from "./oaValidation";
+import { validatePdfTemplate, type PdfValidationResult } from "./oaValidation";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logging
@@ -111,7 +111,7 @@ export async function generateOAPdfFromTemplate(
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   // Run validation (cached)
-  const validation = await getTemplateValidation();
+  await getTemplateValidation();
 
   // Fill fields safely
   const fillResult = fillPdfFieldsSafely(form, font, data);

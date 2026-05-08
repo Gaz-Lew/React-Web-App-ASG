@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Lead } from "../types";
 import { useLeads, useSaveLead, useDeleteLead, useAddAuditEntry } from "../hooks/useFirebase";
 import { addDoc, collection } from "firebase/firestore";

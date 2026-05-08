@@ -30,7 +30,7 @@ import {
 import { doc, setDoc, deleteDoc, collection, onSnapshot, addDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { uploadFile, formatFileSize, fileTypeIcon } from "../lib/storage";
-import { getNextAction, deriveLastActivityAt, ACTION_COLORS } from "../lib/nextAction";
+import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
 import { useAIGuidance } from "../hooks/useAIGuidance";
 import { AIGuidanceCard } from "./AIGuidanceCard";
 import { isOverdue, isDueToday, formatFollowUpDate } from "../lib/followUp";
@@ -424,12 +424,10 @@ export function LeadSidebar({
 
   const activeReps = reps.filter((r) => r.active !== false);
   const formerReps = reps.filter((r) => r.active === false);
-  const allRepsForDropdown = [...activeReps, ...formerReps];
   const dqRepName = reps.find((r) => r.id === lead.dqRep)?.name || "—";
   const lastCall =
     lead.callHistory && lead.callHistory.length > 0 ? lead.callHistory[lead.callHistory.length - 1] : null;
   const lastContactRep = lastCall?.rep || "—";
-  const lastCallNotes = lastCall?.notes || "—";
   const lastCallDate = lead.lastCall
     ? new Date(lead.lastCall).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })
     : "Never";

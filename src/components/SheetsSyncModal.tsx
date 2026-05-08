@@ -27,7 +27,6 @@ import {
   ExternalLink,
   Link2,
   GitCompareArrows,
-  Eye,
 } from "lucide-react";
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -1265,6 +1264,14 @@ export function SheetsSyncModal({ onClose }: SheetsSyncModalProps) {
     );
     setUpdating(false);
   }, [updatePreview, saveLead, showToast]);
+  void analysing;
+  void importing;
+  void geocoding;
+  void previewing;
+  void analyseSheet;
+  void importFromAnalysis;
+  void previewUpdates;
+  void applyUpdates;
 
   // ── PULL UPDATES: one-pass match → diff → apply (no preview step) ──────────
   const pullAndApplyUpdates = useCallback(async () => {

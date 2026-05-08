@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
 
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { initializeFirestore, getFirestore, Firestore, persistentLocalCache } from "firebase/firestore";
+import { initializeFirestore, Firestore, persistentLocalCache } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 import { getAuth, signInAnonymously, onAuthStateChanged, Auth } from "firebase/auth";
 import { getFunctions, Functions } from "firebase/functions";

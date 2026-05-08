@@ -17,17 +17,13 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  setDoc,
-  deleteDoc,
   orderBy,
   limit,
   getDocs,
   writeBatch,
   addDoc,
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { encrypt, decrypt } from "../lib/encryption";
-import { loadPIAReportsByClient } from "../lib/piaReports";
+import { db } from "../lib/firebase";import { loadPIAReportsByClient } from "../lib/piaReports";
 import { useAppStore } from "../stores/appStore";
 import { useToast } from "../context/ToastContext";
 import { useClientNotes } from "../hooks/useClientNotes";
@@ -181,6 +177,8 @@ const CARD = "rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 shadow
 /** @deprecated Use CARD instead */
 const cardCls = CARD;
 const cardStyle = {} as const;
+void cardCls;
+void cardStyle;
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Couple Linker Modal
@@ -452,7 +450,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
   const [guidanceDismissed, setGuidanceDismissed] = useState(false);
   const [linkClientId, setLinkClientId] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [smsfFinancials, setSmsfFinancials] = useState<any>(null);
+  const [smsfFinancials] = useState<any>(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
   // Controls slide-in animation — false on mount, true after first paint
   const [isOpen, setIsOpen] = useState(false);
@@ -818,6 +816,7 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
     // Cloud Functions disabled — stub out
     void clientId; void data;
   };
+  void saveSmsfFinancials;
 
   const handleCall = useCallback(() => {
     if (!client) return;

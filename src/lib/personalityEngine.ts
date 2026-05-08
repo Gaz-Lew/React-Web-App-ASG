@@ -494,7 +494,7 @@ export function injectImperfection(
  */
 export function applyPersonalityDrift(
   response: string,
-  personality: ScenarioPersonality,
+  _personality: ScenarioPersonality,
   emotionalState: EmotionalState,
 ): string {
   // High trust → warmer, more open tone

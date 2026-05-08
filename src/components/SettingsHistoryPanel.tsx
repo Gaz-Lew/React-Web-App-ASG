@@ -10,7 +10,7 @@
  * Uses a live onSnapshot listener so new entries appear without a page refresh.
  */
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { collection, onSnapshot, orderBy, query, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import {

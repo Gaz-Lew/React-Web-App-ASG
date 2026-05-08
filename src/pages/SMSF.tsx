@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { db, functions } from "../lib/firebase";
 import { collection, addDoc, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -30,7 +30,6 @@ const fmtAUD = (v: number | null) => {
 };
 
 const saveFn = httpsCallable(functions, "saveSmsfFinancials");
-const loadFn = httpsCallable(functions, "getSmsfFinancials");
 
 function SMSFPage() {
   const [loaded, setLoaded] = useState(false);

@@ -3,9 +3,7 @@ import { Lead } from "../types";
 import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
 import { getStatusColor } from "../lib/statusConfig";
 import { useLeads } from "../hooks/useFirebase";
-import { useAppStore } from "../stores/appStore";
-import { DonutChart } from "../components/DonutChart";
-import {
+import { useAppStore } from "../stores/appStore";import {
   Phone,
   Users,
   Calendar,
@@ -15,12 +13,10 @@ import {
   Loader,
   Star,
   Activity,
-  BarChart2,
   ArrowUp,
   ArrowRight,
   CheckCircle2,
   PhoneCall,
-  UserCheck,
   Zap,
   ClipboardList,
   MapPin,
@@ -40,13 +36,6 @@ function startOfWeek() {
   d.setDate(d.getDate() - d.getDay());
   return d.toISOString().split("T")[0];
 }
-
-function isToday(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
-
 function isOverdue(dateStr: string) {
   return new Date(dateStr) < new Date();
 }

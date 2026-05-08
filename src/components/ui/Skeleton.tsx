@@ -1,9 +1,3 @@
-/**
- * Skeleton.tsx — Loading skeleton component
- * Displays shimmer animation for content placeholders
- */
-
-import React from "react";
 
 interface SkeletonProps {
   className?: string;

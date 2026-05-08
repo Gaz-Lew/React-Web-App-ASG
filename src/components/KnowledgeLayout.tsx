@@ -11,7 +11,7 @@
  * authored in src/data/knowledgeBase.ts. Never render user-supplied HTML here.
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { KBSection } from '../data/knowledgeBase';
 import { Search, Menu, X, ChevronRight } from 'lucide-react';
 

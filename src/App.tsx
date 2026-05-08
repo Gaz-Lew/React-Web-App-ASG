@@ -778,41 +778,7 @@ function SidebarSection({ label, children }: { label: string; children: React.Re
       {children}
     </div>
   );
-}
-
-// ── Nav tab ───────────────────────────────────────────────────────────────────
-function NavTab({
-  label,
-  active,
-  onClick,
-  icon,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition flex-shrink-0 whitespace-nowrap ${
-        active
-          ? "bg-amber-500 text-white shadow-sm"
-          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-gray-200"
-      }`}
-    >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
-}
-
-// ── Nav divider ───────────────────────────────────────────────────────────────
-function NavDivider() {
-  return <div className="w-px h-6 bg-gray-200 dark:bg-slate-700 flex-shrink-0 self-center mx-0.5" />;
-}
-
-// ── Authenticated app shell ───────────────────────────────────────────────────
+}// ── Authenticated app shell ───────────────────────────────────────────────────
 function AppShell() {
   const { currentUser, setCurrentUser, leads, reps, activeRegion, setActiveRegion, setLeads } = useAppStore();
   useReps(); // sync Firestore reps → Zustand store (keeps credentials current across devices)
@@ -824,7 +790,7 @@ function AppShell() {
   const { save: saveSettings } = useSaveSettings();
   const { leads: allLeads } = useLeads();
   const { showToast } = useToast();
-  const { isOnline: queueOnline, isSyncing, queueLength } = useOfflineQueue();
+  useOfflineQueue();
   const { isProbablyOffline } = useNetworkStatus();
   const [dark, toggleDark] = useDarkMode();
   const [uiScale, setUiScale] = useUiScale();
@@ -845,7 +811,7 @@ function AppShell() {
 
   // ── PIN-based auth state (no Firebase Auth) ──────────────────────────────
   // Admin bypass uses a separate ref to survive sign-out without Firebase
-  const [bypassAdmin, setBypassAdmin] = useState(false);
+  const [, setBypassAdmin] = useState(false);
   const bypassAdminRef = useRef(false);
 
   const handleLoginRep = useCallback(

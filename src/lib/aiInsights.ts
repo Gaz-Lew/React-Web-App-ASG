@@ -99,7 +99,6 @@ export async function generateClientBrief(clientId: string): Promise<ClientBrief
     });
   });
 
-  const recentNotes = allNotes.slice(0, 5);
   const pinnedNotes = allNotes.filter((n) => n.isImportant);
 
   // ── Derive goal from recent activity ──────────────────────────────────
@@ -155,14 +154,6 @@ const KEYWORD_CONCERNS: Record<string, string> = {
   timeline: "Timeline pressure",
   partner: "Requires partner agreement",
   solicitor: "Legal review in progress",
-};
-
-const KEYWORD_URGENCY: Record<string, string> = {
-  urgent: "time-sensitive",
-  asap: "immediate action",
-  "need to": "strong intent",
-  deadline: "approaching deadline",
-  expiry: "time-limited offer",
 };
 
 function deriveGoal(notes: ClientNote[], pinned: ClientNote[]): string {
@@ -270,8 +261,6 @@ function formatLastInteraction(note: ClientNote): string {
 
 function deriveSuggestedApproach(allNotes: ClientNote[], pinned: ClientNote[], concerns: string[]): string[] {
   const approaches: string[] = [];
-  const allText = allNotes.map((n) => n.content.toLowerCase()).join(" ");
-
   // Communication gap
   const sortedByDate = [...allNotes].sort((a, b) => b.createdAt - a.createdAt);
   if (sortedByDate.length > 0) {

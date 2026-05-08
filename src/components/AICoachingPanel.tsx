@@ -7,13 +7,12 @@
  * searched naturally and linked to training scenarios.
  */
 
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   STRUCTURED_KB,
   TRAINING_SCENARIOS,
   searchKnowledgeBase,
   type KBItemType,
-  type KBItem,
   type SearchHit,
   type TrainingScenario,
 } from "../data/knowledgeStructured";

@@ -8,7 +8,7 @@ import { sanitizePhone, normalizeAUPhone } from "../lib/utils";
 import { generateLeadId } from "../lib/idGenerator";
 import { geocodeBatch, geocodeAddressSafe, buildAddressString } from "../lib/geocode";
 import { WA_SUBURB_POSTCODES, WA_POSTCODE_SUBURB } from "../data/waSuburbPostcodes";
-import { ClipboardList, Plus, Trash2, CheckCircle, AlertTriangle, RotateCcw, Calendar, Tag, Users, UserPlus, List, Loader2, Check } from "lucide-react";
+import { ClipboardList, Plus, Trash2, AlertTriangle, RotateCcw, Calendar, Tag, Users, UserPlus, List, Loader2, Check } from "lucide-react";
 import { LeadStatus } from "../types";
 
 const MAX_ROWS = 25;
@@ -132,7 +132,7 @@ export function DQImportPage() {
     return errs.length === 0;
   };
 
-  const handleFillSave = async (andAnother: boolean) => {
+  const handleFillSave = async (_andAnother: boolean) => {
     if (!validateFill()) return;
     setFillSaving(true);
     const lead: Lead = {
@@ -586,7 +586,7 @@ export function DQImportPage() {
                         updateFill("postcode", WA_SUBURB_POSTCODES[v]);
                       }
                     }}
-                    onSelect={(suburb, postcode) => {
+                    onSelect={(_suburb, postcode) => {
                       // Always sync postcode when explicitly selected from dropdown
                       if (postcode) updateFill("postcode", postcode);
                     }}

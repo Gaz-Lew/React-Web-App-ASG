@@ -13,7 +13,7 @@
  * - Export CSV
  */
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { DrapsEntry } from "../types";
 import { useAppStore } from "../stores/appStore";
 import { useDraps, useSaveDraps, useDeleteDraps, useAppSettings } from "../hooks/useFirebase";

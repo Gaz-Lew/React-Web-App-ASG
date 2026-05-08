@@ -33,9 +33,6 @@ export interface NextAction {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
-const SETTLED_STATUSES = new Set(["settled", "lost"]);
-
 // ── Core function ─────────────────────────────────────────────────────────────
 
 /**
@@ -47,7 +44,6 @@ export function getNextAction(lead: Lead, appointments: Appointment[] = []): Nex
   const hasContact = (lead.callHistory?.length ?? 0) > 0;
   const lastCallMs = lead.lastCall ? new Date(lead.lastCall).getTime() : 0;
   const daysSinceContact = lastCallMs > 0 ? (Date.now() - lastCallMs) / 86_400_000 : Infinity;
-  const isSettled = SETTLED_STATUSES.has(lead.status) || SETTLED_STATUSES.has(lead.leadDate ?? "");
   const callbackDateValid =
     !!lead.callbackDate &&
     /^\d{4}-\d{2}-\d{2}$/.test(lead.callbackDate) &&
@@ -176,13 +172,3 @@ export const ACTION_COLORS: Record<string, { bg: string; text: string; badge: st
     badge: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
   },
 };
-
-// ── Private helpers ───────────────────────────────────────────────────────────
-
-
-function _parseCallTimestamp(date?: string, time?: string): number | undefined {
-  if (!date) return undefined;
-  const isNewFmt = /^\d{4}-\d{2}-\d{2}$/.test(date) && (!time || /^\d{2}:\d{2}$/.test(time));
-  const dt = isNewFmt ? new Date(`${date}T${time || "00:00"}`) : new Date(time || date);
-  return isNaN(dt.getTime()) ? undefined : dt.getTime();
-}

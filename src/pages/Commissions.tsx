@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { CommissionEntry, RepAllocation, Rep, InvoiceDraft } from "../types";
+import { CommissionEntry, Rep, InvoiceDraft } from "../types";
 import { useAppStore } from "../stores/appStore";
 import {
   useCommissions,

@@ -14,7 +14,7 @@
  *  Red    = offline / disabled / error
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Wifi,
   Database,
@@ -32,7 +32,6 @@ import {
   Bell,
   BellOff,
   CloudOff,
-  AlertCircle,
 } from "lucide-react";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useTrainingSessions } from "../hooks/useFirebase";
@@ -141,7 +140,7 @@ export function SystemHealthPanel() {
 
   const [online, setOnline]           = useState(navigator.onLine);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(() => {
+  const [notifPermission] = useState<NotificationPermission | "unsupported">(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
     return Notification.permission;
   });

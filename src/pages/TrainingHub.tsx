@@ -20,9 +20,7 @@ import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { AIRoleplayPage } from "../components/AIRoleplay";
-import { RoleplayDashboard } from "../components/RoleplayDashboard";
-import { ScenarioSelector } from "../components/AICoachingPanel";
-import { TRAINING_SCENARIOS, type TrainingScenario } from "../data/knowledgeStructured";
+import { RoleplayDashboard } from "../components/RoleplayDashboard";import { TRAINING_SCENARIOS, type TrainingScenario } from "../data/knowledgeStructured";
 import {
   useTrainingDocuments,
   useSaveTrainingDocument,
@@ -40,16 +38,12 @@ import {
   Play,
   CheckCircle,
   CheckSquare,
-  Square,
   ChevronLeft,
   FileText,
   Loader,
   ArrowLeft,
   Target,
-  Award,
   Clock,
-  Star,
-  Users,
   Search,
   X,
   GraduationCap,
@@ -63,15 +57,12 @@ import {
   Youtube,
   Mic,
   FileAudio,
-  Filter,
   Plus,
   ExternalLink,
-  AlertCircle,
   Eye,
   ChevronRight,
-  File,
 } from "lucide-react";
-import type { TrainingDocument, TrainingVideo, TrainingRecording } from "../types";
+import type { TrainingDocument, TrainingVideo } from "../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared styles
@@ -263,8 +254,6 @@ function DocumentsTab({ repId, repName }: { repId: number; repName: string }) {
   const [uploadCat, setUploadCat] = useState("General");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
-  const [previewDoc, setPreviewDoc] = useState<TrainingDocument | null>(null);
-
   const CATEGORIES = ["All", "Scripts", "SOPs", "Compliance", "Product", "General"];
 
   const filtered = useMemo(() => {
@@ -727,7 +716,7 @@ function VideosTab({ repId, repName }: { repId: number; repName: string }) {
 // Tab: Recordings
 // ─────────────────────────────────────────────────────────────────────────────
 
-function RecordingsTab({ repId, reps }: { repId: number; reps: Array<{ id: number; name: string }> }) {
+function RecordingsTab({ repId: _repId, reps }: { repId: number; reps: Array<{ id: number; name: string }> }) {
   const [filterRepId, setFilterRepId] = useState<number | undefined>(undefined);
   const { recordings, loading } = useTrainingRecordings(filterRepId);
   const [search, setSearch] = useState("");
@@ -1306,7 +1295,7 @@ type HubTab = "simulation" | "documents" | "videos" | "recordings";
 export function TrainingHubPage() {
   const { currentUser, reps } = useAppStore();
   const [tab, setTab] = useState<HubTab>("simulation");
-  const [selectedScenario, setSelectedScenario] = useState<TrainingScenario | null>(null);
+  const [, setSelectedScenario] = useState<TrainingScenario | null>(null);
 
   // Listen for scenario launch events from AICoachingPanel in Knowledge Base
   useEffect(() => {

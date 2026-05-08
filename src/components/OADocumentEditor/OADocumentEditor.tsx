@@ -38,16 +38,13 @@ interface OADeal {
 }
 import { generateOAPdf, downloadPdf } from "./oaPdfGenerator";
 import { useSaveDocumentInstance, useUploadInstancePdf, useDeleteDocumentInstance } from "./useDocumentInstances";
-import { useDealDocuments } from "../../hooks/useFirebase";
-import { useDocuSign } from "../../hooks/useDocuSign";
-import { DealTimeline } from "../DealTimeline";
-import { uploadFile } from "../../lib/storage";
+import { useDocuSign } from "../../hooks/useDocuSign";import { uploadFile } from "../../lib/storage";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useToast } from "../../context/ToastContext";
-import { validateOADocument, groupErrorsBySection, getErrorFieldIds, type ValidationError } from "./oaValidation";
+import { validateOADocument, groupErrorsBySection, type ValidationError } from "./oaValidation";
 import { OA_SCHEMA } from "./oaFieldSchema";
-import { buildInitialOADocument, calculateFinancials, type OaAutofillContext } from "./oaAutofill";
+import { buildInitialOADocument, type OaAutofillContext } from "./oaAutofill";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -73,7 +70,6 @@ interface SectionState {
   additional: boolean;
 }
 
-const SECTION_ORDER: SectionKey[] = ["buyer", "property", "financials", "gst", "additional"];
 const SECTION_MAP: Record<SectionKey, string> = {
   buyer: "Buyer Details",
   property: "Property Details",
@@ -111,7 +107,7 @@ const SECTION_BTN_CLS =
 export function OADocumentEditor({
   deal,
   lead,
-  reps,
+  reps: _reps,
   currentUser,
   onClose,
   existingInstanceId,
@@ -124,14 +120,13 @@ export function OADocumentEditor({
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidReason, setVoidReason] = useState("");
   const [showSignedPreview, setShowSignedPreview] = useState(false);
-  const [signedPreviewUrl, setSignedPreviewUrl] = useState<string | null>(null);
+  const [signedPreviewUrl] = useState<string | null>(null);
   const [showAlreadySentModal, setShowAlreadySentModal] = useState(false);
-  const [envelopeViewUrl, setEnvelopeViewUrl] = useState<string | null>(null);
+  const [envelopeViewUrl] = useState<string | null>(null);
   const [showSignedBanner, setShowSignedBanner] = useState(false);
   const { save, saving } = useSaveDocumentInstance();
   const { upload, uploading } = useUploadInstancePdf();
-  const { remove, deleting } = useDeleteDocumentInstance();
-  const { uploadDocument: uploadToDeal } = useDealDocuments(deal.id);
+  const { deleting } = useDeleteDocumentInstance();
 
   // Form state — auto-filled from context
   const [formData, setFormData] = useState<OADocumentData>(() => {
@@ -247,13 +242,8 @@ export function OADocumentEditor({
       // Generate PDF
       const pdfBytes = await generateOAPdf(formData);
 
-      // Upload to document instance
-      let pdfUrl = "";
-      let pdfStoragePath = "";
       if (savingId) {
-        const result = await upload(savingId, deal.id, pdfBytes, "oa.pdf");
-        pdfUrl = result.pdfUrl;
-        pdfStoragePath = result.pdfStoragePath;
+        await upload(savingId, deal.id, pdfBytes, "oa.pdf");
       }
 
       // Upload to deal documents

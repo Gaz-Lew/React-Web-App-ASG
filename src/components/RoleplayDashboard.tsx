@@ -9,7 +9,7 @@
  *  - Admin view: all reps summary table
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTrainingSessions } from "../hooks/useFirebase";
 import { useTrainingProgress } from "../hooks/useTrainingProgress";
 import { useAppSettings } from "../hooks/useAppSettings";

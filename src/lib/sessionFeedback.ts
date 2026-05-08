@@ -35,7 +35,7 @@ export interface SessionFeedback {
  */
 export function analyseSession(
   messages: Message[],
-  scenario: TrainingScenario | null,
+  _scenario: TrainingScenario | null,
   finalScore: { objectionHandling: number; questioning: number; closing: number; total: number },
   memory?: ConversationMemory,
 ): SessionFeedback {

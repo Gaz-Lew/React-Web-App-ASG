@@ -5,10 +5,10 @@
  * and a "Show bookings" toggle that lists appointments for the selected date.
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { X, ChevronLeft, ChevronRight, Calendar as CalIcon, Sun, Moon, ListFilter } from "lucide-react";
 import { useAppointments } from "../../hooks/useFirebase";
-import type { Appointment, AppointmentStatus } from "../../types";
+import type { AppointmentStatus } from "../../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

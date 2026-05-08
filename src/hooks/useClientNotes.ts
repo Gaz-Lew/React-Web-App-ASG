@@ -166,8 +166,6 @@ export function useClientNotes(clientId: string): UseClientNotesReturn {
   const loadMore = useCallback(() => {
     if (!clientId || allLoaded || !lastVisible) return;
 
-    const q = query(collection(db, "clientNotes"), where("clientId", "==", clientId), orderBy("createdAt", "desc"));
-
     // Fetch the next batch from the snapshot we already have
     // Since we can't easily paginate with where+orderBy without composite indexes,
     // we rely on the real-time listener having all data and slice from our existing array

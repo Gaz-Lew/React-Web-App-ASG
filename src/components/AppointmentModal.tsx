@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { X, Trash2, ChevronRight } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { createClientNote } from "../hooks/useClientNotes";

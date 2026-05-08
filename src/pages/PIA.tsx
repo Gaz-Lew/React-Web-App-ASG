@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { db } from "../lib/firebase";
 import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
 import { savePIAReport, loadPIAReportsByConsultant, uploadPIAPdf } from "../lib/piaReports";
@@ -155,7 +155,7 @@ function PIAPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeContainerRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
-  const { currentUser, leads, reportToLoad, setReportToLoad, piaPrefillClientId, piaPrefillClientName, clearPiaPrefillContext } = useAppStore();
+  const { currentUser, leads, reportToLoad, setReportToLoad, piaPrefillClientId, clearPiaPrefillContext } = useAppStore();
 
   // Refs for use inside stable closures
   const selectedClientIdRef = useRef<string | null>(null);

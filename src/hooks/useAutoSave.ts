@@ -15,7 +15,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 export type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
 
-export interface UseAutoSaveOptions<T> {
+export interface UseAutoSaveOptions {
   /** Milliseconds to wait after last change before saving (default: 1500) */
   debounceMs?: number;
   /** Called on successful save */
@@ -40,7 +40,7 @@ export interface UseAutoSaveReturn<T> {
 export function useAutoSave<T>(
   initialValue: T,
   onSave: (value: T) => Promise<void>,
-  options: UseAutoSaveOptions<T> = {},
+  options: UseAutoSaveOptions = {},
 ): UseAutoSaveReturn<T> {
   const { debounceMs = 1500, onSuccess, onError } = options;
 

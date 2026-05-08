@@ -10,7 +10,7 @@
  * - Audit Log     — browseable activity history with user/action filters
  */
 
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { Rep, Lead, AppSettings, RepTarget, DEFAULT_STATUS_COLORS, ServiceType, SyncConfig } from "../types";
 import { getStatusColor } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
@@ -50,8 +50,6 @@ import {
   AlertCircle,
   Settings,
   Phone,
-  Eye,
-  ChevronUp,
   Zap,
   Activity,
   CalendarCheck,
@@ -62,21 +60,13 @@ import {
   CalendarDays,
   Database,
   RefreshCw,
-  Archive,
-  Shuffle,
-  CheckSquare,
   ExternalLink,
-  Wifi,
-  WifiOff,
   Clock,
-  ArrowUpDown,
   ArrowDownCircle,
   ArrowUpCircle,
-  BookOpen,
   Palette,
   FlaskConical,
   Search,
-  ShieldX,
   HeartPulse,
   History,
 } from "lucide-react";
@@ -153,7 +143,7 @@ function daysBetween(dateStr: string, referenceStr: string = todayStr()): number
   return Math.round((r - d) / 86400000);
 }
 
-function getRepName(leads: Lead[], reps: Rep[], repId: number): string {
+function getRepName(_leads: Lead[], reps: Rep[], repId: number): string {
   return reps.find((r) => r.id === repId)?.name ?? "—";
 }
 
@@ -618,9 +608,6 @@ function RepPerformanceSection({
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {sorted.map((s, i) => {
                 const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
-                const wDQ = s.target?.weeklyDQ;
-                const mDQ = s.target?.monthlyDQ;
-                const hasTarget = wDQ || mDQ;
                 return (
                   <tr
                     key={s.rep.id}
@@ -1094,7 +1081,7 @@ function SettingsSection({
   reps: Rep[];
   onSave: (s: Partial<AppSettings>) => Promise<boolean>;
 }) {
-  const { statusColors, setStatusColors } = useAppStore();
+  const { setStatusColors } = useAppStore();
 
   // Commission rates
   const [dqRate, setDqRate] = useState<string>(String(settings?.commission?.dqRate ?? 0));
@@ -3825,6 +3812,12 @@ function AdminGuideSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+void SystemHealthSection;
+void StatusConfigSection;
+void AutomationRulesSection;
+void DataInspectorSection;
+void AdminGuideSection;
+
 export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void } = {}) {
   const { reps, setReps } = useAppStore();
   const { leads } = useLeads();

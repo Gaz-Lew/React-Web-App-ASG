@@ -807,7 +807,7 @@ function analyzeSession(messages: ChatMessage[]): SessionAnalysis {
 // Scoring Logic (Enhanced)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function evaluateSession(messages: ChatMessage[], scenario: ScenarioDef, state: ConversationState): SessionScore {
+function evaluateSession(messages: ChatMessage[], _scenario: ScenarioDef, state: ConversationState): SessionScore {
   const analysis = analyzeSession(messages);
   const userMessages = messages.filter((m) => m.role === "user");
   const aiMessages = messages.filter((m) => m.role === "ai");

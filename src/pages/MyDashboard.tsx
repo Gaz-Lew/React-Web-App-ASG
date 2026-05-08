@@ -11,15 +11,12 @@
  *             Weekly Planner, Affirmations
  */
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useAppStore } from "../stores/appStore";
 import { useDashboardLayout } from "../hooks/useDashboard";
-import { useLeads } from "../hooks/useFirebase";
 import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
-import { useToast } from "../context/ToastContext";
 import {
   LayoutDashboard,
-  Target,
   Zap,
   FileText,
   Pin,
@@ -29,17 +26,13 @@ import {
   List,
   Calendar,
   Star,
-  ChevronDown,
-  ChevronUp,
   Plus,
   X,
   Loader,
   Settings,
-  GripVertical,
   BarChart3,
   Phone,
   Briefcase,
-  TrendingUp,
   Clock,
   ArrowRight,
   Check,
@@ -60,7 +53,6 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp,
 } from "firebase/firestore";
 import { TeamBoard } from "../components/TeamBoard";
 import type { DashboardWidgetConfig, DashboardWidgetType, QuickNote, TodoItem, ChecklistItem, UserNote } from "../types";
@@ -987,9 +979,6 @@ function DraggableWidget({
 
 export function MyDashboardPage() {
   const { currentUser } = useAppStore();
-  const { leads } = useLeads();
-  const { showToast } = useToast();
-
   const {
     layout,
     loading,

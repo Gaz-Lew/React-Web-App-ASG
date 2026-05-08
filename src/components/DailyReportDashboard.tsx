@@ -6,7 +6,7 @@
  * store computation for today's date when no aggregated data exists yet.
  */
 
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   BarChart2,
   Download,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Lead } from "../types";
 import { useAppStore } from "../stores/appStore";
 import { useLeads } from "../hooks/useFirebase";

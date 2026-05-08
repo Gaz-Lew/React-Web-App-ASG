@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Mic, Square, Play, Pause, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import { uploadFile } from "../lib/storage";

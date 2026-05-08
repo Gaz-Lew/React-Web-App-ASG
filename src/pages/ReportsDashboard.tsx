@@ -27,7 +27,6 @@ import { Rep, Lead, DealStatus, AppSettings } from "../types";
 import {
   Download,
   Filter,
-  Calendar,
   DollarSign,
   TrendingUp,
   Users,
@@ -329,17 +328,6 @@ function calculateForecast(deals: Deal[]): ForecastData {
   });
   return { revenue, commission, contributingDeals: active.length };
 }
-
-// ── Grouping Functions ────────────────────────────────────────────────────────
-
-function groupDealsByStage(deals: Deal[]) {
-  return STAGES.map((s) => ({
-    status: s,
-    count: deals.filter((d) => d.status === s).length,
-    value: deals.filter((d) => d.status === s).reduce((sum, d) => sum + (d.dealValue || 0), 0),
-  }));
-}
-
 function groupRevenueOverTime(deals: Deal[], range: DateRange) {
   const buckets = new Map<string, number>();
   deals.forEach((d) => {
@@ -790,7 +778,7 @@ function CompanyTargets({ deals, settings }: { deals: Deal[]; settings: AppSetti
     label: string,
     data: { target: number; actual: number; pct: number },
     icon: React.ReactNode,
-    color: string,
+    _color: string,
   ) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">

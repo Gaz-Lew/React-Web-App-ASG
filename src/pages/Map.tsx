@@ -632,7 +632,7 @@ function resolveKnockLabel(result: string, customPinTypes: CustomPinType[]): str
   if (result in KNOCK_LABELS) return KNOCK_LABELS[result].replace(/^[^ ]+ /, "");
   return customPinTypes.find((c) => c.id === result)?.name ?? result;
 }
-
+// ── Main Map page ─────────────────────────────────────────────────────────────
 // ── Pin Action Panel — compact popup that appears when any marker is tapped ───
 function PinActionPanel({
   lead,
@@ -869,6 +869,8 @@ function PinActionPanel({
 }
 
 // ── Main Map page ─────────────────────────────────────────────────────────────
+void PinActionPanel;
+
 export function MapPage() {
   const { reps, currentUser, statusColors } = useAppStore();
   const { save: saveLead } = useSaveLead();
@@ -1272,8 +1274,6 @@ export function MapPage() {
       return next;
     });
   };
-
-  const getRepName = (id: number) => reps.find((r) => r.id === id)?.name ?? `Rep ${id}`;
 
   // Helper — get display names from a zone (supports legacy single-rep + new multi-rep)
   const getZoneRepNames = (zone: KnockZone): string[] => {

@@ -22,7 +22,6 @@ import {
   addDoc,
   updateDoc,
   doc,
-  DocumentData,
   getDoc,
   setDoc,
 } from "firebase/firestore";
@@ -30,13 +29,12 @@ import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { useDealDocuments, useDeals } from "../hooks/useFirebase";
 import { useToast } from "../context/ToastContext";
-import { Rep, Lead, CallHistory, DealDocumentType, DealDocument } from "../types";
+import { Rep, Lead, DealDocumentType, DealDocument } from "../types";
 import { OADocumentEditor } from "../components/OADocumentEditor";
 import {
   Search,
   X,
   ChevronDown,
-  ChevronRight,
   DollarSign,
   Calendar,
   User,
@@ -50,7 +48,6 @@ import {
   ArrowDown,
   Clock,
   Phone,
-  ExternalLink,
   AlertCircle,
   History,
   Edit2,
@@ -61,7 +58,6 @@ import {
   Trash2,
   File,
   Download,
-  Menu,
   Shield,
 } from "lucide-react";
 
@@ -745,7 +741,7 @@ function DealDrawer({
   const [savingFinancials, setSavingFinancials] = useState(false);
 
   // Fetch linked lead
-  const { lead, loading: leadLoading } = useLinkedLead(deal.leadId || null);
+  const { lead } = useLinkedLead(deal.leadId || null);
 
   useEffect(() => {
     setEditValue(deal.dealValue);
@@ -1526,14 +1522,6 @@ function CreateDealModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     try {
       const now = Date.now();
 
-      // Check for existing deal linked to same lead
-      if (form.leadId) {
-        const existingSnap = await getDoc(doc(db, "deals", form.leadId));
-        // Also check by querying for deals with this leadId
-        // If lead already has a dealId set, the CallLogger would have prevented creation
-        // But as a safety net, we also check here
-      }
-
       const dealRef = await addDoc(collection(db, "deals"), {
         clientName: form.clientName.trim(),
         status: "lead",
@@ -1820,7 +1808,7 @@ function DealsTable({
 
 function CompletedDealsTable({
   deals,
-  leadMap,
+  leadMap: _leadMap,
   reps,
   onOpen,
 }: {
@@ -1895,8 +1883,6 @@ function CompletedDealsTable({
             </thead>
             <tbody className="bg-white dark:bg-[var(--surface)]">
               {deals.map((d) => {
-                const lastCall = (leadMap.get(d.leadId || "") || null)?.callHistory;
-                const lc = lastCall && lastCall.length > 0 ? lastCall[lastCall.length - 1] : null;
                 return (
                   <tr
                     key={d.id}

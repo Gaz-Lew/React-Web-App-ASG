@@ -30,7 +30,6 @@ export function isDueToday(date?: string): boolean {
  */
 export function formatFollowUpDate(date?: string): string {
   if (!date) return "";
-  const today = new Date().toISOString().split("T")[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
   if (date === tomorrow) return "Tomorrow";
   return new Date(date + "T00:00").toLocaleDateString("en-AU", {

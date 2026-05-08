@@ -7,7 +7,7 @@
  * - Content stored as HTML in Firestore `knowledgeBase` collection
  */
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { KBArticle, KBCategory } from "../types";
 import { useAppStore } from "../stores/appStore";
@@ -22,10 +22,8 @@ import {
   Trash2,
   Pin,
   X,
-  Check,
   ChevronRight,
   Eye,
-  Tag,
   Clock,
   Save,
   Zap,
@@ -518,9 +516,6 @@ function SimpleRichEditor({ value, onChange }: { value: string; onChange: (html:
     const url = prompt("Enter URL:");
     if (url) exec("createLink", url);
   };
-
-  const inp =
-    "px-2 py-1 rounded text-sm font-medium transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[var(--hover)]";
 
   return (
     <div className="border border-gray-300 dark:border-white/[0.08] rounded-xl overflow-hidden bg-white dark:bg-[var(--surface)]">

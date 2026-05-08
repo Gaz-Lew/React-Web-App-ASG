@@ -1,15 +1,3 @@
-/**
- * AdminGuide
- *
- * In-app technical reference for admins.
- * Renders static content from src/data/knowledgeBase.ts using KnowledgeLayout.
- *
- * Access: admin role only — enforced at the route level in App.tsx
- * (the sidebar item is hidden for non-admins and the page won't render
- * unless effectivePage === "admin-guide" && isAdmin).
- */
-
-import React from 'react';
 import { KnowledgeLayout } from '../components/KnowledgeLayout';
 import { ADMIN_GUIDE_SECTIONS } from '../data/knowledgeBase';
 import { useAppStore } from '../stores/appStore';

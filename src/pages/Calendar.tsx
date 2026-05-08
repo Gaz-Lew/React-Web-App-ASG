@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { ChevronLeft, ChevronRight, Calendar, X, Edit, User } from "lucide-react";
 
 const TimelyCSVImportModal = lazy(() =>
@@ -319,9 +319,9 @@ function CalendarToolbar({
   reps,
   repFilter,
   onRepFilter,
-  serviceTypes,
-  serviceFilter,
-  onServiceFilter,
+  serviceTypes: _serviceTypes,
+  serviceFilter: _serviceFilter,
+  onServiceFilter: _onServiceFilter,
   onRunSheet,
   onImportTimely,
   showLegend,

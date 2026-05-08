@@ -1,9 +1,3 @@
-/**
- * StatusBadge.tsx — Reusable status badge component
- * Converts isLocal/isCloud states to Draft/Saved visual indicators
- */
-
-import React from "react";
 
 interface StatusBadgeProps {
   isLocal?: boolean;

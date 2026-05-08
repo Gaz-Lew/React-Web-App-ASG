@@ -4,9 +4,7 @@ import { LEAD_STATUS_OPTIONS, getStatusColor } from "../lib/statusConfig";
 import { useAppStore } from "../stores/appStore";
 import { useToast } from "../context/ToastContext";
 import { Phone, Clock, Eye, ChevronDown, ChevronRight, Columns, Bookmark } from "lucide-react";
-import { formatDateSmart, formatDateRelative, formatDateFull, timeAgo } from "../lib/dates";
-import { normalizeAUPhone, formatPhoneForDisplay } from "../lib/utils";
-import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
+import { formatDateSmart, formatDateRelative, formatDateFull, timeAgo } from "../lib/dates";import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 
 interface DataTableProps {

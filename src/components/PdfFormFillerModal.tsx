@@ -36,8 +36,6 @@ import {
   CalendarDays,
   UserPlus,
   MousePointerClick,
-  Trash2,
-  Pencil,
 } from "lucide-react";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
