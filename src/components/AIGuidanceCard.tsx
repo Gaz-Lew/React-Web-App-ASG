@@ -35,24 +35,49 @@ export function AIGuidanceCard({
   const [rate, setRate] = useState(1.0);
   const [pitch, setPitch] = useState(1.0);
   const pulseTimeout = useRef<number | null>(null);
+  const canUseSpeech =
+    typeof window !== "undefined" &&
+    "speechSynthesis" in window &&
+    typeof SpeechSynthesisUtterance !== "undefined";
 
   const speak = useCallback((text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
-    setIsPlaying(true);
-    window.speechSynthesis.speak(utterance);
-  }, [rate, pitch]);
+    if (!canUseSpeech) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+      utterance.onend = () => setIsPlaying(false);
+      utterance.onerror = () => setIsPlaying(false);
+      setIsPlaying(true);
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn("[AIGuidanceCard] speak failed", err);
+      setIsPlaying(false);
+    }
+  }, [canUseSpeech, rate, pitch]);
 
   const stopSpeech = useCallback(() => {
-    window.speechSynthesis.cancel();
+    if (!canUseSpeech) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch (err) {
+      console.warn("[AIGuidanceCard] stop speech failed", err);
+    }
     setIsPlaying(false);
-  }, []);
+  }, [canUseSpeech]);
 
-  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
+  useEffect(
+    () => () => {
+      if (!canUseSpeech) return;
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {
+        console.warn("[AIGuidanceCard] cleanup speech cancel failed", err);
+      }
+    },
+    [canUseSpeech],
+  );
 
   /* ── Helper: compute priority badge info ─────────────────────────────────── */
   const computePriority = () => {
@@ -103,22 +128,26 @@ export function AIGuidanceCard({
   /* ── Use‑script UX ─────────────────────────────────────────────────────── */
   const handleUseScript = () => {
     if (onUseScript && script) {
-      onUseScript(script);
-      // Insert script into notes (assumes a textarea with class "notes-tab" exists in the parent)
-      const textarea = document.querySelector("textarea.notes-tab") as HTMLTextAreaElement | null;
-      if (textarea) {
-        textarea.focus();
-        textarea.value = script;
-        textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        textarea.scrollIntoView({ behavior: "smooth" });
-        // Temporary highlight ring
-        const ring = document.createElement("div");
-        ring.className = "ring-2 ring-[#b8933a] absolute rounded-md w-full h-full";
-        ring.style.top = "0";
-        ring.style.left = "0";
-        ring.style.pointerEvents = "none";
-        textarea.parentElement?.appendChild(ring);
-        setTimeout(() => ring.remove(), 1500);
+      try {
+        onUseScript(script);
+        // Insert script into notes (assumes a textarea with class "notes-tab" exists in the parent)
+        const textarea = document.querySelector("textarea.notes-tab") as HTMLTextAreaElement | null;
+        if (textarea) {
+          textarea.focus();
+          textarea.value = script;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.scrollIntoView({ behavior: "smooth" });
+          // Temporary highlight ring
+          const ring = document.createElement("div");
+          ring.className = "ring-2 ring-[#b8933a] absolute rounded-md w-full h-full";
+          ring.style.top = "0";
+          ring.style.left = "0";
+          ring.style.pointerEvents = "none";
+          textarea.parentElement?.appendChild(ring);
+          setTimeout(() => ring.remove(), 1500);
+        }
+      } catch (err) {
+        console.warn("[AIGuidanceCard] use-script action failed", err);
       }
     }
   };

@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Send, CheckCircle, XCircle, AlertCircle, RefreshCw, FileText, Clock } from "lucide-react";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import type { LucideIcon } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,11 +92,17 @@ function fmtTime(timestamp?: { seconds: number; nanoseconds: number }): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function DealTimeline({ dealId, maxItems = 20 }: DealTimelineProps) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [events, setEvents] = useState<DealEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!dealId) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !dealId) {
       setEvents([]);
       setLoading(false);
       return;
@@ -115,11 +122,14 @@ export function DealTimeline({ dealId, maxItems = 20 }: DealTimelineProps) {
         setEvents(loaded.slice(0, maxItems));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[DealTimeline] Firestore error:", err);
+        setLoading(false);
+      },
     );
 
     return () => unsub();
-  }, [dealId, maxItems]);
+  }, [authLoading, currentUser, dealId, maxItems]);
 
   if (loading) {
     return (

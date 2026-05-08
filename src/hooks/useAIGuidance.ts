@@ -72,7 +72,23 @@ export function useAIGuidance(
   }, [userId, profile?.lastProcessedTimestamp, activeRegion]);
 
   useEffect(() => {
-    getGlobalActionStats(activeRegion).then(setGlobalStats);
+    let cancelled = false;
+    (async () => {
+      try {
+        const stats = await getGlobalActionStats(activeRegion);
+        if (!cancelled) {
+          setGlobalStats(stats);
+        }
+      } catch (err) {
+        console.warn("[useAIGuidance] global stats fetch failed", err);
+        if (!cancelled) {
+          setGlobalStats([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [activeRegion]);
 
   return useMemo<AIGuidance | null>(() => {

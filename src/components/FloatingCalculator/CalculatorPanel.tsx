@@ -71,19 +71,70 @@ function formatDisplay(value: string): string {
   return NUMBER_FORMAT.format(num);
 }
 
-function safeEval(expression: string): string {
-  const sanitized = expression.replace(/[^0-9+\-*/.() ]/g, "");
-  if (!sanitized) return "0";
-  try {
-    // eslint-disable-next-line no-eval
-    const result = Function(`"use strict"; return (${sanitized})`)();
-    if (typeof result === "number" && isFinite(result)) {
-      return String(Math.round(result * 1e10) / 1e10);
-    }
-    return "Error";
-  } catch {
-    return "Error";
+function formatNumber(value: number): string {
+  if (!Number.isFinite(value)) return "Error";
+  return String(Math.round(value * 1e12) / 1e12);
+}
+
+function normalizeNumericString(value: string): string | null {
+  if (value === "Error") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return "0";
+
+  const sign = trimmed.startsWith("-") ? "-" : "";
+  let body = sign ? trimmed.slice(1) : trimmed;
+
+  if (body === ".") body = "0.";
+  if (body.startsWith(".")) body = `0${body}`;
+  if (!/^\d+(\.\d*)?$/.test(body)) return null;
+
+  const hasDecimal = body.includes(".");
+  const [rawInteger, fraction = ""] = body.split(".");
+  const integer = rawInteger.replace(/^0+(?=\d)/, "") || "0";
+  const normalized = `${sign}${integer}${hasDecimal ? `.${fraction}` : ""}`;
+
+  return Number.isFinite(Number(normalized)) ? normalized : null;
+}
+
+function parseCalculatorValue(value: string): number | null {
+  const normalized = normalizeNumericString(value);
+  if (normalized === null) return null;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function appendDigitValue(value: string, digit: string): string {
+  const normalized = normalizeNumericString(value) ?? "0";
+
+  if (digit === ".") {
+    return normalized.includes(".") ? normalized : `${normalized}.`;
   }
+
+  if (normalized === "0") return digit === "0" ? "0" : digit;
+  if (normalized === "-0") return digit === "0" ? "-0" : `-${digit}`;
+
+  return normalizeNumericString(`${normalized}${digit}`) ?? normalized;
+}
+
+function calculate(first: number, second: number, operator: string): string {
+  switch (operator) {
+    case "+":
+      return formatNumber(first + second);
+    case "-":
+      return formatNumber(first - second);
+    case "*":
+      return formatNumber(first * second);
+    case "/":
+      return second === 0 ? "Error" : formatNumber(first / second);
+    default:
+      return formatNumber(second);
+  }
+}
+
+function displayExpression(first: number, operator: string, second?: string): string {
+  return `${formatNumber(first)}${operator}${second ?? ""}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,7 +259,12 @@ export function CalculatorPanel({
   const [display, setDisplay] = useState("0");
   const [expression, setExpression] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
-  const [hasOperator, setHasOperator] = useState(false);
+  const [currentValue, setCurrentValue] = useState("0");
+  const [previousValue, setPreviousValue] = useState<number | null>(null);
+  const [operator, setOperator] = useState<string | null>(null);
+  const [waitingForNextValue, setWaitingForNextValue] = useState(false);
+  const [lastOperator, setLastOperator] = useState<string | null>(null);
+  const [lastOperand, setLastOperand] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
 
   const isLarge = sizeMode === "large";
@@ -235,93 +291,187 @@ export function CalculatorPanel({
 
   const handleDigit = useCallback(
     (digit: string) => {
-      if (hasOperator && display === "0" && digit !== ".") {
-        setDisplay(digit);
-        setExpression((prev) => prev + digit);
-        setHasOperator(false);
+      if (display === "Error") {
+        const next = digit === "." ? "0." : appendDigitValue("0", digit);
+        setCurrentValue(next);
+        setDisplay(next);
+        setExpression(next);
+        setPreviousValue(null);
+        setOperator(null);
+        setWaitingForNextValue(false);
+        setLastOperator(null);
+        setLastOperand(null);
         return;
       }
 
-      if (hasOperator && digit !== ".") {
-        setDisplay(digit);
-        setExpression((prev) => prev + digit);
-        setHasOperator(false);
+      if (waitingForNextValue) {
+        const next = digit === "." ? "0." : appendDigitValue("0", digit);
+        setCurrentValue(next);
+        setDisplay(next);
+        setExpression(previousValue !== null && operator ? displayExpression(previousValue, operator, next) : next);
+        setWaitingForNextValue(false);
+        if (previousValue === null && !operator) {
+          setLastOperator(null);
+          setLastOperand(null);
+        }
         return;
       }
 
-      if (digit === "." && display.includes(".")) return;
-      if (display === "0" && digit !== ".") {
-        setDisplay(digit);
-        setExpression((prev) => {
-          if (/[+\-*/.(]$/.test(prev)) return prev + digit;
-          return prev.replace(/0$/, digit);
-        });
-      } else {
-        setDisplay((prev) => prev + digit);
-        setExpression((prev) => prev + digit);
-      }
+      if (digit === "." && currentValue.includes(".")) return;
+
+      const next = appendDigitValue(currentValue, digit);
+
+      setCurrentValue(next);
+      setDisplay(next);
+      setExpression(previousValue !== null && operator ? displayExpression(previousValue, operator, next) : next);
     },
-    [hasOperator, display],
+    [currentValue, display, operator, previousValue, waitingForNextValue],
   );
 
   const handleOperator = useCallback((op: string) => {
-    setHasOperator(true);
-    setExpression((prev) => {
-      const cleaned = prev.replace(/[+\-*/]$/, "");
-      return cleaned + op;
-    });
-  }, []);
+    if (display === "Error") {
+      return;
+    }
+
+    if (operator && waitingForNextValue) {
+      setOperator(op);
+      if (previousValue !== null) setExpression(displayExpression(previousValue, op));
+      return;
+    }
+
+    const inputValue = parseCalculatorValue(currentValue);
+    if (inputValue === null) return;
+
+    if (previousValue === null) {
+      setPreviousValue(inputValue);
+      setExpression(displayExpression(inputValue, op));
+    } else if (operator) {
+      const result = calculate(previousValue, inputValue, operator);
+      if (result === "Error") {
+        setDisplay("Error");
+        setCurrentValue("Error");
+        setExpression("");
+        setPreviousValue(null);
+        setOperator(null);
+        setWaitingForNextValue(true);
+        return;
+      }
+
+      const numericResult = parseCalculatorValue(result);
+      if (numericResult === null) {
+        setDisplay("Error");
+        setCurrentValue("Error");
+        setExpression("");
+        setPreviousValue(null);
+        setOperator(null);
+        setWaitingForNextValue(true);
+        return;
+      }
+      setPreviousValue(numericResult);
+      setCurrentValue(result);
+      setDisplay(result);
+      setExpression(displayExpression(numericResult, op));
+      setLastOperator(operator);
+      setLastOperand(inputValue);
+    }
+
+    setOperator(op);
+    setWaitingForNextValue(true);
+  }, [currentValue, display, operator, previousValue, waitingForNextValue]);
 
   const handleEquals = useCallback(() => {
-    if (!expression) return;
-    const result = safeEval(expression);
-    const exprStr = expression.replace(/[+\-*/]$/, "");
+    if (display === "Error") {
+      return;
+    }
+
+    if (previousValue === null || !operator || waitingForNextValue) {
+      if (!operator && lastOperator && lastOperand !== null) {
+        const inputValue = parseCalculatorValue(currentValue);
+        if (inputValue === null) return;
+
+        const result = calculate(inputValue, lastOperand, lastOperator);
+        const exprStr = displayExpression(inputValue, lastOperator, formatNumber(lastOperand));
+
+        setHistory((prev) => [...prev, { expression: exprStr, result }]);
+        setDisplay(result);
+        setExpression(result === "Error" ? "" : result);
+        setCurrentValue(result);
+        setPreviousValue(null);
+        setOperator(null);
+        setWaitingForNextValue(true);
+      }
+      return;
+    }
+
+    const inputValue = parseCalculatorValue(currentValue);
+    if (inputValue === null) return;
+
+    const result = calculate(previousValue, inputValue, operator);
+    const exprStr = displayExpression(previousValue, operator, currentValue);
 
     setHistory((prev) => [...prev, { expression: exprStr, result }]);
 
     setDisplay(result);
     setExpression(result === "Error" ? "" : result);
-    setHasOperator(false);
-  }, [expression]);
+    setCurrentValue(result);
+    setLastOperator(operator);
+    setLastOperand(inputValue);
+    setPreviousValue(null);
+    setOperator(null);
+    setWaitingForNextValue(true);
+  }, [currentValue, display, lastOperand, lastOperator, operator, previousValue, waitingForNextValue]);
 
   const handleClear = useCallback(() => {
     setDisplay("0");
     setExpression("");
-    setHasOperator(false);
+    setCurrentValue("0");
+    setPreviousValue(null);
+    setOperator(null);
+    setWaitingForNextValue(false);
+    setLastOperator(null);
+    setLastOperand(null);
   }, []);
 
   const handleBackspace = useCallback(() => {
-    if (display.length <= 1) {
-      setDisplay("0");
-      setExpression((prev) => prev.slice(0, -1));
-    } else {
-      setDisplay((prev) => prev.slice(0, -1));
-      setExpression((prev) => prev.slice(0, -1));
+    if (display === "Error") {
+      handleClear();
+      return;
     }
-  }, [display]);
+
+    if (waitingForNextValue) return;
+
+    const rawNext = currentValue.length <= 1 ? "0" : currentValue.slice(0, -1);
+    const next = normalizeNumericString(rawNext) ?? "0";
+    setCurrentValue(next);
+    setDisplay(next);
+    setExpression(previousValue !== null && operator ? displayExpression(previousValue, operator, next) : next);
+  }, [currentValue, display, handleClear, operator, previousValue, waitingForNextValue]);
 
   const handlePercent = useCallback(() => {
-    try {
-      // A + B% → A + (A * B/100),  A - B% → A - (A * B/100)
-      // A * B% → A * (B/100),      A / B% → A / (B/100)
-      // standalone: X% → X/100
-      const match = expression.match(/^(.+)([+\-*/])(\d*\.?\d+)$/);
-      if (match) {
-        const op = match[2];
-        const pct = parseFloat(match[3]);
-        const result =
-          op === "*" || op === "/"
-            ? pct / 100
-            : parseFloat(safeEval(match[1])) * (pct / 100);
-        setDisplay(String(result));
-        setExpression(match[1] + op + String(result));
-      } else {
-        const result = parseFloat(display) / 100;
-        setDisplay(String(result));
-        setExpression(String(result));
-      }
-    } catch {/* ignore */}
-  }, [display, expression]);
+    if (display === "Error") {
+      handleClear();
+      return;
+    }
+
+    if (previousValue === null || !operator) return;
+
+    const inputValue = parseCalculatorValue(currentValue);
+    if (inputValue === null) return;
+
+    const percentValue =
+      operator === "+" || operator === "-"
+        ? previousValue * (inputValue / 100)
+        : inputValue / 100;
+
+    const next = formatNumber(percentValue);
+    if (next === "Error") return;
+
+    setCurrentValue(next);
+    setDisplay(next);
+    setExpression(displayExpression(previousValue, operator, next));
+    setWaitingForNextValue(false);
+  }, [currentValue, display, handleClear, operator, previousValue]);
+
 
   // ── Copy result ────────────────────────────────────────────────────────
 
@@ -356,6 +506,9 @@ export function CalculatorPanel({
       } else if (e.key === "Enter" || e.key === "=") {
         e.preventDefault();
         handleEquals();
+      } else if (e.key === "%") {
+        e.preventDefault();
+        handlePercent();
       } else if (e.key === "Backspace") {
         e.preventDefault();
         handleBackspace();
@@ -367,7 +520,7 @@ export function CalculatorPanel({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleDigit, handleOperator, handleEquals, handleClear, handleBackspace, onClose]);
+  }, [handleDigit, handleOperator, handleEquals, handlePercent, handleClear, handleBackspace, onClose]);
 
   // ── Resize logic ───────────────────────────────────────────────────────
 

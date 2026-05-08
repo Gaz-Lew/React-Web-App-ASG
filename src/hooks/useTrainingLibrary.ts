@@ -21,6 +21,7 @@ import {
   arrayRemove,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 import { uploadFile, deleteFile } from "../lib/storage";
 import type { TrainingDocument, TrainingVideo, TrainingRecording } from "../types";
 
@@ -29,10 +30,22 @@ import type { TrainingDocument, TrainingVideo, TrainingRecording } from "../type
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useTrainingDocuments() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [documents, setDocuments] = useState<TrainingDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const q = query(collection(db, "trainingDocuments"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
@@ -40,10 +53,13 @@ export function useTrainingDocuments() {
         setDocuments(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TrainingDocument));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useTrainingDocuments] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, []);
+  }, [authLoading, currentUser]);
 
   return { documents, loading };
 }
@@ -115,10 +131,22 @@ export function usePinTrainingDocument() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useTrainingVideos() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [videos, setVideos] = useState<TrainingVideo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const q = query(collection(db, "trainingVideos"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
@@ -126,10 +154,13 @@ export function useTrainingVideos() {
         setVideos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TrainingVideo));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useTrainingVideos] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, []);
+  }, [authLoading, currentUser]);
 
   return { videos, loading };
 }
@@ -198,10 +229,22 @@ export function usePinTrainingVideo() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useTrainingRecordings(repId?: number) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [recordings, setRecordings] = useState<TrainingRecording[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const q = query(collection(db, "trainingRecordings"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
@@ -213,10 +256,13 @@ export function useTrainingRecordings(repId?: number) {
         setRecordings(all);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useTrainingRecordings] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [repId]);
+  }, [authLoading, currentUser, repId]);
 
   return { recordings, loading };
 }

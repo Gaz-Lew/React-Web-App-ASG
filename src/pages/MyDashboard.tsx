@@ -15,6 +15,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import { useAppStore } from "../stores/appStore";
 import { useDashboardLayout } from "../hooks/useDashboard";
 import { useLeads } from "../hooks/useFirebase";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { useToast } from "../context/ToastContext";
 import {
   LayoutDashboard,
@@ -744,22 +745,31 @@ function renderMd(text: string): React.ReactNode {
 }
 
 function NoticeBoardWidget({ userId }: { userId: number }) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [input, setInput] = useState("");
   const [type, setType] = useState<UserNote["type"]>("note");
 
   useEffect(() => {
+    if (authLoading || !currentUser) return;
+
     const q = query(
       collection(db, "userNotes"),
       where("userId", "==", String(userId)),
       orderBy("pinned", "desc"),
       orderBy("createdAt", "desc"),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() } as UserNote)));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() } as UserNote)));
+      },
+      (err) => {
+        console.error("[NoticeBoardWidget] Firestore error:", err);
+      },
+    );
     return unsub;
-  }, [userId]);
+  }, [authLoading, currentUser, userId]);
 
   const add = async () => {
     const trimmed = input.trim();

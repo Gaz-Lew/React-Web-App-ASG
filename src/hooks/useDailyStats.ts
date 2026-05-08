@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { handleError } from "../lib/errorHandler";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 
 // ── DailyStats type (also exported for external consumers) ────────────────────
 
@@ -74,11 +75,23 @@ export function useDailyStats(params?: UseDailyStatsParams): {
   loading: boolean;
   error: string | null;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const constraints: QueryConstraint[] = [];
 
     if (params?.repId !== undefined) {
@@ -124,6 +137,8 @@ export function useDailyStats(params?: UseDailyStatsParams): {
     // Re-subscribe whenever any param changes (stringify for stable dep comparison)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    authLoading,
+    currentUser,
     params?.repId,
     params?.date,
     params?.dateFrom,

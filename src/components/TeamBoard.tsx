@@ -20,6 +20,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 
 interface TeamPost {
   id: string;
@@ -97,22 +98,31 @@ export function TeamBoard({
   teamId: string;
   currentUserName: string;
 }) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [posts, setPosts] = useState<TeamPost[]>([]);
   const [input, setInput] = useState("");
   const [type, setType] = useState<TeamPost["type"]>("note");
 
   useEffect(() => {
+    if (authLoading || !currentUser) return;
+
     const q = query(
       collection(db, "teamPosts"),
       where("teamId", "==", teamId),
       orderBy("pinned", "desc"),
       orderBy("createdAt", "desc"),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as TeamPost)));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as TeamPost)));
+      },
+      (err) => {
+        console.error("[TeamBoard] Firestore error:", err);
+      },
+    );
     return unsub;
-  }, [teamId]);
+  }, [authLoading, currentUser, teamId]);
 
   const add = async () => {
     const trimmed = input.trim();

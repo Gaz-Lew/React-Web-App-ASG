@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot, type Unsubscribe } from "firebase
 import { db } from "../../lib/firebase";
 import { ChevronDown, ChevronRight, FileText, BarChart3, Monitor, Download } from "lucide-react";
 import { ReportView } from "../../pages/ReportView";
+import { useFirebaseAuthUser } from "../../hooks/useFirebaseAuthUser";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -266,12 +267,23 @@ interface FinancialReportsTabProps {
 }
 
 export function FinancialReportsTab({ clientId }: FinancialReportsTabProps) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [smsfReports, setSmsfReports] = useState<SMSFReport[]>([]);
   const [piaReports, setPiaReports] = useState<PIAReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeReport, setActiveReport] = useState<ActiveReport>(null);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribes: Unsubscribe[] = [];
 
     const smsfQ = query(collection(db, "smsfReports"), where("clientId", "==", clientId));
@@ -290,7 +302,7 @@ export function FinancialReportsTab({ clientId }: FinancialReportsTabProps) {
           setLoading(false);
         },
         (err) => {
-          console.warn("[FinancialReportsTab] SMSF snapshot error:", err);
+          console.error("[FinancialReportsTab] SMSF snapshot error:", err);
           setLoading(false);
         },
       ),
@@ -307,7 +319,7 @@ export function FinancialReportsTab({ clientId }: FinancialReportsTabProps) {
           setLoading(false);
         },
         (err) => {
-          console.warn("[FinancialReportsTab] PIA snapshot error:", err);
+          console.error("[FinancialReportsTab] PIA snapshot error:", err);
           setLoading(false);
         },
       ),
@@ -316,7 +328,7 @@ export function FinancialReportsTab({ clientId }: FinancialReportsTabProps) {
     return () => {
       unsubscribes.forEach((fn) => fn());
     };
-  }, [clientId]);
+  }, [authLoading, currentUser, clientId]);
 
   const handlePresent = (report: ActiveReport) => {
     setActiveReport(report);

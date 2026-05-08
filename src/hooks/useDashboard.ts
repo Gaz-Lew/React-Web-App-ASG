@@ -18,6 +18,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 import type {
   DashboardLayout,
   DashboardWidgetConfig,
@@ -91,6 +92,7 @@ function applyDailyReset(layout: DashboardLayout): { layout: DashboardLayout; di
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useDashboardLayout(userId: number | undefined) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
   const [loading, setLoading] = useState(true);
 
@@ -98,8 +100,17 @@ export function useDashboardLayout(userId: number | undefined) {
 
   // Load + subscribe
   useEffect(() => {
-    if (!docRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
 
+    if (!currentUser || !docRef) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const unsub = onSnapshot(
       docRef,
       (snap) => {
@@ -126,12 +137,15 @@ export function useDashboardLayout(userId: number | undefined) {
         }
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDashboardLayout] Firestore error:", err);
+        setLoading(false);
+      },
     );
 
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [authLoading, currentUser, userId]);
 
   // Save entire layout
   const saveLayout = useCallback(
@@ -256,14 +270,24 @@ const DEFAULT_REP_SETTINGS: RepSettings = {
 };
 
 export function useRepSettings(userId: number | undefined) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [settings, setSettings] = useState<RepSettings>(DEFAULT_REP_SETTINGS);
   const [loading, setLoading] = useState(true);
 
   const docRef = userId !== undefined ? doc(db, "users", String(userId), "repSettings", "main") : null;
 
   useEffect(() => {
-    if (!docRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
 
+    if (!currentUser || !docRef) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const unsub = onSnapshot(
       docRef,
       (snap) => {
@@ -272,12 +296,15 @@ export function useRepSettings(userId: number | undefined) {
         }
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useRepSettings] Firestore error:", err);
+        setLoading(false);
+      },
     );
 
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [authLoading, currentUser, userId]);
 
   const save = useCallback(
     async (patch: Partial<RepSettings>) => {

@@ -44,6 +44,7 @@ import {
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 import { DEFAULT_STATUS_COLORS } from "../types";
 import {
   Lead,
@@ -94,7 +95,8 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
 const PAGE_SIZE = 100;
 
 export function useLeads() {
-  const { setLeads: setStoreLeads, currentUser, activeRegion } = useAppStore();
+  const { setLeads: setStoreLeads, activeRegion } = useAppStore();
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,12 +114,21 @@ export function useLeads() {
     ),
     [activeRegion],
   );
-  const isReady = !!currentUser;
+  const isReady = !authLoading && !!currentUser;
 
   useEffect(() => {
-    if (!isReady || !queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!isReady || !queryRef) {
+      setLoading(false);
+      return;
+    }
 
     // Reset cursor and hasMore when region changes so loadMore doesn't straddle regions
+    setLoading(true);
     setLastDoc(null);
     setHasMore(true);
 
@@ -148,7 +159,7 @@ export function useLeads() {
     );
 
     return () => unsub();
-  }, [isReady, queryRef, setStoreLeads, activeRegion]);
+  }, [authLoading, isReady, queryRef, setStoreLeads, activeRegion]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || !lastDoc) return;
@@ -308,10 +319,11 @@ export function useCreateDeal() {
  * any device are immediately available on all other devices.
  */
 export function useReps() {
-  const { setReps, currentUser } = useAppStore();
+  const { setReps } = useAppStore();
+  const { currentUser, authLoading } = useFirebaseAuthUser();
 
   const queryRef = useMemo(() => collection(db, "reps"), []);
-  const isReady = !!currentUser;
+  const isReady = !authLoading && !!currentUser;
 
   useEffect(() => {
     if (!isReady || !queryRef) return;
@@ -324,7 +336,7 @@ export function useReps() {
         setReps(data);
       },
       (err) => {
-        console.warn("[useReps] Firestore error:", err.message);
+        console.error("[useReps] Firestore error:", err);
       },
     );
 
@@ -363,6 +375,7 @@ export function useDeleteRep() {
 // ── DRAPS ─────────────────────────────────────────────────────────────────────
 
 export function useDraps() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [entries, setEntries] = useState<DrapsEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -370,7 +383,16 @@ export function useDraps() {
   const queryRef = useMemo(() => query(collection(db, "draps"), orderBy("date", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsubscribe = onSnapshot(
       queryRef,
       (snapshot) => {
@@ -379,12 +401,13 @@ export function useDraps() {
         setLoading(false);
       },
       (err) => {
+        console.error("[useDraps] Firestore error:", err);
         setError(err.message);
         setLoading(false);
       },
     );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { entries, loading, error };
 }
@@ -418,6 +441,7 @@ export function useDeleteDraps() {
 // ── Commissions ───────────────────────────────────────────────────────────────
 
 export function useCommissions() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [entries, setEntries] = useState<CommissionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -425,7 +449,16 @@ export function useCommissions() {
   const queryRef = useMemo(() => query(collection(db, "commissions"), orderBy("createdAt", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsubscribe = onSnapshot(
       queryRef,
       (snapshot) => {
@@ -434,12 +467,13 @@ export function useCommissions() {
         setLoading(false);
       },
       (err) => {
+        console.error("[useCommissions] Firestore error:", err);
         setError(err.message);
         setLoading(false);
       },
     );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { entries, loading, error };
 }
@@ -474,19 +508,36 @@ export function useDeleteCommission() {
 // ── Invoice Drafts ────────────────────────────────────────────────────────────
 
 export function useInvoiceDrafts() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [drafts, setDrafts] = useState<InvoiceDraft[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "invoiceDrafts"), orderBy("createdAt", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
-    const unsub = onSnapshot(queryRef, (snap) => {
-      setDrafts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as InvoiceDraft[]);
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
-    });
+      return;
+    }
+    setLoading(true);
+    const unsub = onSnapshot(
+      queryRef,
+      (snap) => {
+        setDrafts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as InvoiceDraft[]);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useInvoiceDrafts] Firestore error:", err);
+        setLoading(false);
+      },
+    );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { drafts, loading };
 }
@@ -520,6 +571,7 @@ export function useDeleteInvoiceDraft() {
 // ── Audit Log ─────────────────────────────────────────────────────────────────
 
 export function useAuditLog(limitCount = 200) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -529,14 +581,30 @@ export function useAuditLog(limitCount = 200) {
   );
 
   useEffect(() => {
-    if (!queryRef) return;
-    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as AuditEntry[];
-      setEntries(data);
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
-    });
+      return;
+    }
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as AuditEntry[];
+        setEntries(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useAuditLog] Firestore error:", err);
+        setLoading(false);
+      },
+    );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { entries, loading };
 }
@@ -556,20 +624,37 @@ export function useAddAuditEntry() {
 // ── Knock Zones ───────────────────────────────────────────────────────────────
 
 export function useKnockZones() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [zones, setZones] = useState<KnockZone[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "knockZones"), orderBy("date", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
-    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ ...d.data() })) as KnockZone[];
-      setZones(data);
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
-    });
+      return;
+    }
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({ ...d.data() })) as KnockZone[];
+        setZones(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useKnockZones] Firestore error:", err);
+        setLoading(false);
+      },
+    );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { zones, loading };
 }
@@ -604,17 +689,26 @@ export function useDeleteKnockZone() {
 
 /** Real-time listener for the single `settings/main` doc */
 export function useAppSettings(): { settings: AppSettings | null; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const setStatusColors = useAppStore((s) => s.setStatusColors);
-  const currentUser = useAppStore((s) => s.currentUser);
 
   const queryRef = useMemo(() => doc(db, "settings", "main"), []);
-  const isReady = !!currentUser;
+  const isReady = !authLoading && !!currentUser;
 
   useEffect(() => {
-    if (!isReady || !queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
 
+    if (!isReady || !queryRef) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snapshot) => {
@@ -630,13 +724,14 @@ export function useAppSettings(): { settings: AppSettings | null; loading: boole
         setLoading(false);
       },
       (err) => {
-        console.error("[useAppSettings] Firestore error:", err);
+        console.error("[useAppSettings] Firestore error on settings/main:", err);
+        setSettings(null);
         setLoading(false);
       },
     );
 
     return () => unsub();
-  }, [isReady, queryRef, setStatusColors]);
+  }, [authLoading, isReady, queryRef, setStatusColors]);
 
   return { settings, loading };
 }
@@ -658,20 +753,37 @@ export function useSaveSettings(): { save: (s: Partial<AppSettings>) => Promise<
 // ── Custom Pin Types ──────────────────────────────────────────────────────────
 
 export function useCustomPinTypes() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [customPinTypes, setCustomPinTypes] = useState<CustomPinType[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "customPinTypes"), orderBy("createdAt", "asc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
-    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ ...d.data() })) as CustomPinType[];
-      setCustomPinTypes(data);
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
-    });
+      return;
+    }
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({ ...d.data() })) as CustomPinType[];
+        setCustomPinTypes(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[useCustomPinTypes] Firestore error:", err);
+        setLoading(false);
+      },
+    );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { customPinTypes, loading };
 }
@@ -706,6 +818,7 @@ export function useDeleteCustomPinType() {
 
 /** Real-time listener for the group chat channel (latest 150 messages, oldest first) */
 export function useTeamChat(): { messages: ChatMessage[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -715,7 +828,16 @@ export function useTeamChat(): { messages: ChatMessage[]; loading: boolean } {
   );
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsubscribe = onSnapshot(
       queryRef,
       (snapshot) => {
@@ -729,7 +851,7 @@ export function useTeamChat(): { messages: ChatMessage[]; loading: boolean } {
       },
     );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { messages, loading };
 }
@@ -748,6 +870,7 @@ export function useSendChatMessage(): { send: (msg: Omit<ChatMessage, "id">) => 
 
 /** Real-time listener for a DM channel sub-collection (latest 150 messages, oldest first) */
 export function useDirectMessages(channelId: string): { messages: ChatMessage[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -757,7 +880,16 @@ export function useDirectMessages(channelId: string): { messages: ChatMessage[];
   }, [channelId]);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsubscribe = onSnapshot(
       queryRef,
       (snapshot) => {
@@ -771,7 +903,7 @@ export function useDirectMessages(channelId: string): { messages: ChatMessage[];
       },
     );
     return () => unsubscribe();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { messages, loading };
 }
@@ -819,6 +951,7 @@ export function useToggleReaction() {
 // ── Knowledge Base hooks ────────────────────────────────────────────────────
 
 export function useKBArticles(): { articles: KBArticle[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [articles, setArticles] = useState<KBArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -827,7 +960,16 @@ export function useKBArticles(): { articles: KBArticle[]; loading: boolean } {
   const queryRef = useMemo(() => query(collection(db, "knowledgeBase"), orderBy("createdAt", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -842,12 +984,13 @@ export function useKBArticles(): { articles: KBArticle[]; loading: boolean } {
         setLoading(false);
       },
       (err) => {
-        console.error("useKBArticles error:", err);
+        console.error("[useKBArticles] Firestore error on knowledgeBase:", err);
+        setArticles([]);
         setLoading(false);
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { articles, loading };
 }
@@ -890,13 +1033,23 @@ export function useIncrementKBViews(): { increment: (id: string) => Promise<void
 // ── Document Library hooks ──────────────────────────────────────────────────
 
 export function useDocumentLibrary(): { documents: LibraryDocument[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "documentLibrary"), orderBy("uploadedAt", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -913,10 +1066,13 @@ export function useDocumentLibrary(): { documents: LibraryDocument[]; loading: b
         setDocuments(raw);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDocumentLibrary] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { documents, loading };
 }
@@ -949,6 +1105,7 @@ export function useDeleteLibraryDocument(): { remove: (doc_: LibraryDocument) =>
 // ── Lead File hooks ─────────────────────────────────────────────────────────
 
 export function useLeadFiles(leadId: string): { files: LeadFile[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [files, setFiles] = useState<LeadFile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -958,20 +1115,29 @@ export function useLeadFiles(leadId: string): { files: LeadFile[]; loading: bool
   }, [leadId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
         setFiles(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as LeadFile));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useLeadFiles] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { files, loading };
 }
@@ -992,13 +1158,23 @@ export function useDeleteLeadFile(): { remove: (leadId: string, file: LeadFile) 
 // ── Form Template hooks ──────────────────────────────────────────────────────
 
 export function useFormTemplates(): { templates: FormTemplate[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "formTemplates"), orderBy("createdAt", "desc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1015,10 +1191,13 @@ export function useFormTemplates(): { templates: FormTemplate[]; loading: boolea
         setTemplates(raw);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useFormTemplates] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { templates, loading };
 }
@@ -1050,6 +1229,7 @@ export function useDeleteFormTemplate(): { remove: (id: string) => Promise<boole
 // ── Deal Update hooks (per-lead message board) ────────────────────────────────
 
 export function useDealUpdates(leadId: number | null): { updates: DealUpdate[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [updates, setUpdates] = useState<DealUpdate[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1059,20 +1239,29 @@ export function useDealUpdates(leadId: number | null): { updates: DealUpdate[]; 
   }, [leadId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
         setUpdates(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as DealUpdate));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDealUpdates] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { updates, loading };
 }
@@ -1093,13 +1282,23 @@ export function useAddDealUpdate(): { add: (leadId: number, update: Omit<DealUpd
 // ── Calendar: Service Types ─────────────────────────────────────────────────
 
 export function useServiceTypes(): { serviceTypes: ServiceType[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryRef = useMemo(() => query(collection(db, "calendarServiceTypes"), orderBy("sortOrder", "asc")), []);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1110,12 +1309,13 @@ export function useServiceTypes(): { serviceTypes: ServiceType[]; loading: boole
         setLoading(false);
       },
       (err) => {
-        console.error("useServiceTypes error:", err);
+        console.error("[useServiceTypes] Firestore error on calendarServiceTypes:", err);
+        setServiceTypes([]);
         setLoading(false);
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { serviceTypes, loading };
 }
@@ -1152,6 +1352,7 @@ export function useAppointments(dateRange?: { from: string; to: string }): {
   appointments: Appointment[];
   loading: boolean;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1174,7 +1375,16 @@ export function useAppointments(dateRange?: { from: string; to: string }): {
   );
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1183,13 +1393,14 @@ export function useAppointments(dateRange?: { from: string; to: string }): {
         setLoading(false);
       },
       (err) => {
-        console.error("useAppointments error:", err);
+        console.error("[useAppointments] Firestore error on appointments:", err);
+        setAppointments([]);
         setLoading(false);
       },
     );
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryRef, from, to]);
+  }, [authLoading, currentUser, queryRef, from, to]);
 
   return { appointments, loading };
 }
@@ -1227,6 +1438,7 @@ export function useDeleteAppointment(): { remove: (id: string) => Promise<boolea
  * Returns notes sorted newest-first (orderBy createdAt desc).
  */
 export function useLeadNotes(leadId: string): { notes: LeadNote[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1236,10 +1448,16 @@ export function useLeadNotes(leadId: string): { notes: LeadNote[]; loading: bool
   }, [leadId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1252,7 +1470,7 @@ export function useLeadNotes(leadId: string): { notes: LeadNote[]; loading: bool
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { notes, loading };
 }
@@ -1293,6 +1511,7 @@ export function useDeleteLeadNote(): { remove: (leadId: string, noteId: string) 
  * Results are sorted client-side by date → startTime (ascending).
  */
 export function useLeadAppointments(leadId: number | null): { appointments: Appointment[]; loading: boolean } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1302,10 +1521,16 @@ export function useLeadAppointments(leadId: number | null): { appointments: Appo
   }, [leadId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1321,7 +1546,7 @@ export function useLeadAppointments(leadId: number | null): { appointments: Appo
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { appointments, loading };
 }
@@ -1339,6 +1564,7 @@ export function useTrainingSessions(repId: number | null): {
   sessions: RoleplaySession[];
   loading: boolean;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [sessions, setSessions] = useState<RoleplaySession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1357,7 +1583,16 @@ export function useTrainingSessions(repId: number | null): {
   }, [repId]);
 
   useEffect(() => {
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1371,7 +1606,7 @@ export function useTrainingSessions(repId: number | null): {
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { sessions, loading };
 }
@@ -1380,16 +1615,28 @@ export function useTrainingSessions(repId: number | null): {
 
 export interface Deal {
   id: string;
+  leadId?: string;
   clientName: string;
   status: "lead" | "conditional" | "unconditional" | "settled" | "lost";
   dealValue: number;
   commissionTotal: number;
   commissionPaid: number;
   expectedSettlementDate: string;
+  contractSignedDate?: string;
+  financeApprovedDate?: string;
   assignedTo: number; // rep id
   lastUpdate: number;
   createdAt: number;
-  notes?: string[];
+  createdBy: string;
+  notes: DealNote[];
+}
+
+export interface DealNote {
+  id: string;
+  text: string;
+  createdAt: number;
+  createdBy: string;
+  createdById: number;
 }
 
 /**
@@ -1408,6 +1655,7 @@ export function useDeals(repId: number | null = null): {
   loading: boolean;
   error: string | null;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1432,8 +1680,17 @@ export function useDeals(repId: number | null = null): {
       return;
     }
 
-    if (!queryRef) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
 
+    if (!currentUser || !queryRef) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     console.log("[useDeals] Attaching onSnapshot listener");
 
     const handleSnapshot = (snap: import("firebase/firestore").QuerySnapshot) => {
@@ -1483,7 +1740,7 @@ export function useDeals(repId: number | null = null): {
       unsub();
       console.log("[useDeals] onSnapshot listener cleaned up");
     };
-  }, [queryRef, repId, useFallback]);
+  }, [authLoading, currentUser, queryRef, repId, useFallback]);
 
   return { deals, loading, error };
 }
@@ -1498,6 +1755,7 @@ export function useUserDevices(userId: number | null): {
   devices: UserDevice[];
   loading: boolean;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [devices, setDevices] = useState<UserDevice[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1507,21 +1765,30 @@ export function useUserDevices(userId: number | null): {
   }, [userId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setDevices([]);
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
         setDevices(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserDevice));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useUserDevices] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { devices, loading };
 }
@@ -1537,6 +1804,7 @@ export function useDailyStatsFirebase(date: string): {
   stats: DailyStats[];
   loading: boolean;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1546,21 +1814,30 @@ export function useDailyStatsFirebase(date: string): {
   }, [date]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setStats([]);
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
         setStats(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DailyStats));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDailyStatsFirebase] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { stats, loading };
 }
@@ -1600,6 +1877,7 @@ export type DealDocumentUploadResult = { success: true } | { success: false; err
  * files in Firebase Storage at `/deals/{dealId}/{fileName}`.
  */
 export function useDealDocuments(dealId: string) {
+  const { currentUser: firebaseUser, authLoading } = useFirebaseAuthUser();
   const [documents, setDocuments] = useState<DealDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -1613,7 +1891,12 @@ export function useDealDocuments(dealId: string) {
 
   // Real-time listener
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!firebaseUser || !queryRef) {
       setDocuments([]);
       setLoading(false);
       return;
@@ -1633,10 +1916,13 @@ export function useDealDocuments(dealId: string) {
         setDocuments(loaded);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDealDocuments] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, firebaseUser, queryRef]);
 
   const uploadDocument = useCallback(
     async (file: File, docType: DealDocumentType, clientId?: string): Promise<DealDocumentUploadResult> => {
@@ -1740,6 +2026,7 @@ export function useClientDealDocuments(clientId: string | number | null): {
   documents: LinkedDocument[];
   loading: boolean;
 } {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [documents, setDocuments] = useState<LinkedDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1749,11 +2036,17 @@ export function useClientDealDocuments(clientId: string | number | null): {
   }, [clientId]);
 
   useEffect(() => {
-    if (!queryRef) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !queryRef) {
       setDocuments([]);
       setLoading(false);
       return;
     }
+    setLoading(true);
     const unsub = onSnapshot(
       queryRef,
       (snap) => {
@@ -1766,7 +2059,9 @@ export function useClientDealDocuments(clientId: string | number | null): {
       },
     );
     return () => unsub();
-  }, [queryRef]);
+  }, [authLoading, currentUser, queryRef]);
 
   return { documents, loading };
 }
+
+

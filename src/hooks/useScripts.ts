@@ -16,6 +16,7 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 import type { ScenarioType } from "../components/AIRoleplay";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,10 +317,22 @@ export interface UseScriptsReturn {
 }
 
 export function useScripts(): UseScriptsReturn {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [firestoreScripts, setFirestoreScripts] = useState<TrainingScript[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     // Load custom scripts from Firestore — builtins are always available regardless
     const q = query(collection(db, "scripts"), where("active", "==", true));
     const unsub = onSnapshot(
@@ -329,13 +342,14 @@ export function useScripts(): UseScriptsReturn {
         setFirestoreScripts(custom);
         setLoading(false);
       },
-      () => {
+      (err) => {
+        console.error("[useScripts] Firestore error:", err);
         // Silently ignore Firestore errors — builtins always work
         setLoading(false);
       },
     );
     return () => unsub();
-  }, []);
+  }, [authLoading, currentUser]);
 
   const scripts = [...BUILTIN_SCRIPTS, ...firestoreScripts];
 

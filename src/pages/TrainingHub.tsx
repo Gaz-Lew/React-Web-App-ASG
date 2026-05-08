@@ -18,6 +18,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { collection, onSnapshot, query, orderBy, doc, setDoc, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { AIRoleplayPage } from "../components/AIRoleplay";
 import { RoleplayDashboard } from "../components/RoleplayDashboard";
 import { ScenarioSelector } from "../components/AICoachingPanel";
@@ -130,9 +131,20 @@ interface UserProgress {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function useTrainingCourses() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [courses, setCourses] = useState<TrainingCourse[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     const q = query(collection(db, "trainingCourses"), orderBy("order", "asc"));
     const unsub = onSnapshot(
       q,
@@ -140,18 +152,27 @@ function useTrainingCourses() {
         setCourses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TrainingCourse));
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useTrainingCourses] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, []);
+  }, [authLoading, currentUser]);
   return { courses, loading };
 }
 
 function useTrainingModules(courseId: string | null) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [modules, setModules] = useState<TrainingModule[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!courseId) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !courseId) {
       setModules([]);
       setLoading(false);
       return;
@@ -165,23 +186,34 @@ function useTrainingModules(courseId: string | null) {
         );
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useTrainingModules] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [courseId]);
+  }, [authLoading, currentUser, courseId]);
   return { modules, loading };
 }
 
 function useUserProgress(userId: string) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [progress, setProgress] = useState<UserProgress[]>([]);
   useEffect(() => {
-    if (!userId) return;
+    if (authLoading || !currentUser || !userId) return;
+
     const q = query(collection(db, "userProgress"));
-    const unsub = onSnapshot(q, (snap) => {
-      setProgress(snap.docs.map((d) => ({ ...d.data() }) as UserProgress).filter((p) => p.userId === userId));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setProgress(snap.docs.map((d) => ({ ...d.data() }) as UserProgress).filter((p) => p.userId === userId));
+      },
+      (err) => {
+        console.error("[useUserProgress] Firestore error:", err);
+      },
+    );
     return () => unsub();
-  }, [userId]);
+  }, [authLoading, currentUser, userId]);
   return { progress };
 }
 
@@ -1058,6 +1090,7 @@ function SimulationHomeView({
   onGoCourses: () => void;
   onGoHistory: () => void;
 }) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [lastSession, setLastSession] = useState<{
     id: string;
     scenarioType: string;
@@ -1068,6 +1101,16 @@ function SimulationHomeView({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     const q = query(collection(db, "trainingSessions"), orderBy("completedAt", "desc"), limit(1));
     const unsub = onSnapshot(
       q,
@@ -1086,10 +1129,13 @@ function SimulationHomeView({
         }
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[SimulationHomeView] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, [repId]);
+  }, [authLoading, currentUser, repId]);
 
   const SCENARIO_LABELS: Record<string, string> = {
     booking_call: "Booking Call",

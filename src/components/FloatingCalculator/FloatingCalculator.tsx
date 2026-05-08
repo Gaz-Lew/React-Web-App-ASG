@@ -126,7 +126,6 @@ const BTN_SIZE = 48;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function FloatingCalculator() {
-  console.log("test");
   const [isOpen, setIsOpen] = useState(false);
 
   // Position (distance from right and bottom edges)
@@ -213,7 +212,11 @@ export function FloatingCalculator() {
         right: offset.right,
         bottom: offset.bottom,
       };
-      btnRef.current?.setPointerCapture(e.pointerId);
+      try {
+        btnRef.current?.setPointerCapture(e.pointerId);
+      } catch (err) {
+        console.warn("[FloatingCalculator] setPointerCapture failed", err);
+      }
     },
     [offset],
   );
@@ -253,7 +256,11 @@ export function FloatingCalculator() {
       } else {
         setIsOpen((prev) => !prev);
       }
-      btnRef.current?.releasePointerCapture(e.pointerId);
+      try {
+        btnRef.current?.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        console.warn("[FloatingCalculator] releasePointerCapture failed", err);
+      }
     };
 
     window.addEventListener("pointermove", handleMove);
@@ -351,7 +358,11 @@ export function FloatingCalculator() {
             onPointerDown={(e) => {
               e.stopPropagation();
               const handle = e.currentTarget as HTMLElement;
-              handle.setPointerCapture(e.pointerId);
+              try {
+                handle.setPointerCapture(e.pointerId);
+              } catch (err) {
+                console.warn("[FloatingCalculator] panel handle setPointerCapture failed", err);
+              }
               const startX = e.clientX;
               const startY = e.clientY;
               const startPos = { x: position.x, y: position.y };
@@ -368,7 +379,11 @@ export function FloatingCalculator() {
                 if (!handle.hasPointerCapture(ev.pointerId)) return;
                 window.removeEventListener("pointermove", move);
                 window.removeEventListener("pointerup", up);
-                handle.releasePointerCapture(ev.pointerId);
+                try {
+                  handle.releasePointerCapture(ev.pointerId);
+                } catch (err) {
+                  console.warn("[FloatingCalculator] panel handle releasePointerCapture failed", err);
+                }
               };
 
               window.addEventListener("pointermove", move);

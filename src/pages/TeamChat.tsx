@@ -16,6 +16,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { MessageCircle, MapPin, Send, ArrowLeft, ChevronDown, ChevronUp, Paperclip, Download } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import {
   useTeamChat,
   useSendChatMessage,
@@ -144,19 +145,28 @@ function useOwnPresence(repId: number | undefined, repName: string | undefined) 
 
 /** Read all other reps' presence in real-time. */
 function useAllPresence(): Map<number, PresenceData> {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [presenceMap, setPresenceMap] = useState<Map<number, PresenceData>>(new Map());
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "presence"), (snap) => {
-      const map = new Map<number, PresenceData>();
-      snap.docs.forEach((d) => {
-        const data = d.data() as PresenceData;
-        if (data.repId) map.set(data.repId, data);
-      });
-      setPresenceMap(map);
-    });
+    if (authLoading || !currentUser) return;
+
+    const unsub = onSnapshot(
+      collection(db, "presence"),
+      (snap) => {
+        const map = new Map<number, PresenceData>();
+        snap.docs.forEach((d) => {
+          const data = d.data() as PresenceData;
+          if (data.repId) map.set(data.repId, data);
+        });
+        setPresenceMap(map);
+      },
+      (err) => {
+        console.error("[useAllPresence] Firestore error:", err);
+      },
+    );
     return unsub;
-  }, []);
+  }, [authLoading, currentUser]);
 
   return presenceMap;
 }

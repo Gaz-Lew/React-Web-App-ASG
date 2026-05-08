@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { rollbackSettings } from "../lib/settingsService";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { useAppStore } from "../stores/appStore";
 import { handleError } from "../lib/errorHandler";
 import { DataStateWrapper, LoadingSkeleton } from "./StateViews";
@@ -237,6 +238,7 @@ function HistoryEntryRow({
 export function SettingsHistoryPanel() {
   const { config }      = useAppSettings();
   const { currentUser } = useAppStore();
+  const { currentUser: firebaseUser, authLoading } = useFirebaseAuthUser();
 
   const [entries, setEntries]       = useState<SettingsVersionEntry[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -247,6 +249,16 @@ export function SettingsHistoryPanel() {
 
   // Live listener on settingsHistory, newest first, cap at 50 entries
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!firebaseUser) {
+      setLoading(false);
+      return;
+    }
+
     const q = query(
       collection(db, "settingsHistory"),
       orderBy("timestamp", "desc"),
@@ -274,6 +286,7 @@ export function SettingsHistoryPanel() {
         setError(null);
       },
       (err) => {
+        console.error("[SettingsHistoryPanel] Firestore error:", err);
         const appError = handleError(err, "SettingsHistoryPanel");
         setError(appError.message);
         setLoading(false);
@@ -281,7 +294,7 @@ export function SettingsHistoryPanel() {
     );
 
     return () => unsub();
-  }, []);
+  }, [authLoading, firebaseUser]);
 
   const handleRollback = async (entry: SettingsVersionEntry) => {
     if (!currentUser?.id) return;

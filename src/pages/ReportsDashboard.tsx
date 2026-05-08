@@ -20,6 +20,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { onSnapshot, doc } from "firebase/firestore";
 import { useDeals } from "../hooks/useFirebase";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { Rep, Lead, DealStatus, AppSettings } from "../types";
@@ -142,19 +143,33 @@ interface RiskDeal {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function useAppSettings() {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     const unsub = onSnapshot(
       doc(db, "settings", "main"),
       (snap) => {
         setSettings(snap.exists() ? (snap.data() as AppSettings) : null);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[ReportsDashboard.useAppSettings] Firestore error:", err);
+        setLoading(false);
+      },
     );
     return () => unsub();
-  }, []);
+  }, [authLoading, currentUser]);
   return { settings, loading };
 }
 

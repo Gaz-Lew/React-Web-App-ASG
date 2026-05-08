@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { handleError } from "../lib/errorHandler";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -109,11 +110,23 @@ export interface UseAppSettingsReturn {
 }
 
 export function useAppSettings(): UseAppSettingsReturn {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const unsubscribe = onSnapshot(
       CONFIG_DOC,
       (snap) => {
@@ -135,6 +148,7 @@ export function useAppSettings(): UseAppSettingsReturn {
         setError(null);
       },
       (err) => {
+        console.error("[useAppSettings] Firestore error:", err);
         const appError = handleError(err, "useAppSettings");
         setError(appError.message);
         setLoading(false);
@@ -143,7 +157,7 @@ export function useAppSettings(): UseAppSettingsReturn {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [authLoading, currentUser]);
 
   return { config, loading, error };
 }

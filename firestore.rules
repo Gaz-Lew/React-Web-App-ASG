@@ -104,7 +104,23 @@ service cloud.firestore {
       }
     }
 
+    match /settings/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /settingsHistory/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /calendarServiceTypes/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /appointments/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /knowledgeBase/{docId} {
       allow read, write: if isAuthenticated();
     }
 

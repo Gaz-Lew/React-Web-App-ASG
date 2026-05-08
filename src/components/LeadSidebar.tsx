@@ -189,14 +189,30 @@ export function LeadSidebar({
   useEffect(() => {
     if (!currentUser) return;
     const presenceRef = doc(db, "leads", String(lead.id), "presence", String(currentUser.id));
-    setDoc(presenceRef, { name: currentUser.name, ts: Date.now() });
-    const unsub = onSnapshot(collection(db, "leads", String(lead.id), "presence"), (snap) => {
-      const others = snap.docs.filter((d) => d.id !== String(currentUser.id)).map((d) => d.data().name as string);
-      setOtherViewers(others);
+    void setDoc(presenceRef, { name: currentUser.name, ts: Date.now() }).catch((err) => {
+      console.error("[LeadSidebar] Presence setDoc error:", err);
     });
+    const unsub = onSnapshot(
+      collection(db, "leads", String(lead.id), "presence"),
+      (snap) => {
+        try {
+          const others = snap.docs
+            .filter((d) => d.id !== String(currentUser.id))
+            .map((d) => d.data().name as string);
+          setOtherViewers(others);
+        } catch (err) {
+          console.error("[LeadSidebar] Presence snapshot parse error:", err);
+        }
+      },
+      (err) => {
+        console.error("[LeadSidebar] Presence snapshot error:", err);
+      },
+    );
     return () => {
       unsub();
-      deleteDoc(presenceRef);
+      void deleteDoc(presenceRef).catch((err) => {
+        console.error("[LeadSidebar] Presence cleanup deleteDoc error:", err);
+      });
     };
   }, [lead.id, currentUser]);
 
@@ -380,25 +396,30 @@ export function LeadSidebar({
     isUsingAIScriptRef.current = false;
     const noteContent = noteText.trim();
     setAddingNote(true);
-    await addLeadNote(String(lead.id), {
-      text: noteContent,
-      createdAt: Date.now(),
-      createdBy: currentUser.name,
-      createdById: currentUser.id,
-    });
-    void addDoc(collection(db, "auditLogs"), {
-      type: "note_create",
-      entityId: lead.id,
-      previousValue: "",
-      newValue: noteContent.slice(0, 200),
-      userId: String(currentUser.id),
-      timestamp: Date.now(),
-      source: usedAIScript ? "ai" : "manual",
-      ...(usedAIScript && guidance?.action ? { contextAction: guidance.action } : {}),
-    }).catch((err) => console.warn("[audit]", err));
-    setNoteText("");
-    setAddingNote(false);
-    noteInputRef.current?.focus();
+    try {
+      await addLeadNote(String(lead.id), {
+        text: noteContent,
+        createdAt: Date.now(),
+        createdBy: currentUser.name,
+        createdById: currentUser.id,
+      });
+      void addDoc(collection(db, "auditLogs"), {
+        type: "note_create",
+        entityId: lead.id,
+        previousValue: "",
+        newValue: noteContent.slice(0, 200),
+        userId: String(currentUser.id),
+        timestamp: Date.now(),
+        source: usedAIScript ? "ai" : "manual",
+        ...(usedAIScript && guidance?.action ? { contextAction: guidance.action } : {}),
+      }).catch((err) => console.warn("[audit]", err));
+      setNoteText("");
+      noteInputRef.current?.focus();
+    } catch (err) {
+      console.error("[LeadSidebar] Add note failed:", err);
+    } finally {
+      setAddingNote(false);
+    }
   };
 
   const activeReps = reps.filter((r) => r.active !== false);

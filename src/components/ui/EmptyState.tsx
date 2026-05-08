@@ -6,10 +6,12 @@
 import React from "react";
 import { Inbox, FileText, BarChart3, AlertCircle } from "lucide-react";
 
+type EmptyStateIconKey = "inbox" | "document" | "chart" | "alert";
+
 interface EmptyStateProps {
   title: string;
   description?: string;
-  icon?: "inbox" | "document" | "chart" | "alert" | React.ReactNode;
+  icon?: EmptyStateIconKey | React.ReactNode;
   action?: {
     label: string;
     onClick: () => void;
@@ -18,14 +20,15 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ title, description, icon = "inbox", action, className = "" }: EmptyStateProps) {
-  const iconMap = {
+  const iconMap: Record<EmptyStateIconKey, React.ReactNode> = {
     inbox: <Inbox size={32} className="text-gray-300 dark:text-gray-600" />,
     document: <FileText size={32} className="text-gray-300 dark:text-gray-600" />,
     chart: <BarChart3 size={32} className="text-gray-300 dark:text-gray-600" />,
     alert: <AlertCircle size={32} className="text-gray-300 dark:text-gray-600" />,
   };
 
-  const renderedIcon = typeof icon === "string" ? iconMap[icon] : icon;
+  const isIconKey = (value: string): value is EmptyStateIconKey => value in iconMap;
+  const renderedIcon = typeof icon === "string" && isIconKey(icon) ? iconMap[icon] : icon;
 
   return (
     <div

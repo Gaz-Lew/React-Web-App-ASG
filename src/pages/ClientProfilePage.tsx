@@ -33,6 +33,7 @@ import { useToast } from "../context/ToastContext";
 import { useClientNotes } from "../hooks/useClientNotes";
 import { useLeadAppointments, useClientDealDocuments } from "../hooks/useFirebase";
 import { useRepSettings } from "../hooks/useDashboard";
+import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { useAIGuidance } from "../hooks/useAIGuidance";
 import { AIGuidanceCard } from "../components/AIGuidanceCard";
 import { generateClientBrief, enhanceNoteContent, type ClientBrief } from "../lib/aiInsights";
@@ -435,6 +436,7 @@ export interface ClientProfilePageProps {
 
 export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfilePageProps) {
   const { currentUser, leads, reps } = useAppStore();
+  const { currentUser: firebaseUser, authLoading } = useFirebaseAuthUser();
   const { showToast } = useToast();
   const { settings: repSettings } = useRepSettings(currentUser?.id);
   const [activeTab, setActiveTab] = useState<ClientTab>("overview");
@@ -537,7 +539,9 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
 
   // ── PIA reports for this client (filtered by clientId or clientGroupId) ──
   useEffect(() => {
+    if (authLoading) return;
     if (!client) return;
+    if (!firebaseUser) return;
 
     const queries = [];
 
@@ -558,18 +562,24 @@ export function ClientProfilePage({ clientId, onClose, onNavigate }: ClientProfi
     }
 
     const unsubscribers = queries.map((q) =>
-      onSnapshot(q, (snap) => {
-        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setPiaDocs((prev) => {
-          const map = new Map(prev.map(d => [d.id, d]));
-          docs.forEach(d => map.set(d.id, d));
-          return Array.from(map.values());
-        });
-      })
+      onSnapshot(
+        q,
+        (snap) => {
+          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setPiaDocs((prev) => {
+            const map = new Map(prev.map(d => [d.id, d]));
+            docs.forEach(d => map.set(d.id, d));
+            return Array.from(map.values());
+          });
+        },
+        (err) => {
+          console.error("[ClientProfilePage] PIA snapshot error:", err);
+        },
+      )
     );
 
     return () => unsubscribers.forEach(unsub => unsub());
-  }, [client]);
+  }, [authLoading, firebaseUser, client]);
 
   // ── Load normalized PIA reports for this client ──
   useEffect(() => {

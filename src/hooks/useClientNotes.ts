@@ -24,6 +24,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
 import type { ClientNote, NoteSource, AppointmentNoteType } from "../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ interface UseClientNotesReturn {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useClientNotes(clientId: string): UseClientNotesReturn {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [notes, setNotes] = useState<ClientNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -65,6 +67,16 @@ export function useClientNotes(clientId: string): UseClientNotesReturn {
   const [allLoaded, setAllLoaded] = useState(false);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     if (!clientId) {
       setNotes([]);
       setLoading(false);
@@ -149,7 +161,7 @@ export function useClientNotes(clientId: string): UseClientNotesReturn {
     );
 
     return () => unsub();
-  }, [clientId]);
+  }, [authLoading, currentUser, clientId]);
 
   const loadMore = useCallback(() => {
     if (!clientId || allLoaded || !lastVisible) return;

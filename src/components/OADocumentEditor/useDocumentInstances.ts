@@ -11,14 +11,21 @@ import { useState, useEffect, useCallback } from "react";
 import { collection, onSnapshot, query, where, orderBy, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { uploadFile, deleteFile } from "../../lib/storage";
+import { useFirebaseAuthUser } from "../../hooks/useFirebaseAuthUser";
 import type { DocumentInstance, OADocumentData } from "../../types";
 
 export function useDocumentInstances(dealId: string) {
+  const { currentUser, authLoading } = useFirebaseAuthUser();
   const [instances, setInstances] = useState<DocumentInstance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!dealId) {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!currentUser || !dealId) {
       setInstances([]);
       setLoading(false);
       return;
@@ -38,11 +45,14 @@ export function useDocumentInstances(dealId: string) {
         setInstances(loaded);
         setLoading(false);
       },
-      () => setLoading(false),
+      (err) => {
+        console.error("[useDocumentInstances] Firestore error:", err);
+        setLoading(false);
+      },
     );
 
     return () => unsub();
-  }, [dealId]);
+  }, [authLoading, currentUser, dealId]);
 
   return { instances, loading };
 }

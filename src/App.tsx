@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { Lead, Rep } from "./types";
+import { Lead, Region, Rep } from "./types";
 import { ToastProvider, useToast } from "./context/ToastContext";
 import { LeadsPage } from "./pages/Leads"; // eager — it's the landing page
 import { db } from "./lib/firebase";
@@ -814,7 +814,7 @@ function NavDivider() {
 
 // ── Authenticated app shell ───────────────────────────────────────────────────
 function AppShell() {
-  const { currentUser, setCurrentUser, leads, reps } = useAppStore();
+  const { currentUser, setCurrentUser, leads, reps, activeRegion, setActiveRegion, setLeads } = useAppStore();
   useReps(); // sync Firestore reps → Zustand store (keeps credentials current across devices)
   useNotifications();
   const { save: migrateRep } = useSaveRep();
@@ -938,6 +938,18 @@ function AppShell() {
     setPage(action as Page);
     setShowOnboarding(false);
   }, []);
+
+  const handleRegionChange = useCallback(
+    (region: Region) => {
+      if (region === activeRegion) return;
+      setActiveRegion(region);
+      setLeads([]);
+      setLeadsFilter(null);
+      setClientsFilter(null);
+      setSelectedClientId(null);
+    },
+    [activeRegion, setActiveRegion, setLeads],
+  );
 
   const handleSignOut = useCallback(() => {
     localStorage.removeItem("asgCurrentUserId");
@@ -1505,6 +1517,30 @@ function AppShell() {
 
   const sidebarUserCard = (
     <div className="flex-shrink-0 border-t border-white/[0.06]">
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7a7a74]">Workspace</span>
+          <span className="text-[10px] text-[#7a7a74] capitalize">{activeRegion}</span>
+        </div>
+        <div className="grid grid-cols-2 rounded-lg border border-white/10 overflow-hidden bg-[rgba(255,255,255,0.03)]">
+          {(["brisbane", "perth"] as const).map((region) => (
+            <button
+              key={region}
+              type="button"
+              onClick={() => handleRegionChange(region)}
+              className={`px-2 py-1.5 text-[11px] font-semibold transition ${
+                activeRegion === region
+                  ? "bg-[#b8933a] text-white"
+                  : "text-[#9a9a92] hover:bg-white/[0.06] hover:text-[#c8c8c4]"
+              }`}
+              aria-pressed={activeRegion === region}
+            >
+              {region === "brisbane" ? "Brisbane" : "Perth"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Quick Pull button — shown when sheet is configured */}
       {appSettings?.sheets?.url && (
         <div className="px-3 pt-2">
@@ -1772,6 +1808,7 @@ function AppShell() {
           <main className="flex-1 overflow-hidden flex flex-col">
             {effectivePage === "leads" && (
               <LeadsPage
+                key={activeRegion}
                 addLeadOpen={addLeadOpen}
                 onAddLeadOpenChange={setAddLeadOpen}
                 pendingCallLeadId={pendingCallLeadId}
@@ -1807,8 +1844,8 @@ function AppShell() {
               {effectivePage === "smsf" && <SMSF />}
               {effectivePage === "admin-guide" && isAdmin && <AdminGuidePage />}
               {effectivePage === "my-dashboard" && <MyDashboardPage />}
-              {effectivePage === "assistant" && <AssistantPage />}
-              {effectivePage === "inbox" && <InboxPage />}
+              {effectivePage === "assistant" && <AssistantPage key={activeRegion} />}
+              {effectivePage === "inbox" && <InboxPage key={activeRegion} />}
               {effectivePage === "rep-dashboard" && <RepDashboardPage />}
               {effectivePage === "rep-settings" && (
                 <Suspense fallback={<PageLoader />}>
