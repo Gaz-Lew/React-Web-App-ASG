@@ -25,6 +25,10 @@ export * from "./smsfFinancials";
 // ── Follow-up Engine ──
 export { followUpEngine } from "./followups";
 
+// Server-authoritative foundations
+export { appendAuditEvent } from "./audit";
+export { updateAppSettingsCallable, rollbackAppSettingsCallable } from "./settingsAdmin";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

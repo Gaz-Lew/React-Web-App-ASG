@@ -31,6 +31,7 @@ import { useAppSettings } from "../hooks/useAppSettings";
 import { useFirebaseAuthUser } from "../hooks/useFirebaseAuthUser";
 import { useAppStore } from "../stores/appStore";
 import { handleError } from "../lib/errorHandler";
+import { getActionableErrorMessage, logListenerFailure } from "../lib/operationalDiagnostics";
 import { DataStateWrapper, LoadingSkeleton } from "./StateViews";
 import type { AppConfig } from "../hooks/useAppSettings";
 import type { SettingsVersionEntry } from "../types";
@@ -286,9 +287,17 @@ export function SettingsHistoryPanel() {
         setError(null);
       },
       (err) => {
-        console.error("[SettingsHistoryPanel] Firestore error:", err);
+        logListenerFailure(
+          {
+            operation: "settingsHistory.listen",
+            collection: "settingsHistory",
+            component: "SettingsHistoryPanel",
+            userId: currentUser?.id ?? null,
+          },
+          err,
+        );
         const appError = handleError(err, "SettingsHistoryPanel");
-        setError(appError.message);
+        setError(getActionableErrorMessage(err) || appError.message);
         setLoading(false);
       }
     );
@@ -317,7 +326,7 @@ export function SettingsHistoryPanel() {
       setTimeout(() => setRollbackSuccess(false), 4000);
     } catch (err) {
       const appError = handleError(err, "SettingsHistoryPanel.rollback");
-      setRollbackError(appError.message);
+      setRollbackError(getActionableErrorMessage(err) || appError.message);
     } finally {
       setRollingBack(null);
     }
@@ -334,7 +343,7 @@ export function SettingsHistoryPanel() {
           <History size={16} className="text-amber-500" /> Settings History
         </h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Every settings change is versioned automatically. Expand any entry to see what changed, or roll back to a previous state.
+          System Controls changes are versioned automatically. Expand any entry to see what changed, or roll back to a previous state.
         </p>
       </div>
 

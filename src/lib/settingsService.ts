@@ -1,29 +1,17 @@
 /**
- * settingsService.ts — App settings write operations, versioning, and audit logging
+ * settingsService.ts - server-authoritative settings and audit operations.
  *
- * updateAppSettings  — Partial Firestore merge write to appSettings/config.
- *                      Saves the current config to settingsHistory BEFORE writing.
- * replaceSettings    — Full config replacement (used by rollback).
- * rollbackSettings   — Restores a previous version; logs the rollback event.
- * logAuditEvent      — Structured write to auditLogs collection.
- * validateDeal       — Pre-write validation for deal objects.
+ * updateAppSettings - callable-authoritative partial settings update.
+ * rollbackSettings  - callable-authoritative restore of a previous version.
+ * logAuditEvent     - callable-authoritative audit event creation.
+ * validateDeal      - pre-write validation for deal objects.
  */
 
-import {
-  doc,
-  setDoc,
-  addDoc,
-  collection,
-  serverTimestamp,
-  getDoc,
-} from "firebase/firestore";
-import { db } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase";
+import { getActionableErrorMessage, logCallableFailure } from "./operationalDiagnostics";
 import type { AppConfig } from "../hooks/useAppSettings";
 import type { SettingsVersionEntry } from "../types";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Internal types
-// ─────────────────────────────────────────────────────────────────────────────
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -39,56 +27,16 @@ export interface AuditPayload {
   after?: unknown;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Firestore document references
-// ─────────────────────────────────────────────────────────────────────────────
+const appendAuditEvent = httpsCallable<AuditPayload, { ok: boolean }>(functions, "appendAuditEvent");
+const updateAppSettingsCallable = httpsCallable<
+  { updates: DeepPartial<AppConfig>; userName?: string },
+  { ok: boolean }
+>(functions, "updateAppSettingsCallable");
+const rollbackAppSettingsCallable = httpsCallable<
+  { previousSettings: unknown; historyId?: string; userName?: string },
+  { ok: boolean }
+>(functions, "rollbackAppSettingsCallable");
 
-const CONFIG_DOC     = doc(db, "appSettings", "config");
-const HISTORY_COL    = collection(db, "settingsHistory");
-const AUDIT_COL      = collection(db, "auditLogs");
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Settings versioning
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Saves a snapshot of settings to settingsHistory before an update is applied.
- * Called internally by updateAppSettings and replaceSettings.
- */
-async function saveSettingsVersion(opts: {
-  previousSettings: unknown;
-  newSettings: unknown;
-  changedBy: number;
-  changedByName: string;
-  action: "update" | "rollback";
-}): Promise<void> {
-  try {
-    await addDoc(HISTORY_COL, {
-      previousSettings: opts.previousSettings,
-      newSettings:      opts.newSettings,
-      changedBy:        opts.changedBy,
-      changedByName:    opts.changedByName,
-      action:           opts.action,
-      timestamp:        serverTimestamp(),
-    });
-  } catch (err) {
-    // History write failure should not block the main settings write
-    console.warn("[saveSettingsVersion] Failed to write history:", err);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Settings update (partial merge)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Merges partial settings into Firestore. Only provided fields are updated.
- * Saves the CURRENT full config to settingsHistory before writing.
- *
- * @param updates  Nested partial matching AppConfig shape
- * @param opts     Must include userId + userName for audit trail.
- *                 Pass `before` (current full config) so we can snapshot it.
- */
 export async function updateAppSettings(
   updates: DeepPartial<AppConfig>,
   opts?: {
@@ -97,126 +45,49 @@ export async function updateAppSettings(
     before?: DeepPartial<AppConfig>;
   },
 ): Promise<void> {
+  void opts?.userId;
+  void opts?.before;
+
   try {
-    // If we don't have a `before` snapshot, try to read it from Firestore
-    let previousSettings: unknown = opts?.before ?? null;
-    if (!previousSettings) {
-      try {
-        const snap = await getDoc(CONFIG_DOC);
-        if (snap.exists()) previousSettings = snap.data();
-      } catch {
-        /* non-fatal — we proceed without the snapshot */
-      }
-    }
-
-    // Save version BEFORE writing new settings
-    if (opts?.userId && previousSettings) {
-      await saveSettingsVersion({
-        previousSettings,
-        newSettings: updates,
-        changedBy:     opts.userId,
-        changedByName: opts.userName ?? "Admin",
-        action: "update",
-      });
-    }
-
-    // Apply the settings update
-    await setDoc(CONFIG_DOC, updates, { merge: true });
-
-    // Write audit log (fire-and-forget)
-    if (opts?.userId) {
-      logAuditEvent({
-        userId:     opts.userId,
-        userName:   opts.userName ?? "Admin",
-        action:     "settings_update",
-        targetType: "appSettings",
-        before:     previousSettings,
-        after:      updates,
-      }).catch(console.error);
-    }
+    await updateAppSettingsCallable({
+      updates,
+      userName: opts?.userName ?? "Admin",
+    });
   } catch (err) {
-    console.error("[updateAppSettings] Write failed:", err);
-    throw err;
+    logCallableFailure({ operation: "settings.update", callable: "updateAppSettingsCallable" }, err);
+    throw new Error(getActionableErrorMessage(err));
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Settings rollback (full replacement)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Replaces the current config with a previously saved version.
- * Saves the current settings to history (action: "rollback") before replacing.
- *
- * @param entry   The history entry to restore (contains previousSettings)
- * @param currentConfig  The live config currently in memory (for the snapshot)
- * @param userId
- * @param userName
- */
 export async function rollbackSettings(
   entry: Pick<SettingsVersionEntry, "previousSettings" | "id">,
   currentConfig: AppConfig,
   userId: number,
   userName: string,
 ): Promise<void> {
+  void currentConfig;
+  void userId;
+
   try {
-    // Save current config to history before rollback
-    await saveSettingsVersion({
-      previousSettings: currentConfig,
-      newSettings:      entry.previousSettings,
-      changedBy:        userId,
-      changedByName:    userName,
-      action:           "rollback",
-    });
-
-    // Overwrite the entire config doc (not merge — rollback is a full replace)
-    await setDoc(CONFIG_DOC, entry.previousSettings as object);
-
-    // Audit log
-    await logAuditEvent({
-      userId,
+    await rollbackAppSettingsCallable({
+      previousSettings: entry.previousSettings,
+      historyId: entry.id,
       userName,
-      action:     "settings_rollback",
-      targetType: "appSettings",
-      targetId:   entry.id,
-      before:     currentConfig,
-      after:      entry.previousSettings,
     });
   } catch (err) {
-    console.error("[rollbackSettings] Rollback failed:", err);
-    throw err;
+    logCallableFailure({ operation: "settings.rollback", callable: "rollbackAppSettingsCallable" }, err);
+    throw new Error(getActionableErrorMessage(err));
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Audit log writer
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Appends a structured record to the `auditLogs` Firestore collection.
- * Uses serverTimestamp for cross-timezone consistency.
- * Never throws — failures are silently logged so they never crash the app.
- */
 export async function logAuditEvent(payload: AuditPayload): Promise<void> {
   try {
-    await addDoc(AUDIT_COL, {
-      userId:     payload.userId,
-      userName:   payload.userName,
-      action:     payload.action,
-      targetType: payload.targetType ?? null,
-      targetId:   payload.targetId  ?? null,
-      before:     payload.before    ?? null,
-      after:      payload.after     ?? null,
-      timestamp:  serverTimestamp(),
-    });
+    await appendAuditEvent(payload);
   } catch (err) {
-    console.warn("[logAuditEvent] Failed to write audit log:", err);
+    logCallableFailure({ operation: "audit.append", callable: "appendAuditEvent" }, err);
+    throw new Error(getActionableErrorMessage(err));
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Deal validation
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface ValidationResult {
   valid: boolean;

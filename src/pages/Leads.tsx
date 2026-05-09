@@ -15,6 +15,10 @@ import { Loader } from "lucide-react";
 import { getNextAction } from "../lib/nextAction";
 import { injectRowFlashStyles } from "../lib/animation";
 
+function isTerminalLeadStatus(status: string | undefined): boolean {
+  return status === "_deleted" || status === "lost" || status === "Not Interested" || status === "Wrong Number";
+}
+
 interface LeadsPageProps {
   addLeadOpen?: boolean;
   onAddLeadOpenChange?: (open: boolean) => void;
@@ -97,10 +101,22 @@ export function LeadsPage({
   const filteredLeads = useMemo(() => {
     if (!initialFilter) return leads;
     if (initialFilter === "no-contact") {
-      return leads.filter((l) => !l.callHistory || l.callHistory.length === 0);
+      return leads.filter((l) => !isTerminalLeadStatus(l.status) && (!l.callHistory || l.callHistory.length === 0));
     }
     if (initialFilter === "clients-no-fc") {
-      return leads.filter((l) => l.status === "Booked" && !l.fcAppt?.date);
+      return leads.filter((l) => (l.status === "Booked" || l.status === "booked") && !l.fcAppt?.date);
+    }
+    if (initialFilter === "overdue-callbacks") {
+      const today = new Date().toISOString().split("T")[0];
+      return leads
+        .filter((l) => !isTerminalLeadStatus(l.status) && l.callbackDate && l.callbackDate < today)
+        .sort((a, b) => (a.callbackDate ?? "").localeCompare(b.callbackDate ?? ""));
+    }
+    if (initialFilter === "overdue-followups") {
+      const today = new Date().toISOString().split("T")[0];
+      return leads
+        .filter((l) => !isTerminalLeadStatus(l.status) && l.nextContactDate && l.nextContactDate < today)
+        .sort((a, b) => (a.nextContactDate ?? "").localeCompare(b.nextContactDate ?? ""));
     }
     return leads;
   }, [leads, initialFilter]);
@@ -402,6 +418,8 @@ export function LeadsPage({
           <span className="font-semibold">
             {initialFilter === "no-contact" && "📞 Filter: Leads with no contact yet"}
             {initialFilter === "clients-no-fc" && "📋 Filter: Clients needing FC booking"}
+            {initialFilter === "overdue-callbacks" && "Filter: Overdue callbacks"}
+            {initialFilter === "overdue-followups" && "Filter: Overdue follow-ups"}
           </span>
           <button
             onClick={onFilterCleared}
@@ -439,6 +457,7 @@ export function LeadsPage({
             loadMore={loadMore}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            forceAllTab={Boolean(initialFilter)}
           />
         </div>
 

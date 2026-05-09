@@ -11,10 +11,36 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider != "anonymous";
     }
 
+    function hasElevatedRole() {
+      return isAuthenticated()
+        && request.auth.token.role in ["admin", "director"];
+    }
+
     function isOwner(userId) {
       return request.auth != null
         && request.auth.token.firebase.sign_in_provider != "anonymous"
         && request.auth.uid == userId;
+    }
+
+    function hasOnlyFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function keepsFieldsImmutable(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function validUserDeviceCreate() {
+      return hasOnlyFields(["userId", "token", "platform", "createdAt", "updatedAt"])
+        && request.resource.data.userId is int
+        && request.resource.data.token is string
+        && request.resource.data.platform == "web";
+    }
+
+    function validUserDeviceUpdate() {
+      return keepsFieldsImmutable(["userId", "platform", "createdAt"])
+        && request.resource.data.token is string
+        && request.resource.data.updatedAt != null;
     }
 
     // ─────────────────────────────────────────────
@@ -26,9 +52,30 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // Leads (clients)
+    // Leads (clients) - shared operational data
     match /leads/{leadId} {
       allow read, write: if isAuthenticated();
+
+      match /presence/{repId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated()
+          && hasOnlyFields(["name", "ts"]);
+        allow delete: if isAuthenticated();
+      }
+
+      match /files/{fileId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /notes/{noteId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if isAuthenticated();
+      }
+
+      match /dealUpdates/{updateId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if false;
+      }
 
       match /{subcollection}/{docId} {
         allow read, write: if isAuthenticated();
@@ -48,7 +95,9 @@ service cloud.firestore {
     // Deal events (immutable log)
     match /dealEvents/{eventId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.dealId is string
+        && request.resource.data.createdAt != null;
       allow update, delete: if false;
     }
 
@@ -59,6 +108,32 @@ service cloud.firestore {
 
     // DocuSign envelopes
     match /docusignEnvelopes/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Existing shared operational collections pending role-aware tightening.
+    // These are explicit collection rules so they do not rely on a wildcard.
+    match /draps/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /commissions/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /invoiceDrafts/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /knockZones/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /customPinTypes/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /clientGroups/{docId} {
       allow read, write: if isAuthenticated();
     }
 
@@ -73,7 +148,9 @@ service cloud.firestore {
         && request.resource.data.clientId is string
         && request.resource.data.content is string;
 
-      allow update, delete: if isAuthenticated();
+      allow update: if isAuthenticated()
+        && keepsFieldsImmutable(["clientId", "createdAt", "createdBy", "createdById"]);
+      allow delete: if isAuthenticated();
     }
 
     // Reports
@@ -87,9 +164,7 @@ service cloud.firestore {
 
     // SMSF Financial Data (encrypted bank details)
     match /smsfFinancials/{docId} {
-      allow read, write: if request.auth != null
-        && request.auth.token.firebase.sign_in_provider != "anonymous"
-        && request.auth.token.role in ["admin", "director"];
+      allow read, write: if hasElevatedRole();
     }
 
     // ─────────────────────────────────────────────
@@ -97,7 +172,11 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
 
     match /appSettings/{docId} {
-      allow read, write: if isAuthenticated();
+      // Phase 3: appSettings/config writes are callable-authoritative.
+      // Other appSettings docs remain temporarily compatible.
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && docId != "config";
 
       match /{sub}/{subId} {
         allow read, write: if isAuthenticated();
@@ -109,7 +188,10 @@ service cloud.firestore {
     }
 
     match /settingsHistory/{docId} {
-      allow read, write: if isAuthenticated();
+      // Phase 3: written only by settings admin callables.
+      allow read: if isAuthenticated();
+      allow create: if false;
+      allow update, delete: if false;
     }
 
     match /calendarServiceTypes/{docId} {
@@ -124,8 +206,35 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // Per-user settings
+    match /documentLibrary/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /formTemplates/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /scripts/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if hasElevatedRole();
+    }
+
+    // Per-user settings. These paths are ready for Firebase UID ownership.
+    // Current app code mostly uses numeric rep IDs, so moving more rep-scoped
+    // data here requires a UID-to-rep mapping or custom claims first.
+    match /users/{userId}/dashboard/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
     match /users/{userId}/repSettings/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/dailyHistory/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /userProfiles/{userId} {
       allow read, write: if isOwner(userId);
     }
 
@@ -134,15 +243,94 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
 
     match /analyticsEvents/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if hasElevatedRole();
+      allow create: if isAuthenticated()
+        && request.resource.data.event is string
+        && request.resource.data.repId != null
+        && request.resource.data.timestamp != null;
+      allow update, delete: if false;
     }
 
     match /trainingSessions/{docId} {
       allow read, write: if isAuthenticated();
     }
 
-    match /userDevices/{docId} {
+    match /trainingDocuments/{docId} {
       allow read, write: if isAuthenticated();
+    }
+
+    match /trainingVideos/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /trainingRecordings/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /trainingCourses/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if hasElevatedRole();
+    }
+
+    match /trainingModules/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if hasElevatedRole();
+    }
+
+    match /userProgress/{progressId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+        && request.resource.data.userId is string
+        && request.resource.data.moduleId is string
+        && progressId == request.resource.data.userId + "_" + request.resource.data.moduleId;
+      allow delete: if isAuthenticated();
+    }
+
+    match /calculatorStates/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /userNotes/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.userId is string
+        && request.resource.data.content is string
+        && request.resource.data.createdAt != null;
+      allow update: if isAuthenticated()
+        && keepsFieldsImmutable(["userId", "createdAt"]);
+      allow delete: if isAuthenticated();
+    }
+
+    match /presence/{repId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+        && request.resource.data.repId != null
+        && request.resource.data.lastActive != null;
+      allow delete: if isAuthenticated();
+    }
+
+    match /teamChat/{messageId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    match /dmChannels/{channelId}/messages/{messageId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    match /teamPosts/{postId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /userDevices/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && validUserDeviceCreate();
+      allow update: if isAuthenticated()
+        && validUserDeviceUpdate();
+      allow delete: if isAuthenticated();
     }
 
     match /errors/{docId} {
@@ -152,10 +340,17 @@ service cloud.firestore {
     }
 
     match /auditLogs/{docId} {
-      allow read: if request.auth != null
-        && request.auth.token.firebase.sign_in_provider != "anonymous"
-        && request.auth.token.role in ["admin", "director"];
-      allow write: if false;
+      // Phase 3: written only by appendAuditEvent and settings admin callables.
+      allow read: if hasElevatedRole();
+      allow create: if false;
+      allow update, delete: if false;
+    }
+
+    match /audit/{docId} {
+      // Phase 3: legacy audit collection is read-only to elevated users.
+      allow read: if hasElevatedRole();
+      allow create: if false;
+      allow update, delete: if false;
     }
 
     // ─────────────────────────────────────────────

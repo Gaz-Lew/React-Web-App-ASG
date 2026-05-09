@@ -480,16 +480,16 @@ export function LeadSidebar({
       {/* ── Outer container ───────────────────────────────────────────── */}
       <div
         className={
-          isPanel
-            ? "flex flex-col h-full w-full bg-[#141824] text-white"
-            : "fixed inset-0 z-[100] flex items-center justify-center px-6 py-6"
+            isPanel
+              ? "flex flex-col h-full w-full bg-[#141824] text-white"
+            : "fixed inset-0 z-[100] flex items-center justify-center p-0 sm:px-6 sm:py-6"
         }
       >
         <div
           className={
             isPanel
               ? "flex flex-col h-full w-full"
-              : `relative w-full max-w-[1100px] h-[80vh] rounded-2xl border border-[#2a2a2e] shadow-2xl overflow-hidden flex flex-col bg-[#141824] text-white will-change-transform transition-all duration-200 ease-out${isOpen ? " opacity-100 translate-y-0" : " opacity-0 translate-y-2"}`
+              : `relative w-full max-w-[1100px] h-[100dvh] sm:h-[80vh] rounded-none sm:rounded-2xl border border-[#2a2a2e] shadow-2xl overflow-hidden flex flex-col bg-[#141824] text-white will-change-transform transition-all duration-200 ease-out${isOpen ? " opacity-100 translate-y-0" : " opacity-0 translate-y-2"}`
           }
         >
         {/* ── X close button — modal mode only ─────────────────────────── */}

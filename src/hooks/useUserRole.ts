@@ -16,6 +16,8 @@
 
 import { useMemo } from "react";
 import { useAppStore } from "../stores/appStore";
+import { roleForUi } from "../lib/authClaims";
+import { useAuthClaims } from "./useAuthClaims";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -103,14 +105,11 @@ export interface UserRoleReturn {
 
 export function useUserRole(): UserRoleReturn {
   const { currentUser } = useAppStore();
+  const { effectiveAuth } = useAuthClaims();
 
   return useMemo(() => {
     // Cast — Rep.role is "rep" | "manager" | "admin" | undefined
-    const raw = currentUser?.role;
-    const role: UserRole =
-      raw === "admin" ? "admin" :
-      raw === "manager" ? "manager" :
-      "rep";
+    const role: UserRole = roleForUi(effectiveAuth.role);
 
     const perms = ROLE_PERMISSIONS[role];
 
@@ -120,10 +119,10 @@ export function useUserRole(): UserRoleReturn {
       isManager: role === "manager",
       isRep:     role === "rep",
       can: (action: RBACAction) => perms.has(action),
-      userId:   currentUser?.id ?? null,
+      userId:   effectiveAuth.repId ?? currentUser?.id ?? null,
       userName: currentUser?.name ?? "",
     };
-  }, [currentUser]);
+  }, [currentUser, effectiveAuth]);
 }
 
 export default useUserRole;

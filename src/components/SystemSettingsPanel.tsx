@@ -31,6 +31,8 @@ import {
 import { useAppSettings, DEFAULT_APP_CONFIG } from "../hooks/useAppSettings";
 import type { AppConfig } from "../hooks/useAppSettings";
 import { updateAppSettings } from "../lib/settingsService";
+import { getActionableErrorMessage } from "../lib/operationalDiagnostics";
+import { getEnvironmentLabel, getReleaseMetadata, isProductionEnvironment } from "../lib/releaseMetadata";
 import { useAppStore } from "../stores/appStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,20 +151,29 @@ function ToggleField({
 export function SystemSettingsPanel() {
   const { currentUser } = useAppStore();
   const { config, loading, error } = useAppSettings();
+  const release = getReleaseMetadata();
+  const environmentLabel = getEnvironmentLabel(release.environment);
+  const productionEnvironment = isProductionEnvironment(release);
 
   // Local draft — initialised from live Firestore settings
   const [draft, setDraft] = useState<AppConfig>(DEFAULT_APP_CONFIG);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [remoteChanged, setRemoteChanged] = useState(false);
 
   // Sync draft from Firestore config (first load + external changes)
   useEffect(() => {
     if (!loading) {
+      if (dirty) {
+        setRemoteChanged(true);
+        return;
+      }
       setDraft(config);
       setDirty(false);
     }
-  }, [config, loading]);
+  }, [config, dirty, loading]);
 
   // Generic updater helpers
   function setDeal<K extends keyof AppConfig["dealSettings"]>(key: K, val: AppConfig["dealSettings"][K]) {
@@ -189,6 +200,7 @@ export function SystemSettingsPanel() {
   async function handleSave() {
     setSaving(true);
     setSaveStatus("idle");
+    setSaveError(null);
     try {
       await updateAppSettings(draft, {
         userId:   currentUser?.id ?? null,
@@ -197,8 +209,10 @@ export function SystemSettingsPanel() {
       });
       setSaveStatus("success");
       setDirty(false);
+      setRemoteChanged(false);
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch {
+    } catch (err) {
+      setSaveError(getActionableErrorMessage(err));
       setSaveStatus("error");
     } finally {
       setSaving(false);
@@ -210,6 +224,8 @@ export function SystemSettingsPanel() {
     setDraft(config);
     setDirty(false);
     setSaveStatus("idle");
+    setSaveError(null);
+    setRemoteChanged(false);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -275,7 +291,19 @@ export function SystemSettingsPanel() {
       {/* Save error */}
       {saveStatus === "error" && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400">
-          <AlertCircle size={13} /> Failed to save. Please try again.
+          <AlertCircle size={13} /> {saveError ?? "Failed to save. Please try again."}
+        </div>
+      )}
+
+      {remoteChanged && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
+          <span>Live settings changed while you were editing. Keep editing, or discard to load the latest saved values.</span>
+          <button
+            onClick={handleReset}
+            className="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-400 transition"
+          >
+            Load latest
+          </button>
         </div>
       )}
 
@@ -460,13 +488,36 @@ export function SystemSettingsPanel() {
       </Section>
 
       {/* Info footer */}
-      <div className="flex items-start gap-2 text-[11px] text-gray-400 dark:text-gray-500 px-1">
-        <Info size={12} className="flex-shrink-0 mt-0.5" />
-        <span>
-          Settings are stored in Firestore (<code className="font-mono">appSettings/config</code>) and broadcast via
-          real-time listeners. All connected clients update within seconds of saving. These settings survive app
-          redeployments — no environment variable changes required.
-        </span>
+      <div className="space-y-3 px-1">
+        <div className="flex items-start gap-2 text-[11px] text-gray-400 dark:text-gray-500">
+          <Info size={12} className="flex-shrink-0 mt-0.5" />
+          <span>
+            Settings are stored in Firestore (<code className="font-mono">appSettings/config</code>) and broadcast via
+            real-time listeners. All connected clients update within seconds of saving. These settings survive app
+            redeployments — no environment variable changes required.
+          </span>
+        </div>
+        <div className="rounded-lg border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02] px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+            <span className="font-semibold text-gray-700 dark:text-gray-200">Release Metadata</span>
+            <span>
+              Environment:{" "}
+              <strong
+                className={
+                  productionEnvironment
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-amber-600 dark:text-amber-300"
+                }
+              >
+                {environmentLabel}
+              </strong>
+            </span>
+            <span>Version: {release.version}</span>
+            <span>Commit: {release.commit}</span>
+            <span>Deployed: {release.deployedAt}</span>
+            <span>Firebase: {release.firebaseProjectId}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

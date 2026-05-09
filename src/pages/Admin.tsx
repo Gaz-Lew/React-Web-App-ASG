@@ -3952,9 +3952,9 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
     },
     { id: "sync" as const, label: "Sync", icon: <RefreshCw size={14} /> },
     { id: "data-tools" as const, label: "Data Tools", icon: <Database size={14} /> },
-    { id: "settings" as const, label: "Settings", icon: <Settings size={14} /> },
-    { id: "system-settings" as const, label: "System Settings", icon: <Zap size={14} /> },
-    { id: "settings-history" as const, label: "Settings History", icon: <History size={14} /> },
+    { id: "settings" as const, label: "CRM Settings", icon: <Settings size={14} /> },
+    { id: "system-settings" as const, label: "System Controls", icon: <Zap size={14} /> },
+    { id: "settings-history" as const, label: "Control History", icon: <History size={14} /> },
     { id: "system-health" as const, label: "System Health", icon: <HeartPulse size={14} /> },
     { id: "daily-report" as const, label: "Daily Report", icon: <BarChart2 size={14} /> },
     { id: "audit" as const, label: "Audit Log", icon: <ClipboardList size={14} /> },
@@ -3962,9 +3962,9 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-6 space-y-6">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[var(--bg)] p-4 sm:p-6 space-y-6">
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard label="Total Reps" value={reps.length} sub={`${activeCount} active`} />
         <SummaryCard label="Total Leads" value={leads.length} sub="in system" />
         <SummaryCard label="Total Calls" value={totalCalls} sub="all time" />
@@ -3974,7 +3974,7 @@ export function AdminPage({ onOpenSheetsSync }: { onOpenSheetsSync?: () => void 
       <TodayBriefingStrip data={briefingData} />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-white/[0.06] overflow-x-auto">
+      <div className="sticky top-0 z-20 flex gap-1 border-b border-gray-200 dark:border-white/[0.06] overflow-x-auto bg-gray-50/95 dark:bg-[var(--bg)]/95 backdrop-blur">
         {tabs.map((t) => (
           <button
             key={t.id}

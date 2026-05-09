@@ -47,6 +47,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { exportLeadsCSV, exportCallHistoryCSV, normalizeAUPhone } from "./lib/utils";
+import { linkRepToFirebaseUser, resolveRepForSession } from "./lib/authIdentity";
 
 // ── Lazy-loaded pages (split into separate JS chunks) ─────────────────────────
 const DashboardPage = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.DashboardPage })));
@@ -94,6 +95,7 @@ import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { useNotifications } from "./hooks/useNotifications";
 import { useOfflineQueue } from "./hooks/useOfflineQueue";
 import { useNetworkStatus } from "./hooks/useNetworkStatus";
+import { useFirebaseAuthUser } from "./hooks/useFirebaseAuthUser";
 
 // ── Google Sheets Quick Pull constants ───────────────────────────────────────
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -800,6 +802,7 @@ function AppShell() {
   const { settings: appSettings } = useAppSettings();
   const { save: saveSettings } = useSaveSettings();
   const { leads: allLeads } = useLeads();
+  const { currentUser: firebaseUser, authLoading: firebaseAuthLoading } = useFirebaseAuthUser();
   const { showToast } = useToast();
   useOfflineQueue();
   const { isProbablyOffline } = useNetworkStatus();
@@ -810,6 +813,7 @@ function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [csvImportOpen, setCSVImportOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [pendingCallLeadId, setPendingCallLeadId] = useState<number | null>(null);
   const [sheetsSyncOpen, setSheetsSyncOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -819,6 +823,7 @@ function AppShell() {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkedOnboarding, setCheckedOnboarding] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // ── PIN-based auth state (no Firebase Auth) ──────────────────────────────
   // Admin bypass uses a separate ref to survive sign-out without Firebase
@@ -827,14 +832,21 @@ function AppShell() {
 
   const handleLoginRep = useCallback(
     (rep: Rep) => {
-      localStorage.setItem("asgCurrentUserId", String(rep.id));
-      const updatedRep = { ...rep, lastLoginAt: Date.now() };
+      const linkedRep = linkRepToFirebaseUser(rep, firebaseUser);
+      if (!linkedRep) {
+        localStorage.removeItem("asgCurrentUserId");
+        showToast("This Firebase account is linked to a different rep profile.", "error");
+        return;
+      }
+
+      localStorage.setItem("asgCurrentUserId", String(linkedRep.id));
+      const updatedRep = { ...linkedRep, lastLoginAt: Date.now() };
       setCurrentUser(updatedRep);
       migrateRep(updatedRep).catch(() => {
         /* non-fatal */
       });
     },
-    [setCurrentUser, migrateRep],
+    [firebaseUser, migrateRep, setCurrentUser, showToast],
   );
 
   const handleAdminBypass = useCallback(
@@ -857,21 +869,23 @@ function AppShell() {
   // ── Auto-login from persisted session ────────────────────────────────────
   useEffect(() => {
     if (currentUser) return; // already logged in
+    if (firebaseAuthLoading || reps.length === 0) return;
+
     const savedId = localStorage.getItem("asgCurrentUserId");
-    if (!savedId || reps.length === 0) return;
-    const parsedId = Number(savedId);
-    if (!Number.isInteger(parsedId)) {
+    const resolution = resolveRepForSession(reps, firebaseUser, savedId);
+
+    if (resolution.shouldClearSavedRep) {
       localStorage.removeItem("asgCurrentUserId");
+    }
+
+    if (!resolution.rep) {
       return;
     }
-    const rep = reps.find((r) => r.id === parsedId && r.active !== false);
-    if (!rep) {
-      localStorage.removeItem("asgCurrentUserId");
-      return;
-    }
-    setCurrentUser(rep);
+
+    localStorage.setItem("asgCurrentUserId", String(resolution.rep.id));
+    setCurrentUser(resolution.rep);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reps]);
+  }, [firebaseAuthLoading, firebaseUser, reps]);
 
   // ── One-time migration: push localStorage reps → Firestore ───────────────
   // Runs once per app start; useReps will no-op on empty snapshot so this seeds it.
@@ -914,6 +928,27 @@ function AppShell() {
     }, 0);
     return () => clearTimeout(timer);
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handler = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
+      if (
+        event instanceof MouseEvent &&
+        exportMenuRef.current &&
+        exportMenuRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+      setExportMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", handler);
+    };
+  }, [exportMenuOpen]);
 
   const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
@@ -1620,7 +1655,7 @@ function AppShell() {
   );
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className={`h-dvh flex overflow-hidden ${isProbablyOffline ? "pt-7" : ""}`}>
       {isProbablyOffline && (
         <div
           style={{
@@ -1753,28 +1788,38 @@ function AppShell() {
                 <FileUp size={14} />
                 <span className="hidden md:inline">CSV</span>
               </button>
-              <div className="relative group">
+              <div className="relative" ref={exportMenuRef}>
                 <button
+                  onClick={() => setExportMenuOpen((open) => !open)}
                   title="Export"
+                  aria-expanded={exportMenuOpen}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition"
                 >
                   <Download size={14} />
                   <span className="hidden md:inline">Export</span>
                 </button>
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg hidden group-hover:block z-30">
+                {exportMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg z-30">
                   <button
-                    onClick={handleExportLeads}
+                    onClick={() => {
+                      handleExportLeads();
+                      setExportMenuOpen(false);
+                    }}
                     className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-t-xl transition"
                   >
                     Export Leads CSV
                   </button>
                   <button
-                    onClick={handleExportCallHistory}
+                    onClick={() => {
+                      handleExportCallHistory();
+                      setExportMenuOpen(false);
+                    }}
                     className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-b-xl border-t border-gray-100 dark:border-slate-800 transition"
                   >
                     Export Call History CSV
                   </button>
                 </div>
+                )}
               </div>
               <button
                 onClick={() => setAddLeadOpen(true)}

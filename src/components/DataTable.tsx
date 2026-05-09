@@ -21,6 +21,7 @@ interface DataTableProps {
   loadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  forceAllTab?: boolean;
 }
 
 // ── Skeleton row (shown during initial Firestore load) ────────────────────────
@@ -67,6 +68,19 @@ interface FilterPreset {
   repId?: number;
   suburb?: string;
   tab: LeadStatus | "all";
+}
+
+function loadSavedFilters(): FilterOptions {
+  try {
+    return JSON.parse(localStorage.getItem("asgLeadFilters") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
 }
 
 const STATUS_TABS: { label: string; value: LeadStatus | "all" }[] = [
@@ -247,6 +261,7 @@ export function DataTable({
   loadMore,
   hasMore,
   loadingMore,
+  forceAllTab,
 }: DataTableProps) {
   const { reps, statusColors } = useAppStore();
   const { showToast } = useToast();
@@ -260,9 +275,10 @@ export function DataTable({
     if (stored !== null) return stored === "true";
     return !isAdmin; // default: non-admins see only their leads
   });
-  const [searchTerm, setSearchTerm] = useState(""); // debounced — used for actual filtering
-  const [searchInput, setSearchInput] = useState(""); // live input value shown in the box
+  const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem("asgLeadSearch") ?? ""); // debounced — used for actual filtering
+  const [searchInput, setSearchInput] = useState(() => localStorage.getItem("asgLeadSearch") ?? ""); // live input value shown in the box
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const sentinelDesktopRef = useRef<HTMLDivElement>(null);
   const sentinelMobileRef = useRef<HTMLDivElement>(null);
@@ -290,7 +306,7 @@ export function DataTable({
       observerRef.current = null;
     };
   }, [loadMore]);
-  const [filters, setFilters] = useState<FilterOptions>({});
+  const [filters, setFilters] = useState<FilterOptions>(() => loadSavedFilters());
   const [currentTab, setCurrentTab] = useState<LeadStatus | "all">(() => {
     const stored = localStorage.getItem("asgActiveTab");
     return (stored as LeadStatus | "all") ?? "new";
@@ -382,6 +398,18 @@ export function DataTable({
   useEffect(() => {
     localStorage.setItem("asgActiveTab", currentTab);
   }, [currentTab]);
+
+  useEffect(() => {
+    if (forceAllTab) setCurrentTab("all");
+  }, [forceAllTab]);
+
+  useEffect(() => {
+    localStorage.setItem("asgLeadSearch", searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    localStorage.setItem("asgLeadFilters", JSON.stringify(filters));
+  }, [filters]);
 
   // Close col menu on outside click
   useEffect(() => {
@@ -541,6 +569,57 @@ export function DataTable({
       return 0;
     });
   }, [filteredLeads, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (selectedId === null || sortedLeads.some((lead) => lead.id === selectedId)) return;
+    setSelectedId(sortedLeads[0]?.id ?? null);
+  }, [selectedId, sortedLeads]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return;
+      if (event.key === "/") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (event.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+      if (sortedLeads.length === 0) return;
+
+      const currentIndex = selectedId === null ? -1 : sortedLeads.findIndex((lead) => lead.id === selectedId);
+      const moveTo = (index: number) => {
+        const next = sortedLeads[Math.max(0, Math.min(sortedLeads.length - 1, index))];
+        if (next) setSelectedId(next.id);
+      };
+      const activeLead = currentIndex >= 0 ? sortedLeads[currentIndex] : sortedLeads[0];
+
+      if (event.key === "j" || event.key === "ArrowDown") {
+        event.preventDefault();
+        moveTo(currentIndex < 0 ? 0 : currentIndex + 1);
+      } else if (event.key === "k" || event.key === "ArrowUp") {
+        event.preventDefault();
+        moveTo(currentIndex < 0 ? 0 : currentIndex - 1);
+      } else if (event.key === "Enter" && activeLead) {
+        event.preventDefault();
+        setSelectedId(activeLead.id);
+        onSelectLead(activeLead);
+      } else if ((event.key === "c" || event.key === "C") && activeLead) {
+        event.preventDefault();
+        setSelectedId(activeLead.id);
+        onAddCall(activeLead);
+      } else if ((event.key === "a" || event.key === "A") && activeLead && onNextAction) {
+        event.preventDefault();
+        setSelectedId(activeLead.id);
+        onNextAction(activeLead);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onAddCall, onNextAction, onSelectLead, selectedId, sortedLeads]);
 
   // ── Date grouping (always applied, persists with filters) ─────────────────
   const groupedLeads = useMemo((): DateGroup[] => {
@@ -737,6 +816,7 @@ export function DataTable({
           </button>
 
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search leads..."
             value={searchInput}
@@ -1469,12 +1549,13 @@ export function DataTable({
                                 className={`px-4 py-3 flex items-start gap-3 active:bg-gray-50 dark:active:bg-slate-800/60 cursor-pointer ${priority.bg} ${priority.border}`}
                               >
                                 {/* Checkbox */}
-                                <div className="pt-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <div className="-mt-2 -ml-2 w-11 h-11 flex items-center justify-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={selectedLeads.has(lead.id)}
                                     onChange={() => handleSelectLead(lead.id)}
                                     className="w-4 h-4 accent-amber-500 cursor-pointer"
+                                    aria-label={`Select ${lead.name}`}
                                   />
                                 </div>
 
@@ -1545,6 +1626,7 @@ export function DataTable({
                                   {/* Quick: No Answer */}
                                   <button
                                     title="Quick: No Answer"
+                                    aria-label={`Mark ${lead.name} as no answer`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "new" }));
@@ -1567,13 +1649,14 @@ export function DataTable({
                                         ],
                                       });
                                     }}
-                                    className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                                    className="min-w-11 min-h-11 px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
                                   >
                                     NA
                                   </button>
                                   {/* Quick: Wrong Number */}
                                   <button
                                     title="Quick: Wrong Number"
+                                    aria-label={`Mark ${lead.name} as wrong number`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setOptimisticStatuses((prev) => ({ ...prev, [lead.id]: "lost" }));
@@ -1596,25 +1679,27 @@ export function DataTable({
                                         ],
                                       });
                                     }}
-                                    className="px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
+                                    className="min-w-11 min-h-11 px-2 py-1 rounded text-xs font-medium bg-[var(--hover)] text-[var(--text-muted)] hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors"
                                   >
                                     WN
                                   </button>
                                   <button
+                                    aria-label={`Call ${lead.name}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onAddCall(lead);
                                     }}
-                                    className="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
+                                    className="min-w-11 min-h-11 px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-400 active:bg-amber-600 transition font-medium"
                                   >
                                     📞
                                   </button>
                                   <button
+                                    aria-label={`Open ${lead.name}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onSelectLead(lead);
                                     }}
-                                    className="px-3 py-1.5 text-xs bg-[var(--hover)] text-[var(--text-muted)] rounded-lg hover:brightness-[0.96] transition font-medium"
+                                    className="min-w-11 min-h-11 px-3 py-1.5 text-xs bg-[var(--hover)] text-[var(--text-muted)] rounded-lg hover:brightness-[0.96] transition font-medium"
                                   >
                                     <Eye size={12} className="mx-auto" />
                                   </button>

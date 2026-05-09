@@ -13,6 +13,11 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_SHEETS_API_KEY: string;
   readonly VITE_GOOGLE_MAPS_MAP_ID: string;
   readonly VITE_ENABLE_DEV_AUTH_BYPASS?: string;
+  readonly VITE_APP_ENV?: string;
+  readonly VITE_RELEASE_VERSION?: string;
+  readonly VITE_RELEASE_COMMIT?: string;
+  readonly VITE_RELEASE_COMMIT_FULL?: string;
+  readonly VITE_RELEASE_DEPLOYED_AT?: string;
 }
 
 interface ImportMeta {

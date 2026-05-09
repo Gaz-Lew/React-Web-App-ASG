@@ -232,6 +232,16 @@ export interface Rep {
   name: string;
   active: boolean;
   role?: "rep" | "manager" | "admin";
+  /**
+   * Optional Firebase Auth linkage.
+   * Existing workflows continue to use numeric rep IDs; this field is the
+   * bridge Firestore rules/custom claims can use once reps are linked.
+   */
+  firebaseUid?: string;
+  firebaseLinkedAt?: number;
+  firebaseLinkedBy?: string;
+  primaryRegion?: Region;
+  allowedRegions?: Region[];
   email?: string;
   phone?: string;
   photo?: string; // Firebase Storage URL for profile photo

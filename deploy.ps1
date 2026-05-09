@@ -1,7 +1,9 @@
 #requires -Version 5.1
 
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [ValidateSet("development", "staging", "production")]
+    [string]$Environment = "production"
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +20,8 @@ $LogFile = Join-Path $LogDirectory "deploy-$Stamp.log"
 $script:FailedStep = ""
 $script:CurrentCommand = ""
 $script:DeployResult = "FAILED"
+$script:FirebaseProjectId = ""
+$ProductionFirebaseProjectId = "amplify-leads-2026"
 
 function Write-DeployLog {
     param(
@@ -203,6 +207,35 @@ function Test-ProjectRoot {
     Write-DeployLog "[OK] Project root validated: $ProjectRoot" Green
 }
 
+function Get-FirebaseDefaultProject {
+    $firebasercPath = Join-Path $ProjectRoot ".firebaserc"
+    try {
+        $firebaseConfig = Get-Content -Raw -LiteralPath $firebasercPath | ConvertFrom-Json
+        return [string]$firebaseConfig.projects.default
+    } catch {
+        Fail-Deploy "Environment validation" "Unable to read default Firebase project from .firebaserc. $($_.Exception.Message)"
+    }
+}
+
+function Assert-EnvironmentTargetSafety {
+    param(
+        [Parameter(Mandatory = $true)][string]$DeployEnvironment,
+        [Parameter(Mandatory = $true)][string]$FirebaseProject
+    )
+
+    if ($DeployEnvironment -eq "production" -and $FirebaseProject -ne $ProductionFirebaseProjectId) {
+        Fail-Deploy "Environment target safety" "Production deploy expected Firebase project '$ProductionFirebaseProjectId' but .firebaserc points to '$FirebaseProject'."
+    }
+
+    if ($DeployEnvironment -ne "production" -and $FirebaseProject -eq $ProductionFirebaseProjectId -and -not $DryRun) {
+        Fail-Deploy "Environment target safety" "$DeployEnvironment deploy is pointed at production Firebase project '$FirebaseProject'. Configure a non-production Firebase target or use -DryRun."
+    }
+
+    if ($DeployEnvironment -ne "production" -and $FirebaseProject -eq $ProductionFirebaseProjectId) {
+        Write-DeployLog "[WARNING] $DeployEnvironment metadata is being validated against the production Firebase project in dry-run mode only." Yellow
+    }
+}
+
 function Confirm-DirtyTree {
     $status = (& git status --porcelain 2>&1)
     if ($LASTEXITCODE -ne 0) {
@@ -244,6 +277,7 @@ try {
     Write-DeployLog "ASG Leads Web App deployment started"
     Write-DeployLog "Project root: $ProjectRoot"
     Write-DeployLog "Log file: $LogFile"
+    Write-DeployLog "Requested environment: $Environment"
     if ($DryRun) {
         Write-DeployLog "Mode: DRY RUN. Build and snapshot steps run, Firebase deploy commands are printed but not executed." Yellow
     }
@@ -254,6 +288,9 @@ try {
     Require-Command "npm" "Install Node.js LTS, which includes npm."
     Test-ProjectRoot
     Test-FirebaseLogin
+    $script:FirebaseProjectId = Get-FirebaseDefaultProject
+    Write-DeployLog "Firebase default project: $script:FirebaseProjectId"
+    Assert-EnvironmentTargetSafety -DeployEnvironment $Environment -FirebaseProject $script:FirebaseProjectId
 
     Write-DeploySection "PHASE 2 - WORKING TREE SAFETY"
     $branch = Get-GitValue "Working tree safety" @("rev-parse", "--abbrev-ref", "HEAD")
@@ -269,6 +306,8 @@ try {
     Write-DeployLog "Snapshot timestamp: $($StartedAt.ToString("yyyy-MM-dd HH:mm:ss zzz"))"
     Write-DeployLog "Snapshot branch: $branch"
     Write-DeployLog "Snapshot commit: $commit"
+    Write-DeployLog "Snapshot environment: $Environment"
+    Write-DeployLog "Snapshot Firebase project: $script:FirebaseProjectId"
 
     Write-DeploySection "PHASE 4 - VALIDATION"
     if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot "node_modules"))) {
@@ -277,6 +316,15 @@ try {
         Write-DeployLog "[OK] node_modules exists; skipping npm install" Green
     }
 
+    $env:VITE_APP_ENV = $Environment
+    $env:VITE_RELEASE_VERSION = $tagName
+    $env:VITE_RELEASE_COMMIT = $commit.Substring(0, 12)
+    $env:VITE_RELEASE_COMMIT_FULL = $commit
+    $env:VITE_RELEASE_DEPLOYED_AT = $StartedAt.ToUniversalTime().ToString("o")
+    $env:VITE_FIREBASE_PROJECT_ID = $script:FirebaseProjectId
+
+    Write-DeployLog "Release metadata: environment=$env:VITE_APP_ENV version=$env:VITE_RELEASE_VERSION commit=$env:VITE_RELEASE_COMMIT deployedAt=$env:VITE_RELEASE_DEPLOYED_AT firebaseProjectId=$env:VITE_FIREBASE_PROJECT_ID"
+    Invoke-LoggedCommand "Release metadata generation" "npm" @("run", "release:metadata")
     Invoke-LoggedCommand "TypeScript validation" "npx" @("tsc", "--noEmit", "--noUnusedLocals", "false", "--noUnusedParameters", "false")
     Invoke-LoggedCommand "Production build" "npm" @("run", "build")
 

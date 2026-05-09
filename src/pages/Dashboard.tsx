@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Lead } from "../types";
-import { getNextAction, ACTION_COLORS } from "../lib/nextAction";
+import { getNextAction } from "../lib/nextAction";
 import { getStatusColor } from "../lib/statusConfig";
 import { useLeads } from "../hooks/useFirebase";
 import { useAppStore } from "../stores/appStore";import {
@@ -238,6 +238,8 @@ function repInitial(name?: string) {
 }
 
 // ── Quick action card ─────────────────────────────────────────────────────────
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
 function QuickAction({
   label,
   icon,
@@ -338,7 +340,7 @@ export function DashboardPage({
         action: getNextAction(lead, []),
       }))
       .filter(({ action }) => action.type !== "none")
-      .sort((a, b) => (ACTION_COLORS[a.action.priority] ? 1 : 0) - (ACTION_COLORS[b.action.priority] ? 1 : 0))
+      .sort((a, b) => (PRIORITY_RANK[a.action.priority] ?? 2) - (PRIORITY_RANK[b.action.priority] ?? 2))
       .slice(0, 15);
   }, [leads]);
 

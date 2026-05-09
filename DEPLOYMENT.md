@@ -21,6 +21,19 @@ To validate the script, create the rollback tag, run TypeScript checks, and run 
 ```
 
 Dry run prints the Firebase deploy commands that would run, but does not execute them.
+The same governed dry-run is available through npm:
+
+```powershell
+npm run release:dry-run
+```
+
+The deployment script defaults to production metadata. To validate future staging metadata without publishing, use:
+
+```powershell
+.\deploy.ps1 -DryRun -Environment staging
+```
+
+Non-production environments are blocked from publishing to the production Firebase project until a separate Firebase target is configured.
 
 ## Deployment flow
 
@@ -30,6 +43,7 @@ Dry run prints the Firebase deploy commands that would run, but does not execute
    - `npm`
    - project root files
    - active Firebase login
+   - Firebase default project and requested environment
 2. Check git branch and working tree status.
 3. If uncommitted changes exist, require the operator to type `DEPLOY`.
 4. Create a lightweight rollback tag named `pre-deploy-YYYYMMDD-HHMMSS`.
@@ -40,13 +54,21 @@ Dry run prints the Firebase deploy commands that would run, but does not execute
 npx tsc --noEmit --noUnusedLocals false --noUnusedParameters false
 ```
 
-7. Run the production build:
+7. Generate release metadata for the build:
+
+```powershell
+npm run release:metadata
+```
+
+The app exposes the environment, release version, commit hash, deploy timestamp, and Firebase project in the admin settings panel.
+
+8. Run the production build:
 
 ```powershell
 npm run build
 ```
 
-8. Deploy Firebase targets explicitly, in this order:
+9. Deploy Firebase targets explicitly, in this order:
 
 ```powershell
 firebase deploy --only firestore:rules
@@ -66,6 +88,7 @@ scripts/deploy-logs/
 ```
 
 Each log records the timestamp, branch, commit hash, rollback tag, deploy result, failed step if any, and command output.
+Release metadata is also logged for traceability: environment, release version, commit, deploy timestamp, and Firebase project.
 
 ## Rollback reference
 
