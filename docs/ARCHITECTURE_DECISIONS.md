@@ -1,0 +1,283 @@
+# Architecture Decisions
+
+This document captures the major architectural and operational decisions behind the ASG Leads platform. It is intentionally practical: the goal is future engineering continuity, not ADR ceremony.
+
+## Core Platform Principles
+
+- **Operational truth over cosmetic metrics.** Queues, dashboards, and badges should reflect real work, not only currently loaded UI data.
+- **Workflow consistency over feature expansion.** One definition of callback, follow-up, booked, stale, terminal, and done is more valuable than more surfaces with divergent logic.
+- **Incremental hardening over destabilizing rewrites.** The CRM is production-operational; security and architecture improvements must preserve daily work.
+- **Governed deployment over ad-hoc release.** Releases need environment intent, target checks, metadata, dry runs, and rollback context.
+- **Operator cognition over visual novelty.** UI changes should reduce hesitation and context loss, not introduce new visual systems.
+- **One coherent platform over fragmented regional UX.** Brisbane and Perth need clear identity without separate applications, layouts, or themes.
+- **Compatibility bridges are temporary architecture, not permanent philosophy.** Anonymous auth and rep-profile fallbacks exist to keep production running during migration.
+
+## 1. Rep/PIN Operational Identity Model
+
+**Problem Context:** The platform began as an internal operational CRM where reps selected their profile and authenticated through PIN/access-code flows. This model fit daily field operations before Firebase UID/claims were used as authorization primitives.
+
+**Alternatives Considered:** Replace PIN auth immediately with Firebase Auth accounts; keep PIN auth indefinitely as the only identity system; run both models during migration.
+
+**Decision Made:** Preserve rep/PIN operational identity while introducing Firebase identity foundations underneath it.
+
+**Why This Approach Won:** Operators already depended on rep profiles for ownership, permissions, call attribution, targets, and workflow assignment. A hard auth replacement would risk blocking production usage.
+
+**Tradeoffs Accepted:** Frontend rep permissions remain UX-facing in some places. Rep ID and Firebase UID are not yet fully unified.
+
+**Risks Remaining:** PIN data and rep admin metadata need continued hardening. Rep activation, role, region, and UID linkage should move behind server authority.
+
+**Long-Term Direction:** Firebase UID becomes the identity authority; rep documents remain operational profiles.
+
+## 2. Firebase Anonymous Auth Compatibility Bridge
+
+**Problem Context:** Firestore rules require `request.auth`, but the production app still relies on rep/PIN login and anonymous Firebase sessions for operational access.
+
+**Alternatives Considered:** Require non-anonymous Firebase login immediately; loosen rules broadly; keep anonymous-compatible read/write bridges for operational collections only.
+
+**Decision Made:** Keep anonymous Firebase Auth compatibility for core operational workflows while requiring non-anonymous/elevated authority for privileged paths.
+
+**Why This Approach Won:** It restored production listener compatibility without undoing hardening. It also avoided emergency wildcard rules.
+
+**Tradeoffs Accepted:** Anonymous sessions are not a strong final security boundary. Rules need explicit compatibility logic during migration.
+
+**Risks Remaining:** The bridge can be mistaken for final architecture if not documented. Privileged operations must not rely on anonymous access.
+
+**Long-Term Direction:** Phase out anonymous operational access after UID linking and claims coverage are reliable.
+
+## 3. UID and Custom Claims Migration Foundation
+
+**Problem Context:** Future Firestore rules and callable Functions need server-trusted role, region, active state, and rep linkage, but the existing app is rep-profile based.
+
+**Alternatives Considered:** Store all authority only in rep docs; use custom claims immediately and block users without claims; introduce claim helpers with rep fallback.
+
+**Decision Made:** Establish UID/custom claims as the target authority while falling back to linked rep profiles during migration.
+
+**Why This Approach Won:** It provides a clear endpoint without breaking current operators. It lets future rules/functions trust claims once rollout is complete.
+
+**Tradeoffs Accepted:** Authorization is temporarily dual-sourced. Missing claims must be interpreted carefully.
+
+**Risks Remaining:** Claims can drift from rep docs until admin tooling owns updates consistently.
+
+**Long-Term Direction:** Claims carry `repId`, `role`, `region`, `allowedRegions`, and `active`; rep docs carry operational/profile data.
+
+## 4. Callable-Authoritative Privileged Operations
+
+**Problem Context:** Settings updates, rollback, settings history, and audit writes are too sensitive to remain direct client-authored documents.
+
+**Alternatives Considered:** Keep direct Firestore writes with stricter rules; move all writes to Functions immediately; migrate low-risk privileged flows first.
+
+**Decision Made:** Move settings, rollback, and structured audit operations behind callable Functions first.
+
+**Why This Approach Won:** These operations are high-value, relatively bounded, and benefit from server timestamps, attribution, validation, and structured logs.
+
+**Tradeoffs Accepted:** The platform now has mixed write authority: callable-authoritative for privileged settings/audit, client-authoritative for many realtime operational workflows.
+
+**Risks Remaining:** Rep admin metadata, documents/templates, training administration, commissions, and some audit side-effects still need future server authority.
+
+**Long-Term Direction:** Use the same callable-first pattern for each privileged domain: migrate, observe, remove fallback, tighten rules.
+
+## 5. Firestore Rules Hardening Philosophy
+
+**Problem Context:** Earlier rules allowed broad authenticated client writes, including areas that became privileged as the platform matured.
+
+**Alternatives Considered:** Lock down all collections immediately; keep broad rules for operational convenience; tighten only migrated/high-risk surfaces.
+
+**Decision Made:** Harden explicit privileged collections while preserving operational collections until safe migration paths exist.
+
+**Why This Approach Won:** It reduces real risk without interrupting lead, appointment, inbox, dashboard, and sales workflows.
+
+**Tradeoffs Accepted:** Security posture is uneven by design during migration. Some collections remain client-authoritative.
+
+**Risks Remaining:** Client-authoritative admin-like surfaces need review and migration. Rules must continue to avoid broad wildcard allowances.
+
+**Long-Term Direction:** Collection-by-collection authority map: public/operational, authenticated-client, elevated-client, callable-authoritative, and server-only.
+
+## 6. Shared Workflow-State Semantic Layer
+
+**Problem Context:** Dashboard, Inbox, Leads, badges, notifications, reminders, and next-action logic had different interpretations of callback/follow-up/booked state.
+
+**Alternatives Considered:** Patch each surface independently; move all workflow logic server-side immediately; centralize semantics in a shared client library first.
+
+**Decision Made:** Create a shared workflow-state layer in `src/lib/workflowState.ts` and align UI surfaces around it.
+
+**Why This Approach Won:** It fixes semantic divergence quickly without a backend rewrite. It gives every surface one operational definition.
+
+**Tradeoffs Accepted:** The shared layer is still client-side. Server enforcement of workflow semantics remains future work.
+
+**Risks Remaining:** Older surfaces may still contain local logic until touched. New features must resist duplicating workflow decisions.
+
+**Long-Term Direction:** Keep client semantics centralized; move authoritative task lifecycle operations server-side only when operationally justified.
+
+## 7. Operational Queue Truth Model
+
+**Problem Context:** Dashboard and Inbox queues cannot be trusted if derived only from the first loaded lead page.
+
+**Alternatives Considered:** Load all leads everywhere; accept loaded-window metrics; introduce focused operational queue queries.
+
+**Decision Made:** Separate browsing/windowed lead data from authoritative operational queue data via focused queue loading.
+
+**Why This Approach Won:** Operators need overdue work to appear even if it is outside the visible lead page. At the same time, the app must avoid indiscriminate Firestore load amplification.
+
+**Tradeoffs Accepted:** More query paths exist, and queue queries require performance discipline and indexing awareness.
+
+**Risks Remaining:** Data growth may expose query/index limits. Queue derivation should be monitored as regions and teams grow.
+
+**Long-Term Direction:** Treat operational queues as first-class work streams, with authoritative query strategy and clear truncation/degraded-state messaging.
+
+## 8. Release-Governed Deployment Model
+
+**Problem Context:** Production deployment was too dependent on local command knowledge and Firebase target assumptions.
+
+**Alternatives Considered:** Keep `npm run deploy` as the release path; adopt a full external CI/CD system immediately; introduce governed local release scripts first.
+
+**Decision Made:** Use `deploy.ps1` as the governed deployment entrypoint with environment checks, dry-run mode, release metadata, and rollback tagging.
+
+**Why This Approach Won:** It improves safety immediately without requiring a broader infrastructure migration.
+
+**Tradeoffs Accepted:** Release governance is still local-script based. A true staging project is not yet available.
+
+**Risks Remaining:** Operators can still use hosting-only shortcuts if they bypass guidance.
+
+**Long-Term Direction:** Add separate staging Firebase resources and eventually move governed release checks into CI/CD.
+
+## 9. Regional Workspace Identity Approach
+
+**Problem Context:** Brisbane/Perth separation is operationally meaningful, but the old selector felt like a secondary filter.
+
+**Alternatives Considered:** Separate apps per region; separate layouts/themes; keep region as a small filter; promote region as workspace identity.
+
+**Decision Made:** Promote region selection to a persistent workspace control under the ASG CRM brand and add lightweight region context signals.
+
+**Why This Approach Won:** Operators need instant workspace awareness without context hunting. The app can reinforce region identity without fragmenting workflows.
+
+**Tradeoffs Accepted:** Region identity adds visual state to the shell and must stay subtle.
+
+**Risks Remaining:** Region styling can drift into theming if not kept constrained. Authenticated mobile/sidebar validation still needs real data coverage.
+
+**Long-Term Direction:** Region remains a primary workspace dimension across queues, dashboards, badges, and future permission claims.
+
+## 10. Single Design-System / Multi-Region Strategy
+
+**Problem Context:** Multi-region operations need distinction, but separate visual systems would increase maintenance and cognitive overhead.
+
+**Alternatives Considered:** Full themes per region; separate region-specific shells; CSS-variable accent identity within one shell.
+
+**Decision Made:** Use one design system with region identity expressed through restrained CSS variables and shared metadata.
+
+**Why This Approach Won:** It preserves platform coherence. Operators can recognize region context peripherally without learning a different UI.
+
+**Tradeoffs Accepted:** Visual distinction is intentionally subtle, so it relies on placement and persistence as much as color.
+
+**Risks Remaining:** Accent contrast and meaning need periodic review. Region identity should not become decorative noise.
+
+**Long-Term Direction:** Continue one-platform UI, with region identity as an operational context layer.
+
+## 11. Operational Observability Philosophy
+
+**Problem Context:** Raw Firebase errors and console-only logs do not help operators recover from failed saves, listeners, or callable operations.
+
+**Alternatives Considered:** Build a full diagnostics dashboard immediately; leave logging as developer-only; add classification helpers and targeted messages first.
+
+**Decision Made:** Introduce lightweight operational diagnostics that classify failures and provide user-safe actionable messages.
+
+**Why This Approach Won:** It improves trust without adding dashboard clutter or large observability infrastructure.
+
+**Tradeoffs Accepted:** Observability is incremental and uneven across hooks until each path is reviewed.
+
+**Risks Remaining:** Silent catches and local-only errors still exist. Runtime health is not yet fully surfaced in-app.
+
+**Long-Term Direction:** Standardize listener/callable diagnostics and add an operator-safe system health surface when enough signals are meaningful.
+
+## 12. Incremental Stabilization Over Major Rewrites
+
+**Problem Context:** The app is production-operational and broad: leads, inbox, dashboard, admin, documents, training, calendar, calculator, commissions, and regional workflows.
+
+**Alternatives Considered:** Rewrite auth, routing, backend authority, or data model in one major phase; continue targeted stabilization.
+
+**Decision Made:** Prefer narrow, validated hardening phases over framework or architecture rewrites.
+
+**Why This Approach Won:** Operational continuity matters more than architectural purity. Each phase can improve safety while preserving the team’s daily work.
+
+**Tradeoffs Accepted:** Transitional complexity remains visible: bridges, fallbacks, mixed authority, and incremental tests.
+
+**Risks Remaining:** Transitional systems can accumulate if not retired deliberately.
+
+**Long-Term Direction:** Keep a migration ledger and retire bridges once their replacement is deployed, monitored, and validated.
+
+## 13. Operational-Truth-First Dashboard Philosophy
+
+**Problem Context:** Dashboards can become attractive but misleading if they summarize incomplete or stale data.
+
+**Alternatives Considered:** Optimize dashboard visuals first; display loaded-window metrics; make dashboard signals depend on authoritative operational state.
+
+**Decision Made:** Dashboard signals must prioritize operational truth, stale/overdue surfacing, and queue parity with Inbox.
+
+**Why This Approach Won:** Managers and operators need dashboards to tell them what requires action, not merely what is currently loaded.
+
+**Tradeoffs Accepted:** Some metrics may need more careful querying and explicit degraded/truncated states.
+
+**Risks Remaining:** Dashboard clutter and false urgency remain risks if new signals are added without queue semantics.
+
+**Long-Term Direction:** Dashboard should remain a signal system: actionable, region-aware, and consistent with Inbox/task lifecycle definitions.
+
+## 14. Build-and-Deploy Governance Approach
+
+**Problem Context:** A mature operational platform needs repeatable validation before release, not only successful local development.
+
+**Alternatives Considered:** Rely on manual QA; rely only on TypeScript build; add targeted guard scripts for high-risk architecture surfaces.
+
+**Decision Made:** Keep `npm run build` as the baseline and add focused tests for auth boundaries, workflow state, region identity, observability, and release metadata.
+
+**Why This Approach Won:** These tests are cheap, targeted, and aligned with real platform risk.
+
+**Tradeoffs Accepted:** Guard scripts are not full integration tests and can miss browser/auth/data issues.
+
+**Risks Remaining:** Full authenticated e2e coverage is still missing.
+
+**Long-Term Direction:** Keep focused architecture guards and add authenticated Playwright flows for core operational journeys.
+
+## Current Architectural State
+
+ASG Leads is a React/Vite/Firebase operational CRM with a client-heavy realtime architecture, Zustand state, Firestore listeners, Firebase Hosting, Cloud Functions for selected privileged flows, custom rep/PIN operational identity, and a migration path toward Firebase UID/custom claims.
+
+Privileged settings/audit flows are callable-authoritative. Core realtime operational workflows remain mostly client-authoritative for compatibility and speed. Workflow semantics and operational queue truth are now centralized enough to support consistent Dashboard/Inbox behavior.
+
+## Transitional Systems Still In Progress
+
+- Anonymous Firebase Auth compatibility bridge.
+- Rep-profile fallback when claims are missing.
+- Client-authoritative rep admin metadata.
+- Client-authoritative document/template/training administration.
+- Operational collections that still write directly to Firestore.
+- Local-script release governance before full CI/CD.
+- Build-time release metadata before server-trusted deployment attestation.
+- Partial diagnostics coverage across listeners and non-fatal workflows.
+
+## Known Long-Term Risks
+
+- Security hardening can regress if compatibility bridges are treated as permanent.
+- Queue truth can regress if new surfaces use paged lead data for operational metrics.
+- Dashboard noise can increase if signals are added without task-lifecycle semantics.
+- Region identity can fragment if future work introduces separate layouts/themes.
+- Mixed authority can confuse developers unless collection ownership is documented.
+- Lack of authenticated e2e tests leaves some production-only auth/data flows under-verified.
+
+## Recommended Future Architectural Direction
+
+1. Complete UID linking and claims rollout for active reps.
+2. Move rep admin metadata behind callables, then tighten `reps` rules.
+3. Document Firestore collection authority levels and migration status.
+4. Add separate staging Firebase resources and move release governance toward CI/CD.
+5. Expand authenticated e2e coverage for Leads, Inbox, Dashboard, Admin settings, region switching, and calculator workflows.
+6. Continue consolidating workflow semantics into `workflowState`.
+7. Add an operator-safe diagnostics surface for release metadata, auth state, listener health, and degraded queue behavior.
+8. Review document/template/training writes with Storage rules before server-authority migration.
+
+## Remaining Documentation Gaps
+
+- Auth migration runbook for UID linking, claims assignment, rollback, and support procedures.
+- Firestore rules intent map by collection.
+- Workflow semantics reference for queues, badges, notifications, Inbox, Dashboard, and next action.
+- Release and rollback runbook for operators.
+- Regional operations guide for Brisbane/Perth ownership and allowed-region policy.
+- Callable migration ledger showing completed, transitional, and future server-authoritative domains.
