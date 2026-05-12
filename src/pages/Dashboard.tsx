@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
 import { Lead } from "../types";
 import { getNextAction } from "../lib/nextAction";
+import { currentPerthDate, getWorkflowState, sortWorkflowQueue } from "../lib/workflowState";
 import { getStatusColor } from "../lib/statusConfig";
-import { useLeads } from "../hooks/useFirebase";
+import { useLeads, useOperationalQueueLeads } from "../hooks/useFirebase";
 import { useAppStore } from "../stores/appStore";import {
   Phone,
   Users,
@@ -28,7 +29,7 @@ import { useAppStore } from "../stores/appStore";import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  return currentPerthDate();
 }
 
 function startOfWeek() {
@@ -37,7 +38,7 @@ function startOfWeek() {
   return d.toISOString().split("T")[0];
 }
 function isOverdue(dateStr: string) {
-  return new Date(dateStr) < new Date();
+  return dateStr < currentPerthDate();
 }
 
 function timeUntil(dateStr: string, timeStr?: string) {
@@ -238,8 +239,6 @@ function repInitial(name?: string) {
 }
 
 // ── Quick action card ─────────────────────────────────────────────────────────
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
 function QuickAction({
   label,
   icon,
@@ -280,6 +279,7 @@ export function DashboardPage({
   onNavigate?: (page: string, filter?: { type: "leads" | "clients"; value: string }) => void;
 }) {
   const { leads, loading } = useLeads();
+  const { leads: operationalQueueLeads, truncated: queueTruncated } = useOperationalQueueLeads();
   const { currentUser, reps, statusColors } = useAppStore();
   const today = todayStr();
   const weekStart = startOfWeek();
@@ -307,10 +307,10 @@ export function DashboardPage({
     const dq = leads.filter((l) => l.status === "DQ").length;
     const newToday = leads.filter((l) => l.leadDate === today).length;
     const newThisWeek = leads.filter((l) => (l.leadDate ?? "") >= weekStart).length;
-    const callbacks = leads
-      .filter((l) => l.callbackDate)
+    const callbacks = operationalQueueLeads
+      .filter((l) => getWorkflowState(l).queueType === "callback")
       .sort((a, b) => new Date(a.callbackDate!).getTime() - new Date(b.callbackDate!).getTime());
-    const overdueCount = callbacks.filter((l) => isOverdue(l.callbackDate!)).length;
+    const overdueCount = callbacks.filter((l) => getWorkflowState(l).isOverdue).length;
     const convRate = leads.length > 0 ? ((booked / leads.length) * 100).toFixed(1) : "0.0";
 
     return {
@@ -326,38 +326,34 @@ export function DashboardPage({
       total: leads.length,
       convRate,
     };
-  }, [leads, allCalls, today, weekStart]);
+  }, [leads, operationalQueueLeads, allCalls, today, weekStart]);
 
   // ── Priority Work Queue (Next Action Engine) ─────────────────────────────
   // No extra Firestore queries — uses call history + lead fields only.
   // Calendar appointments and subcollection notes are not loaded here;
   // the engine gracefully handles empty arrays / undefined for those inputs.
   const priorityActions = useMemo(() => {
-    return leads
-      .filter((l) => l.status !== "_deleted" && l.status !== "Not Interested" && l.status !== "Wrong Number")
-      .map((lead) => ({
+    return sortWorkflowQueue(
+      operationalQueueLeads.map((lead) => ({
         lead,
         action: getNextAction(lead, []),
-      }))
-      .filter(({ action }) => action.type !== "none")
-      .sort((a, b) => (PRIORITY_RANK[a.action.priority] ?? 2) - (PRIORITY_RANK[b.action.priority] ?? 2))
+        state: getWorkflowState(lead),
+      })),
+    )
       .slice(0, 15);
-  }, [leads]);
+  }, [operationalQueueLeads]);
 
   // ── Follow-Up Engine ─────────────────────────────────────────────────────
   // Surfaces leads whose nextContactDate is due today or overdue.
   // Uses string comparison on ISO dates — no library needed.
   const followUpData = useMemo(() => {
-    const activeLeads = leads.filter(
-      (l) =>
-        l.status !== "_deleted" && l.status !== "Not Interested" && l.status !== "Wrong Number" && l.nextContactDate,
-    );
+    const activeLeads = operationalQueueLeads.filter((l) => getWorkflowState(l).queueType === "followup" && l.nextContactDate);
     const dueToday = activeLeads.filter((l) => l.nextContactDate === today);
     const overdue = activeLeads
-      .filter((l) => l.nextContactDate! < today) // strictly before today = overdue
+      .filter((l) => l.nextContactDate! < today)
       .sort((a, b) => a.nextContactDate!.localeCompare(b.nextContactDate!)); // oldest first
     return { dueToday, overdue };
-  }, [leads, today]);
+  }, [operationalQueueLeads, today]);
 
   // ── Today's Focus ────────────────────────────────────────────────────────
   const todayFocus = useMemo(() => {
@@ -376,9 +372,10 @@ export function DashboardPage({
     }> = [];
 
     // ── Overdue callbacks ──
-    const overdueCallbackLeads = leads.filter(
-      (l) => l.callbackDate && new Date(l.callbackDate) < new Date(today),
-    );
+    const overdueCallbackLeads = operationalQueueLeads.filter((l) => {
+      const state = getWorkflowState(l);
+      return state.queueType === "callback" && state.isOverdue;
+    });
     if (overdueCallbackLeads.length > 0)
       items.push({
         id: "overdue-callbacks",
@@ -450,7 +447,7 @@ export function DashboardPage({
       });
 
     return items.sort((a, b) => b.count - a.count).slice(0, 3);
-  }, [leads, followUpData, today]);
+  }, [leads, operationalQueueLeads, followUpData, today]);
 
   // ── Calls per day (last 7 days) ───────────────────────────────────────────
   const callsByDay = useMemo(() => {
@@ -565,6 +562,11 @@ export function DashboardPage({
 
   return (
     <div className="flex-1 overflow-y-auto bg-[var(--bg)] p-3 sm:p-4 md:p-5 space-y-4 sm:space-y-5">
+      {queueTruncated && (
+        <div className="rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 text-xs text-amber-800 dark:text-amber-200">
+          Operational queue query reached its safety limit. Counts may exclude older matching items until the queue is narrowed.
+        </div>
+      )}
       {/* ── Hero banner ── */}
       <div
         className="relative rounded-2xl overflow-hidden"
@@ -607,7 +609,7 @@ export function DashboardPage({
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {stats.total.toLocaleString()} leads live
+                {stats.total.toLocaleString()} leads loaded
               </span>
               {stats.newToday > 0 && (
                 <span
@@ -685,9 +687,9 @@ export function DashboardPage({
       {/* ── Stat cards (6) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         <StatCard
-          label="Total Leads"
+          label="Loaded Leads"
           value={stats.total.toLocaleString()}
-          sub={`${stats.newThisWeek} added this week`}
+          sub={`current window; ${stats.newThisWeek} added this week`}
           icon={<Users size={20} className="text-[var(--text-muted)]" />}
           gradient="bg-[var(--hover)] dark:bg-gray-800/30"
           border="border-[var(--border)]"

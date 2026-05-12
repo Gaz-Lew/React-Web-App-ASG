@@ -1908,9 +1908,15 @@ export function MapPage() {
               setSelectedLead(null);
             }}
             onSave={async (updated) => {
-              await saveLead(updated);
+              const ok = await saveLead(updated);
+              if (!ok) {
+                showToast("Failed to save lead", "error");
+                return false;
+              }
+
               setSelectedLead(updated);
               showToast("✅ Lead saved", "success");
+              return true;
             }}
             onDelete={async (lead) => {
               await deleteLead(lead.id);

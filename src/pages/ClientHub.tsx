@@ -34,7 +34,7 @@ import {
   BarChart3,
 } from "lucide-react";
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function normalizeDateKey(dateStr: string | undefined | null): string {
   if (!dateStr) return "No Date";
@@ -57,11 +57,11 @@ function formatGroupDate(dateKey: string): string {
 }
 
 function buildAddress(lead: Lead): string {
-  return [lead.houseNum, lead.street, lead.suburb, lead.postcode].filter(Boolean).join(" ") || "—";
+  return [lead.houseNum, lead.street, lead.suburb, lead.postcode].filter(Boolean).join(" ") || "â€”";
 }
 
 function formatDate(d?: string): string {
-  if (!d) return "—";
+  if (!d) return "â€”";
   try {
     return new Date(d + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
   } catch {
@@ -70,7 +70,7 @@ function formatDate(d?: string): string {
 }
 
 function formatDateTime(ts?: string | number): string {
-  if (!ts) return "—";
+  if (!ts) return "â€”";
   try {
     const d = typeof ts === "number" ? new Date(ts) : new Date(ts);
     return d.toLocaleDateString("en-AU", {
@@ -148,12 +148,12 @@ const CALL_RESULT_COLORS: Record<string, string> = {
 const STAGE_FILTERS = ["All", "FC Booked", "FC Done", "FR Booked", "FR Done", "Settlement"] as const;
 type StageFilter = (typeof STAGE_FILTERS)[number];
 
-// ── Details Tab ──────────────────────────────────────────────────────────────
+// â”€â”€ Details Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
-  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "—";
+  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "â€”";
   const address = buildAddress(lead);
-  const mapsUrl = address !== "—" ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null;
+  const mapsUrl = address !== "â€”" ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null;
 
   const row = (label: string, value: string | undefined | null) =>
     value ? (
@@ -243,12 +243,12 @@ function DetailsTab({ lead, reps }: { lead: Lead; reps: Rep[] }) {
   );
 }
 
-// ── Documents Tab ────────────────────────────────────────────────────────────
+// â”€â”€ Documents Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DocumentsTab({ lead }: { lead: Lead }) {
   const { files, loading } = useLeadFiles(String(lead.id));
 
-  if (loading) return <div className="p-8 text-center text-gray-400 text-sm">Loading documents…</div>;
+  if (loading) return <div className="p-8 text-center text-gray-400 text-sm">Loading documentsâ€¦</div>;
 
   if (files.length === 0) {
     return (
@@ -284,7 +284,7 @@ function DocumentsTab({ lead }: { lead: Lead }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{file.name}</p>
                   <p className="text-xs text-gray-400">
-                    {formatFileSize(file.fileSize)} · {file.uploadedBy}
+                    {formatFileSize(file.fileSize)} Â· {file.uploadedBy}
                   </p>
                 </div>
                 <a
@@ -305,12 +305,12 @@ function DocumentsTab({ lead }: { lead: Lead }) {
   );
 }
 
-// ── History Tab ──────────────────────────────────────────────────────────────
+// â”€â”€ History Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; serviceTypes: ServiceType[] }) {
   const { appointments } = useAppointments({ from: "2020-01-01", to: "2035-12-31" });
-  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "—";
-  const svcName = (id?: string) => serviceTypes.find((s) => s.id === id)?.name ?? "—";
+  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "â€”";
+  const svcName = (id?: string) => serviceTypes.find((s) => s.id === id)?.name ?? "â€”";
 
   // Calendar appointments for this client
   const clientAppts = useMemo(
@@ -321,7 +321,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
     [appointments, lead.id],
   );
 
-  // Call history — newest first
+  // Call history â€” newest first
   const callHistory = useMemo(() => [...(lead.callHistory ?? [])].reverse(), [lead.callHistory]);
 
   const STATUS_LABELS: Record<string, string> = {
@@ -381,7 +381,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                   <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
                     <span className="flex items-center gap-1">
                       <Clock size={10} /> {formatDate(appt.date)} {appt.startTime}
-                      {appt.endTime ? `–${appt.endTime}` : ""}
+                      {appt.endTime ? `â€“${appt.endTime}` : ""}
                     </span>
                     <span className="flex items-center gap-1">
                       <User size={10} /> {repName(appt.repId)}
@@ -425,7 +425,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
                           {call.result?.replace(/_/g, " ") ?? "unknown"}
                         </span>
                         <span className="text-[10px] text-gray-400">
-                          {call.rep} · {call.date ? formatDateTime(call.date) : ""}
+                          {call.rep} Â· {call.date ? formatDateTime(call.date) : ""}
                         </span>
                       </div>
                       {call.notes && (
@@ -443,7 +443,7 @@ function HistoryTab({ lead, reps, serviceTypes }: { lead: Lead; reps: Rep[]; ser
   );
 }
 
-// ── Client Detail Panel ──────────────────────────────────────────────────────
+// â”€â”€ Client Detail Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type PanelTab = "details" | "documents" | "history" | "financial-reports";
 
@@ -551,7 +551,7 @@ function ClientDetailPanel({ lead, reps, serviceTypes, onClose, onBookAppointmen
   );
 }
 
-// ── Main Component ──────────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface ClientHubPageProps {
   initialFilter?: string | null;
@@ -569,7 +569,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
   const { save: saveAppt } = useSaveAppointment();
   const { appointments } = useAppointments({ from: "2020-01-01", to: "2035-12-31" });
 
-  // Active reps only — former/inactive staff excluded from booking dropdowns
+  // Active reps only â€” former/inactive staff excluded from booking dropdowns
   const activeReps = useMemo(() => reps.filter((r) => r.active), [reps]);
 
   // Apply filter from Dashboard navigation
@@ -691,15 +691,17 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
       const ok = await saveLead(lead);
       if (ok) {
         setSelectedLead(lead);
-        showToast("✅ Client saved", "success");
+        showToast("Client saved", "success");
+        return true;
       } else {
-        showToast("❌ Failed to save", "error");
+        showToast("Failed to save", "error");
+        return false;
       }
     },
     [saveLead, showToast],
   );
 
-  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "—";
+  const repName = (id?: number) => reps.find((r) => r.id === id)?.name ?? "â€”";
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-[var(--bg)]">
@@ -716,7 +718,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
         {/* Filter indicator banner */}
         {initialFilter && (
           <div className="flex items-center justify-between gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg text-xs text-orange-700 dark:text-orange-300 mb-4">
-            <span className="font-semibold">📋 Filter: FC completed, needs FR booking</span>
+            <span className="font-semibold">ðŸ“‹ Filter: FC completed, needs FR booking</span>
             <button
               onClick={onFilterCleared}
               className="flex items-center gap-1 px-2 py-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/30 transition"
@@ -806,7 +808,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
         {/* Table */}
         <div className="flex-1 overflow-auto min-w-0">
           {loading ? (
-            <div className="flex items-center justify-center h-32 text-gray-400">Loading clients…</div>
+            <div className="flex items-center justify-center h-32 text-gray-400">Loading clientsâ€¦</div>
           ) : groupedClients.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <Briefcase size={40} className="mb-3 opacity-30" />
@@ -876,7 +878,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
                                 onClick={() => onOpenProfile ? onOpenProfile(lead.id) : handleSelectLead(lead)}
                               >
                                 <td className="px-4 py-3">
-                                  <div className="font-medium text-gray-900 dark:text-white">{lead.name || "—"}</div>
+                                  <div className="font-medium text-gray-900 dark:text-white">{lead.name || "â€”"}</div>
                                   {lead.phone && (
                                     <a
                                       href={`tel:${lead.phone}`}
@@ -958,7 +960,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
                       className="w-full flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-[var(--surface)]/50 text-xs font-semibold text-gray-600 dark:text-gray-400"
                     >
                       {collapsedGroups.has(dateKey) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                      {label} · {groupLeads.length}
+                      {label} Â· {groupLeads.length}
                     </button>
                     {!collapsedGroups.has(dateKey) &&
                       groupLeads.map((lead) => {
@@ -972,7 +974,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
                             className="px-4 py-3 bg-white dark:bg-[var(--surface)] hover:bg-amber-50/50 dark:hover:bg-amber-900/10 cursor-pointer"
                           >
                             <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <span className="font-medium text-gray-900 dark:text-white">{lead.name || "—"}</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{lead.name || "â€”"}</span>
                               <span
                                 className={`px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${stage.bgClass} ${stage.textClass}`}
                               >
@@ -1061,7 +1063,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
         </div>
       )}
 
-      {/* AppointmentModal — Book appointment for a client */}
+      {/* AppointmentModal â€” Book appointment for a client */}
       {bookingLead && currentUser && (
         <AppointmentModal
           appointment={null}
@@ -1079,7 +1081,7 @@ export function ClientHubPage({ initialFilter, onFilterCleared, onOpenProfile }:
           onSave={async (appt) => {
             await saveAppt(appt);
             setBookingLead(null);
-            showToast("✅ Appointment booked", "success");
+            showToast("âœ… Appointment booked", "success");
           }}
           onDelete={async () => {
             setBookingLead(null);

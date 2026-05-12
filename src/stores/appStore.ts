@@ -52,7 +52,10 @@ const STORAGE_KEYS = {
   DARK_MODE: "asg-crm:dark-mode",
   UI_SCALE: "asg-crm:ui-scale",
   USER_LOCATION: "asg-crm:user-location",
+  ACTIVE_REGION: "asg-crm:active-region",
 } as const;
+
+const isRegion = (value: string | null): value is Region => value === "brisbane" || value === "perth";
 
 const loadReps = (): Rep[] => {
   if (!import.meta.env.DEV) {
@@ -75,6 +78,15 @@ const loadReps = (): Rep[] => {
   }
 };
 
+const loadActiveRegion = (): Region => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_REGION);
+    return isRegion(stored) ? stored : "brisbane";
+  } catch {
+    return "brisbane";
+  }
+};
+
 export const useAppStore = create<AppState>((set) => ({
   leads: [],
   reps: loadReps(),
@@ -87,7 +99,7 @@ export const useAppStore = create<AppState>((set) => ({
   reportToLoad: null,
   piaPrefillClientId: null,
   piaPrefillClientName: null,
-  activeRegion: "brisbane",
+  activeRegion: loadActiveRegion(),
 
   setLeads: (leads) => set({ leads }),
 
@@ -137,5 +149,12 @@ export const useAppStore = create<AppState>((set) => ({
   clearPiaPrefillContext: () =>
     set({ piaPrefillClientId: null, piaPrefillClientName: null }),
 
-  setActiveRegion: (activeRegion) => set({ activeRegion }),
+  setActiveRegion: (activeRegion) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_REGION, activeRegion);
+    } catch {
+      // Region still updates for the current session if storage is unavailable.
+    }
+    set({ activeRegion });
+  },
 }));

@@ -1742,7 +1742,7 @@ export function CalendarPage({ onViewClientProfile }: CalendarPageProps) {
 
   const handleSaveLeadFromSidebar = useCallback(
     (lead: Lead) => {
-      saveLead(lead);
+      return saveLead(lead);
     },
     [saveLead],
   );

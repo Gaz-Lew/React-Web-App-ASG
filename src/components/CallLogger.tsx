@@ -9,7 +9,7 @@ interface CallLoggerProps {
   lead: Lead;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (lead: Lead) => void;
+  onSave: (lead: Lead) => boolean | void | Promise<boolean | void>;
 }
 
 /**
@@ -183,10 +183,12 @@ export function CallLogger({ lead, isOpen, onClose, onSave }: CallLoggerProps) {
       }
     }
 
-    onSave(updatedLead);
-
-    setSaving(false);
-    handleClose();
+    try {
+      const ok = await onSave(updatedLead);
+      if (ok !== false) handleClose();
+    } finally {
+      setSaving(false);
+    }
   }, [
     validate,
     saving,

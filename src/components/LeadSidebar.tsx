@@ -66,7 +66,7 @@ const KNOCK_LABELS: Record<string, string> = {
 interface LeadSidebarProps {
   lead: Lead;
   onClose: () => void;
-  onSave: (lead: Lead) => void;
+  onSave: (lead: Lead) => boolean | Promise<boolean | void> | void;
   onDelete: (lead: Lead) => void;
   onCall: (lead: Lead) => void;
   /** When passed (from Map page), shows a Knock Pin Type selector in the form */
@@ -123,6 +123,8 @@ export function LeadSidebar({
   const [addressStr, setAddressStr] = useState<string>(buildAddress(lead));
   const [optimisticCallbackDate, setOptimisticCallbackDate] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [otherViewers, setOtherViewers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -181,6 +183,8 @@ export function LeadSidebar({
     setForm(lead);
     setAddressStr(buildAddress(lead));
     setDirty(false);
+    setSaveState("idle");
+    setSaveMessage(null);
     setConfirmDelete(false);
     setGuidanceDismissed(false);
   }, [lead.id]);
@@ -217,13 +221,47 @@ export function LeadSidebar({
   }, [lead.id, currentUser]);
 
   // Auto-save debounce — after 1.5s of no changes, save silently
+  const persistDraft = async (draft: Lead, source: "auto" | "manual" | "close" = "manual"): Promise<boolean> => {
+    if (!draft.name?.trim()) {
+      setDirty(true);
+      setSaveState("error");
+      setSaveMessage("Name is required before this lead can be saved.");
+      return false;
+    }
+
+    setSaveState("saving");
+    setSaveMessage(source === "close" ? "Saving before close..." : null);
+    try {
+      const result = await onSave(draft);
+      if (result === false) {
+        setDirty(true);
+        setSaveState("error");
+        setSaveMessage("Save failed. Check your connection, then retry.");
+        return false;
+      }
+      setDirty(false);
+      setSaveState("saved");
+      setSaveMessage(source === "auto" ? "Saved automatically" : "Saved");
+      setOptimisticCallbackDate(null);
+      window.setTimeout(() => {
+        setSaveState((current) => (current === "saved" ? "idle" : current));
+        setSaveMessage((current) => (current === "Saved" || current === "Saved automatically" ? null : current));
+      }, 1800);
+      return true;
+    } catch {
+      setDirty(true);
+      setSaveState("error");
+      setSaveMessage("Save failed. Check your connection, then retry.");
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!dirty) return;
+    setSaveState("dirty");
+    setSaveMessage(null);
     const t = setTimeout(() => {
-      if (form.name?.trim()) {
-        onSave(form);
-        setDirty(false);
-      }
+      void persistDraft(form, "auto");
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,7 +275,7 @@ export function LeadSidebar({
     if (Object.keys(updates).length === 0) return;
     const updated: Lead = { ...lead, ...updates };
     setForm(updated);
-    onSave(updated);
+    void persistDraft(updated, "auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id, lead.callHistory?.length ?? 0, leadNotes.length]);
 
@@ -259,16 +297,14 @@ export function LeadSidebar({
     setDirty(true);
   };
 
-  const handleSave = () => {
-    if (!form.name.trim()) return;
-    onSave(form);
-    setDirty(false);
-    setOptimisticCallbackDate(null);
+  const handleSave = async () => {
+    await persistDraft(form, "manual");
   };
 
-  const handleClose = () => {
-    if (dirty && form.name?.trim()) {
-      onSave(form);
+  const handleClose = async () => {
+    if (dirty) {
+      const saved = await persistDraft(form, "close");
+      if (!saved) return;
     }
     onClose();
   };
@@ -385,8 +421,7 @@ export function LeadSidebar({
       ],
     };
     setForm(updatedLead);
-    onSave(updatedLead);
-    setDirty(false);
+    void persistDraft(updatedLead, "manual");
   };
 
   /** Submits a new note to the leads/{id}/notes subcollection */
@@ -509,8 +544,25 @@ export function LeadSidebar({
                 <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">
                   {lead.name}
                 </h2>
-                {dirty && <StatusBadge variant="loading" className="flex-shrink-0" />}
+                {saveState === "dirty" && <StatusBadge variant="draft" className="flex-shrink-0" />}
+                {saveState === "saving" && <StatusBadge variant="loading" className="flex-shrink-0" />}
+                {saveState === "saved" && <StatusBadge variant="saved" className="flex-shrink-0" />}
+                {saveState === "error" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 flex-shrink-0">
+                    Save failed
+                  </span>
+                )}
               </div>
+              {saveMessage && (
+                <p
+                  className={`text-xs mt-1 ${
+                    saveState === "error" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+                  }`}
+                  role={saveState === "error" ? "alert" : "status"}
+                >
+                  {saveMessage}
+                </p>
+              )}
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                 {dqRepName} · {lead.status}
                 {lead.dnqFellOver && (
@@ -720,8 +772,7 @@ export function LeadSidebar({
                       const updated: Lead = { ...form, nextContactDate: val };
                       setForm(updated);
                       // Save immediately — don't queue through the debounce
-                      if (updated.name?.trim()) onSave(updated);
-                      setDirty(false);
+                      void persistDraft(updated, "manual");
                     }}
                   />
                   {form.nextContactDate && (
@@ -730,8 +781,7 @@ export function LeadSidebar({
                       onClick={() => {
                         const updated: Lead = { ...form, nextContactDate: undefined };
                         setForm(updated);
-                        if (updated.name?.trim()) onSave(updated);
-                        setDirty(false);
+                        void persistDraft(updated, "manual");
                       }}
                       className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                       title="Clear follow-up date"
@@ -1124,6 +1174,8 @@ export function LeadSidebar({
                       setForm(lead);
                       setAddressStr(buildAddress(lead));
                       setDirty(false);
+                      setSaveState("idle");
+                      setSaveMessage(null);
                     }}
                     className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-[var(--hover)] transition"
                   >

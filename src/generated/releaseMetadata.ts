@@ -2,8 +2,8 @@
 export const GENERATED_RELEASE_METADATA = {
   "environment": "production",
   "version": "1.0.0",
-  "commit": "9196c42",
-  "fullCommit": "9196c42264ac2db148b5efebc8eb95d0ba24b587",
-  "deployedAt": "2026-05-09T05:06:16.418Z",
+  "commit": "a373d62",
+  "fullCommit": "a373d625c7b5a9d79cc5330e49257dc2645c4934",
+  "deployedAt": "2026-05-11T05:18:36.370Z",
   "firebaseProjectId": "amplify-leads-2026"
 } as const;

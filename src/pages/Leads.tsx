@@ -13,11 +13,8 @@ import { AddLeadModal } from "../components/AddLeadModal";
 import { reportWriteResult } from "../hooks/useNetworkStatus";
 import { Loader } from "lucide-react";
 import { getNextAction } from "../lib/nextAction";
+import { getWorkflowState, isTerminalLeadStatus } from "../lib/workflowState";
 import { injectRowFlashStyles } from "../lib/animation";
-
-function isTerminalLeadStatus(status: string | undefined): boolean {
-  return status === "_deleted" || status === "lost" || status === "Not Interested" || status === "Wrong Number";
-}
 
 interface LeadsPageProps {
   addLeadOpen?: boolean;
@@ -26,6 +23,15 @@ interface LeadsPageProps {
   onPendingCallLeadConsumed?: () => void;
   initialFilter?: string | null;
   onFilterCleared?: () => void;
+}
+
+function shouldShowNotificationBlockedBanner(): boolean {
+  if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return false;
+  const ua = navigator.userAgent;
+  const isMobileSafari =
+    /iP(ad|hone|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
+  if (isMobileSafari) return false;
+  return Notification.permission === "denied";
 }
 
 export function LeadsPage({
@@ -43,11 +49,11 @@ export function LeadsPage({
   const { showToast } = useToast();
   const { currentUser } = useAppStore();
 
-  // ── Phase 5.2 — Failed-write retry buffer (lead update path only) ────────
+  // â”€â”€ Phase 5.2 â€” Failed-write retry buffer (lead update path only) â”€â”€â”€â”€â”€â”€â”€â”€
   const [lastFailedSave, setLastFailedSave] = useState<Lead | null>(null);
   const [retrying, setRetrying] = useState(false);
 
-  // ── Phase 7 — minimal audit logger (status + callback changes) ───────────
+  // â”€â”€ Phase 7 â€” minimal audit logger (status + callback changes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const logLeadAudit = useCallback(
     async (action: string, detail: string, leadId: number, leadName: string) => {
       if (!currentUser) return;
@@ -107,16 +113,40 @@ export function LeadsPage({
       return leads.filter((l) => (l.status === "Booked" || l.status === "booked") && !l.fcAppt?.date);
     }
     if (initialFilter === "overdue-callbacks") {
-      const today = new Date().toISOString().split("T")[0];
       return leads
-        .filter((l) => !isTerminalLeadStatus(l.status) && l.callbackDate && l.callbackDate < today)
+        .filter((l) => {
+          const state = getWorkflowState(l);
+          return state.queueType === "callback" && state.isOverdue;
+        })
         .sort((a, b) => (a.callbackDate ?? "").localeCompare(b.callbackDate ?? ""));
     }
     if (initialFilter === "overdue-followups") {
-      const today = new Date().toISOString().split("T")[0];
       return leads
-        .filter((l) => !isTerminalLeadStatus(l.status) && l.nextContactDate && l.nextContactDate < today)
+        .filter((l) => {
+          const state = getWorkflowState(l);
+          return state.queueType === "followup" && state.isOverdue && l.nextContactDate;
+        })
         .sort((a, b) => (a.nextContactDate ?? "").localeCompare(b.nextContactDate ?? ""));
+    }
+    if (initialFilter === "callbacks") {
+      return leads
+        .filter((l) => getWorkflowState(l).queueType === "callback")
+        .sort((a, b) => (a.callbackDate ?? "").localeCompare(b.callbackDate ?? ""));
+    }
+    if (initialFilter === "followups") {
+      return leads
+        .filter((l) => getWorkflowState(l).queueType === "followup")
+        .sort((a, b) => (a.nextContactDate ?? "").localeCompare(b.nextContactDate ?? ""));
+    }
+    if (initialFilter === "actionable-queue") {
+      return leads
+        .filter((l) => getWorkflowState(l).isActionable)
+        .sort((a, b) => {
+          const aState = getWorkflowState(a);
+          const bState = getWorkflowState(b);
+          const priority = { high: 0, medium: 1, low: 2 };
+          return priority[aState.priority] - priority[bState.priority];
+        });
     }
     return leads;
   }, [leads, initialFilter]);
@@ -125,12 +155,12 @@ export function LeadsPage({
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
 
-  // ── Soft delete undo state ────────────────────────────────────────────────
-  const [undoLead, setUndoLead] = useState<Lead | null>(null);
+  // â”€â”€ Soft delete undo state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [undoLeads, setUndoLeads] = useState<Lead[] | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const originalLeadRef = useRef<Lead | null>(null);
 
-  // Sync external addLeadOpen → internal close handler
+  // Sync external addLeadOpen â†’ internal close handler
   const setShowAddLead = useCallback(
     (open: boolean) => {
       onAddLeadOpenChange?.(open);
@@ -139,7 +169,7 @@ export function LeadsPage({
   );
   const showAddLead = addLeadOpen;
 
-  // ── Pending call from Dashboard ─────────────────────────────────────────────
+  // â”€â”€ Pending call from Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!pendingCallLeadId || leads.length === 0) return;
     const lead = leads.find((l) => l.id === pendingCallLeadId);
@@ -152,7 +182,7 @@ export function LeadsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCallLeadId, leads]);
 
-  // ── Lead selection ──────────────────────────────────────────────────────────
+  // â”€â”€ Lead selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSelectLead = useCallback((lead: Lead) => {
     originalLeadRef.current = lead;
     setSelectedLead(lead);
@@ -165,7 +195,7 @@ export function LeadsPage({
     setSelectedLead(null);
   }, []);
 
-  // ── Call logger ─────────────────────────────────────────────────────────────
+  // â”€â”€ Call logger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleAddCall = useCallback((lead: Lead) => {
     setSelectedLead(lead);
     setShowCallLogger(true);
@@ -176,13 +206,13 @@ export function LeadsPage({
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
       if (ok) {
-        showToast(`✅ Call logged for ${updatedLead.name}`, "success");
+        showToast(`âœ… Call logged for ${updatedLead.name}`, "success");
         flashRow(updatedLead.id);
-        showFeedback("Call logged ✓");
+        showFeedback("Call logged âœ“");
         setShowCallLogger(false);
         setSelectedLead(null);
 
-        // ── Flow mode: auto-select next highest priority lead ─────────────
+        // â”€â”€ Flow mode: auto-select next highest priority lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const nextLead = filteredLeads
           .filter((l) => l.id !== updatedLead.id && l.status !== "_deleted")
           .sort((a, b) => {
@@ -197,14 +227,16 @@ export function LeadsPage({
             setShowSidebar(true);
           }, 300);
         }
+        return true;
       } else {
-        showToast("❌ Failed to save call. Please try again.", "error");
+        showToast("Failed to save call. Please try again.", "error");
+        return false;
       }
     },
     [saveLead, showToast, flashRow, showFeedback, filteredLeads],
   );
 
-  // ── Sidebar save ────────────────────────────────────────────────────────────
+  // â”€â”€ Sidebar save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSaveLead = useCallback(
     async (updatedLead: Lead) => {
       const prev = originalLeadRef.current;
@@ -214,13 +246,13 @@ export function LeadsPage({
         originalLeadRef.current = updatedLead;
         setLastFailedSave(null);
         flashRow(updatedLead.id);
-        showFeedback("Updated ✓");
-        showToast(`✅ ${updatedLead.name} saved`, "success");
+        showFeedback("Updated âœ“");
+        showToast(`âœ… ${updatedLead.name} saved`, "success");
 
-        // Phase 7 — audit only field-level changes worth tracking
+        // Phase 7 â€” audit only field-level changes worth tracking
         if (prev) {
           if (prev.status !== updatedLead.status) {
-            // Read and clear atomically — lead ID guard prevents cross-lead attribution
+            // Read and clear atomically â€” lead ID guard prevents cross-lead attribution
             const stored = lastAIContextRef.current;
             const contextAction =
               stored?.leadId === String(updatedLead.id) ? stored.action : undefined;
@@ -228,7 +260,7 @@ export function LeadsPage({
 
             void logLeadAudit(
               "lead_status_changed",
-              `Status: ${prev.status} → ${updatedLead.status}`,
+              `Status: ${prev.status} â†’ ${updatedLead.status}`,
               updatedLead.id,
               updatedLead.name,
             );
@@ -246,7 +278,7 @@ export function LeadsPage({
           if ((prev.callbackDate || "") !== (updatedLead.callbackDate || "")) {
             void logLeadAudit(
               "lead_callback_updated",
-              `Callback: ${prev.callbackDate || "—"} → ${updatedLead.callbackDate || "—"}`,
+              `Callback: ${prev.callbackDate || "â€”"} â†’ ${updatedLead.callbackDate || "â€”"}`,
               updatedLead.id,
               updatedLead.name,
             );
@@ -263,13 +295,15 @@ export function LeadsPage({
         }
       } else {
         setLastFailedSave(updatedLead);
-        showToast("❌ Failed to save. Tap retry to try again.", "error");
+        showToast("âŒ Failed to save. Tap retry to try again.", "error");
+        return false;
       }
+      return true;
     },
     [saveLead, showToast, flashRow, showFeedback, logLeadAudit],
   );
 
-  // ── Phase 5.2 — Retry handler ────────────────────────────────────────────
+  // â”€â”€ Phase 5.2 â€” Retry handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleRetrySave = useCallback(async () => {
     if (!lastFailedSave || retrying) return;
     setRetrying(true);
@@ -279,96 +313,124 @@ export function LeadsPage({
     if (ok) {
       setLastFailedSave(null);
       flashRow(lastFailedSave.id);
-      showToast(`✅ ${lastFailedSave.name} saved`, "success");
+      showToast(`âœ… ${lastFailedSave.name} saved`, "success");
     } else {
-      showToast("❌ Retry failed. Check your connection.", "error");
+      showToast("âŒ Retry failed. Check your connection.", "error");
     }
   }, [lastFailedSave, retrying, saveLead, flashRow, showToast]);
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleDeleteLead = useCallback(
     async (lead: Lead) => {
       // Step 1: Mark as _deleted (instant visual removal)
       const ok = await saveLead({ ...lead, status: "_deleted" as Lead["status"] });
       if (!ok) {
-        showToast("❌ Failed to delete. Please try again.", "error");
+        showToast("âŒ Failed to delete. Please try again.", "error");
         return;
       }
 
       setShowSidebar(false);
       setSelectedLead(null);
 
-      // Show undo toast — the lead disappears from the table immediately
-      setUndoLead(lead);
+      // Show undo toast â€” the lead disappears from the table immediately
+      setUndoLeads([lead]);
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
       undoTimerRef.current = setTimeout(async () => {
         // Step 2: Real delete after 5s if not undone
         await deleteLead(lead.id);
-        setUndoLead(null);
+        setUndoLeads(null);
       }, 5000);
     },
     [saveLead, deleteLead, showToast],
   );
 
+  const handleBulkDeleteLeads = useCallback(
+    async (targets: Lead[]) => {
+      if (targets.length === 0) return;
+      const deleted: Lead[] = [];
+      for (const lead of targets) {
+        const ok = await saveLead({ ...lead, status: "_deleted" as Lead["status"] });
+        if (ok) deleted.push(lead);
+      }
+
+      if (deleted.length === 0) {
+        showToast("Failed to delete selected leads. Please try again.", "error");
+        return;
+      }
+      if (deleted.length < targets.length) {
+        showToast(`Deleted ${deleted.length} of ${targets.length} selected leads. Some failed.`, "error");
+      }
+
+      setUndoLeads(deleted);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = setTimeout(async () => {
+        await Promise.all(deleted.map((lead) => deleteLead(lead.id)));
+        setUndoLeads(null);
+      }, 8000);
+    },
+    [saveLead, deleteLead, showToast],
+  );
+
   const handleUndoDelete = useCallback(async () => {
-    if (!undoLead) return;
+    if (!undoLeads || undoLeads.length === 0) return;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     // Restore original status
-    await saveLead(undoLead);
-    setUndoLead(null);
-    showToast(`↩️ ${undoLead.name} restored`, "success");
-  }, [undoLead, saveLead, showToast]);
+    await Promise.all(undoLeads.map((lead) => saveLead(lead)));
+    const label = undoLeads.length === 1 ? undoLeads[0].name : `${undoLeads.length} leads`;
+    setUndoLeads(null);
+    showToast(`${label} restored`, "success");
+  }, [undoLeads, saveLead, showToast]);
 
-  // ── Inline cell edit from DataTable ─────────────────────────────────────────
+  // â”€â”€ Inline cell edit from DataTable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleUpdateLead = useCallback(
     async (updatedLead: Lead) => {
       const ok = await saveLead(updatedLead);
-      if (!ok) showToast("❌ Failed to save. Please try again.", "error");
+      if (!ok) showToast("âŒ Failed to save. Please try again.", "error");
     },
     [saveLead, showToast],
   );
 
-  // ── Next Action click → instant response ─────────────────────────────────────
+  // â”€â”€ Next Action click â†’ instant response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNextAction = useCallback(
     (lead: Lead) => {
       const hasContact = (lead.callHistory?.length ?? 0) > 0;
-      // No contact or follow-up → open CallLogger immediately
+      // No contact or follow-up â†’ open CallLogger immediately
       if (!hasContact || lead.status === "new" || lead.status === "contacted" || lead.status === "qualified") {
         handleAddCall(lead);
         return;
       }
-      // Callback scheduled → open CallLogger
+      // Callback scheduled â†’ open CallLogger
       if (lead.callbackDate) {
         handleAddCall(lead);
         return;
       }
-      // Booked → open sidebar for full client view
+      // Booked â†’ open sidebar for full client view
       if (lead.status === "booked" || lead.status === "Booked") {
         setSelectedLead(lead);
         setShowSidebar(true);
         setShowCallLogger(false);
         return;
       }
-      // Fallback → open sidebar
+      // Fallback â†’ open sidebar
       handleSelectLead(lead);
     },
     [handleAddCall, handleSelectLead],
   );
 
-  // ── Add lead ────────────────────────────────────────────────────────────────
+  // â”€â”€ Add lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleAddLead = useCallback(
     async (newLead: Lead) => {
       const ok = await saveLead(newLead);
       if (ok) {
-        showToast(`✅ ${newLead.name} added`, "success");
+        showToast(`âœ… ${newLead.name} added`, "success");
       } else {
-        showToast("❌ Failed to add lead.", "error");
+        showToast("âŒ Failed to add lead.", "error");
       }
     },
     [saveLead, showToast],
   );
 
-  // ── Loading / Error ─────────────────────────────────────────────────────────
+  // â”€â”€ Loading / Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (leadsLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[var(--surface)]">
@@ -384,9 +446,11 @@ export function LeadsPage({
     return (
       <div className="flex-1 flex items-center justify-center bg-[var(--surface)]">
         <div className="text-center max-w-md px-6">
-          <div className="text-4xl mb-4">⚠️</div>
+          <div className="text-4xl mb-4">âš ï¸</div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Failed to load leads</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">{leadsError}</p>
+          <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">
+            We could not load the live lead queue. Check your connection, then retry. If this keeps happening, contact an admin with the console error details.
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="px-5 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 transition font-medium"
@@ -398,16 +462,16 @@ export function LeadsPage({
     );
   }
 
-  // ── Main layout ─────────────────────────────────────────────────────────────
+  // â”€â”€ Main layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="flex-1 flex flex-col bg-[var(--surface)] overflow-hidden">
       {/* Notification permission hint */}
-      {"Notification" in window && Notification.permission === "denied" && (
+      {shouldShowNotificationBlockedBanner() && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
-          <span>🔔</span>
+          <span>ðŸ””</span>
           <span>
-            Browser notifications are blocked — callback reminders won't fire. To enable: open your browser settings →
-            Site Settings → Notifications → allow this site.
+            Browser notifications are blocked â€” callback reminders won't fire. To enable: open your browser settings â†’
+            Site Settings â†’ Notifications â†’ allow this site.
           </span>
         </div>
       )}
@@ -416,10 +480,13 @@ export function LeadsPage({
       {initialFilter && (
         <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
           <span className="font-semibold">
-            {initialFilter === "no-contact" && "📞 Filter: Leads with no contact yet"}
-            {initialFilter === "clients-no-fc" && "📋 Filter: Clients needing FC booking"}
+            {initialFilter === "no-contact" && "ðŸ“ž Filter: Leads with no contact yet"}
+            {initialFilter === "clients-no-fc" && "ðŸ“‹ Filter: Clients needing FC booking"}
             {initialFilter === "overdue-callbacks" && "Filter: Overdue callbacks"}
             {initialFilter === "overdue-followups" && "Filter: Overdue follow-ups"}
+            {initialFilter === "callbacks" && "Filter: Actionable callbacks"}
+            {initialFilter === "followups" && "Filter: Actionable follow-ups"}
+            {initialFilter === "actionable-queue" && "Filter: Actionable queue"}
           </span>
           <button
             onClick={onFilterCleared}
@@ -441,7 +508,7 @@ export function LeadsPage({
             {actionFeedback}
           </div>
         )}
-        {/* Table — fills space; sidebar sits beside it on lg+ */}
+        {/* Table â€” fills space; sidebar sits beside it on lg+ */}
         <div className="flex-1 overflow-hidden min-w-0 transition-all duration-200">
           <DataTable
             leads={filteredLeads}
@@ -449,6 +516,7 @@ export function LeadsPage({
             onSelectLead={handleSelectLead}
             onAddCall={handleAddCall}
             onDeleteLead={handleDeleteLead}
+            onBulkDeleteLeads={handleBulkDeleteLeads}
             onUpdateLead={handleUpdateLead}
             onNextAction={handleNextAction}
             flashedLeadId={flashedLeadId}
@@ -463,7 +531,7 @@ export function LeadsPage({
 
       </div>
 
-      {/* Lead detail modal — centered overlay on all screen sizes */}
+      {/* Lead detail modal â€” centered overlay on all screen sizes */}
       {showSidebar && selectedLead && (
         <LeadSidebar
           lead={selectedLead}
@@ -491,10 +559,10 @@ export function LeadsPage({
       {/* Add Lead Modal */}
       {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} onSave={handleAddLead} />}
 
-      {/* Saving overlay */}
+      {/* Non-blocking save indicator */}
       {(saveLoading || deleteLoading) && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]">
-          <div className="bg-[var(--surface)] rounded-xl px-6 py-4 flex items-center gap-3 shadow-xl">
+        <div className="fixed bottom-4 right-4 z-[100] pointer-events-none">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3 flex items-center gap-3 shadow-xl">
             <Loader size={20} className="animate-spin text-amber-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {saveLoading ? "Saving..." : "Deleting..."}
@@ -511,22 +579,22 @@ export function LeadsPage({
 
       {lastFailedSave && (
         <div className="fixed bottom-16 right-4 z-[9998] flex items-center gap-3 bg-red-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm">
-          <span>⚠️ Save failed for <strong>{lastFailedSave.name}</strong></span>
+          <span>âš ï¸ Save failed for <strong>{lastFailedSave.name}</strong></span>
           <button
             onClick={handleRetrySave}
             disabled={retrying}
             className="ml-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white rounded-lg font-semibold text-xs transition"
           >
-            {retrying ? "Retrying…" : "Retry"}
+            {retrying ? "Retryingâ€¦" : "Retry"}
           </button>
         </div>
       )}
 
-      {/* Undo delete toast — bottom-left so it doesn't clash with regular toasts */}
-      {undoLead && (
+      {/* Undo delete toast â€” bottom-left so it doesn't clash with regular toasts */}
+      {undoLeads && undoLeads.length > 0 && (
         <div className="fixed bottom-4 left-4 z-[9998] flex items-center gap-3 bg-gray-900 dark:bg-slate-700 text-white px-4 py-3 rounded-xl shadow-xl text-sm animate-in slide-in-from-left-4 fade-in duration-300">
           <span>
-            🗑️ <strong>{undoLead.name}</strong> deleted
+            <strong>{undoLeads.length === 1 ? undoLeads[0].name : `${undoLeads.length} leads`}</strong> deleted
           </span>
           <button
             onClick={handleUndoDelete}

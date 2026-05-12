@@ -1,8 +1,17 @@
 import { useEffect, useRef } from "react";
 import { Lead } from "../types";
+import { getWorkflowState } from "../lib/workflowState";
 
 // Module-level flag — only request permission once per page load
 let permissionRequested = false;
+
+function canUseCallbackNotifications(): boolean {
+  if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return false;
+  const ua = navigator.userAgent;
+  const isMobileSafari =
+    /iP(ad|hone|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
+  return !isMobileSafari;
+}
 
 /**
  * Schedules browser notifications for Revisit leads with callbacks due within 24h.
@@ -13,14 +22,14 @@ export function useCallbackReminders(leads: Lead[]) {
   const scheduledIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!("Notification" in window)) return;
+    if (!canUseCallbackNotifications()) return;
 
     const schedule = () => {
       const now = Date.now();
       const in24h = now + 24 * 60 * 60 * 1000;
 
       leads
-        .filter((l) => l.status === "contacted" && l.callbackDate && l.callbackTime)
+        .filter((l) => getWorkflowState(l).queueType === "callback" && l.callbackDate && l.callbackTime)
         .forEach((lead) => {
           const key = `${lead.id}-${lead.callbackDate}-${lead.callbackTime}`;
           if (scheduledIds.current.has(key)) return; // already scheduled

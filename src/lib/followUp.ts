@@ -5,13 +5,15 @@
  * No side effects — safe to call during render.
  */
 
+import { currentPerthDate } from "./workflowState";
+
 /**
  * Returns true when the given ISO date string is strictly in the past
  * (before today's calendar date).
  */
 export function isOverdue(date?: string): boolean {
   if (!date) return false;
-  const today = new Date().toISOString().split("T")[0];
+  const today = currentPerthDate();
   return date < today;
 }
 
@@ -20,7 +22,7 @@ export function isOverdue(date?: string): boolean {
  */
 export function isDueToday(date?: string): boolean {
   if (!date) return false;
-  const today = new Date().toISOString().split("T")[0];
+  const today = currentPerthDate();
   return date === today;
 }
 

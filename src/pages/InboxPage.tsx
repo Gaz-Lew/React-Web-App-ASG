@@ -1,26 +1,28 @@
 import { useState, useCallback, useMemo } from "react";
 import { Lead } from "../types";
-import { useLeads, useSaveLead } from "../hooks/useFirebase";
+import { useOperationalQueueLeads, useSaveLead } from "../hooks/useFirebase";
 import { getNextAction } from "../lib/nextAction";
+import { buildInboxDonePatch, getWorkflowState, sortWorkflowQueue } from "../lib/workflowState";
 import { LeadSidebar } from "../components/LeadSidebar";
+import CallLogger from "../components/CallLogger";
 import { useToast } from "../context/ToastContext";
 import { Inbox, Phone, Check } from "lucide-react";
 
-const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
-
 export function InboxPage() {
-  const { leads, loading } = useLeads();
+  const { leads, loading, truncated } = useOperationalQueueLeads();
   const { save: saveLead } = useSaveLead();
   const { showToast } = useToast();
 
   const [currentLeadId, setCurrentLeadId] = useState<number | null>(null);
+  const [callLead, setCallLead] = useState<Lead | null>(null);
   const [pendingIntent, setPendingIntent] = useState<string | null>(null);
 
   const tasks = useMemo(() => {
-    return leads
-      .map((lead) => ({ lead, action: getNextAction(lead) }))
-      .filter(({ action }) => action.priority === "high" || action.priority === "medium")
-      .sort((a, b) => PRIORITY_ORDER[a.action.priority] - PRIORITY_ORDER[b.action.priority]);
+    return sortWorkflowQueue(
+      leads
+        .map((lead) => ({ lead, action: getNextAction(lead), state: getWorkflowState(lead) }))
+        .filter(({ state }) => state.isActionable),
+    );
   }, [leads]);
 
   const selected = tasks.find((t) => t.lead.id === currentLeadId)?.lead ?? null;
@@ -30,8 +32,13 @@ export function InboxPage() {
   const handleSave = useCallback(
     async (updated: Lead) => {
       const ok = await saveLead(updated);
-      if (ok) showToast(`✅ ${updated.name} saved`, "success");
-      else showToast("❌ Failed to save. Please try again.", "error");
+      if (ok) {
+        showToast(`${updated.name} saved`, "success");
+        return true;
+      }
+
+      showToast("Failed to save. Please try again.", "error");
+      return false;
     },
     [saveLead, showToast],
   );
@@ -45,15 +52,15 @@ export function InboxPage() {
   );
 
   const handleSidebarCall = useCallback((_lead: Lead) => {
-    setCurrentLeadId(null);
+    setCallLead(_lead);
   }, []);
 
   const handleDone = useCallback(
     async (e: React.MouseEvent, lead: Lead) => {
       e.stopPropagation();
-      const ok = await saveLead({ ...lead, status: "contacted" });
+      const ok = await saveLead(buildInboxDonePatch(lead));
       if (ok) {
-        showToast("Marked as contacted", "success");
+        showToast("Task completed", "success");
         const idx = tasks.findIndex((t) => t.lead.id === lead.id);
         const nextLead = tasks[idx + 1]?.lead;
         setCurrentLeadId(nextLead?.id ?? null);
@@ -66,9 +73,26 @@ export function InboxPage() {
 
   const handleQuickCall = useCallback((e: React.MouseEvent, lead: Lead) => {
     e.stopPropagation();
-    showToast("Opening lead", "success");
-    setCurrentLeadId(lead.id);
-  }, [showToast]);
+    setCallLead(lead);
+  }, []);
+
+  const handleSaveCall = useCallback(
+    async (updated: Lead) => {
+      const ok = await saveLead(updated);
+      if (ok) {
+        showToast(`Call logged for ${updated.name}`, "success");
+        setCallLead(null);
+        const idx = tasks.findIndex((t) => t.lead.id === updated.id);
+        const nextLead = tasks[idx + 1]?.lead;
+        setCurrentLeadId(nextLead?.id ?? null);
+        return true;
+      } else {
+        showToast("Failed to save call. Please try again.", "error");
+        return false;
+      }
+    },
+    [saveLead, showToast, tasks],
+  );
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--surface)] overflow-y-auto">
@@ -91,6 +115,12 @@ export function InboxPage() {
         <p className="text-sm text-[var(--text-muted)] mb-8">
           {loading ? "Loading…" : `${tasks.length} action${tasks.length !== 1 ? "s" : ""} need your attention`}
         </p>
+
+        {truncated && (
+          <p className="text-xs text-amber-600 dark:text-amber-300 mb-4">
+            Queue limit reached. Some older items may need a filtered Leads search.
+          </p>
+        )}
 
         {/* Task list */}
         {loading ? (
@@ -186,6 +216,14 @@ export function InboxPage() {
           onDelete={handleDelete}
           onCall={handleSidebarCall}
           initialAIIntent={pendingIntent ?? undefined}
+        />
+      )}
+      {callLead && (
+        <CallLogger
+          lead={callLead}
+          isOpen={Boolean(callLead)}
+          onClose={() => setCallLead(null)}
+          onSave={handleSaveCall}
         />
       )}
     </div>

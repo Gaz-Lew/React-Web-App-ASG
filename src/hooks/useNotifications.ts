@@ -26,6 +26,12 @@ export interface UseNotificationsResult {
   token: string | null;
 }
 
+function isUnsupportedNotificationBrowser(): boolean {
+  if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return true;
+  const ua = navigator.userAgent;
+  return /iP(ad|hone|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -63,8 +69,7 @@ export function useNotifications(): UseNotificationsResult {
     if (initialised.current) return;
 
     // ── Unsupported environment check ──────────────────────────────────────
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    if (isUnsupportedNotificationBrowser()) {
       setPermissionState("unsupported");
       return;
     }

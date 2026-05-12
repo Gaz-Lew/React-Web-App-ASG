@@ -8,6 +8,8 @@
     "prebuild": "node scripts/write-release-metadata.cjs",
     "build": "tsc && vite build",
     "test:auth-boundaries": "node scripts/test-auth-boundaries.cjs",
+    "test:workflow-state": "node scripts/test-workflow-state.cjs",
+    "test:region-identity": "node scripts/test-region-identity.cjs",
     "test:observability": "node scripts/test-observability.cjs",
     "test:release-metadata": "node scripts/test-release-metadata.cjs",
     "release:metadata": "node scripts/write-release-metadata.cjs",

@@ -45,7 +45,7 @@ import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAppStore } from "../stores/appStore";
 import { useFirebaseAuthUser } from "./useFirebaseAuthUser";
-import { DEFAULT_STATUS_COLORS } from "../types";
+import { DEFAULT_STATUS_COLORS, effectiveRegion } from "../types";
 import {
   Lead,
   Rep,
@@ -73,6 +73,7 @@ import {
 } from "../types";
 import { deleteFile, uploadFile } from "../lib/storage";
 import { reportPendingWrites } from "./useNetworkStatus";
+import { currentPerthDate, getWorkflowState } from "../lib/workflowState";
 
 // Firestore rejects `undefined` field values — strip them before writing (deep: handles nested objects + arrays)
 function stripUndefined<T extends object>(obj: T): Partial<T> {
@@ -93,6 +94,7 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 100;
+const OPERATIONAL_QUEUE_LIMIT = 500;
 
 export function useLeads() {
   const { setLeads: setStoreLeads, activeRegion } = useAppStore();
@@ -1629,6 +1631,84 @@ export interface Deal {
   createdAt: number;
   createdBy: string;
   notes: DealNote[];
+}
+
+export function useOperationalQueueLeads() {
+  const { activeRegion } = useAppStore();
+  const { currentUser, authLoading } = useFirebaseAuthUser();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [truncated, setTruncated] = useState(false);
+
+  const isReady = !authLoading && !!currentUser;
+
+  useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!isReady) {
+      setLoading(false);
+      setLeads([]);
+      return;
+    }
+
+    const today = currentPerthDate();
+    const staleCutoff = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const byQuery: Array<Lead[]> = [[], [], [], []];
+    const seenSnapshots = new Set<number>();
+    const queries = [
+      query(collection(db, "leads"), where("callbackDate", "<=", today), orderBy("callbackDate", "asc"), limit(OPERATIONAL_QUEUE_LIMIT)),
+      query(collection(db, "leads"), where("nextContactDate", "<=", today), orderBy("nextContactDate", "asc"), limit(OPERATIONAL_QUEUE_LIMIT)),
+      query(collection(db, "leads"), where("lastCall", "<=", staleCutoff), orderBy("lastCall", "asc"), limit(OPERATIONAL_QUEUE_LIMIT)),
+      query(collection(db, "leads"), where("status", "in", ["new", "No Answer"]), orderBy("leadDate", "desc"), limit(OPERATIONAL_QUEUE_LIMIT)),
+    ];
+
+    setLoading(true);
+    setError(null);
+    setTruncated(false);
+
+    const publish = () => {
+      const byId = new Map<number, Lead>();
+      let anyTruncated = false;
+      byQuery.forEach((items) => {
+        if (items.length >= OPERATIONAL_QUEUE_LIMIT) anyTruncated = true;
+        items.forEach((lead) => {
+          if (effectiveRegion(lead.region) === activeRegion && getWorkflowState(lead).isActionable) {
+            byId.set(lead.id, lead);
+          }
+        });
+      });
+      setLeads(Array.from(byId.values()));
+      setTruncated(anyTruncated);
+      if (seenSnapshots.size === queries.length) setLoading(false);
+    };
+
+    const unsubs = queries.map((q, index) =>
+      onSnapshot(
+        q,
+        (snapshot) => {
+          seenSnapshots.add(index);
+          byQuery[index] = snapshot.docs.map((d) => ({
+            id: Number(d.id),
+            ...d.data(),
+          })) as Lead[];
+          publish();
+        },
+        (err) => {
+          console.error("[useOperationalQueueLeads] Firestore error:", err);
+          setError(err instanceof Error ? err.message : "Failed to load operational queue");
+          setLoading(false);
+        },
+      ),
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [activeRegion, authLoading, isReady, currentUser]);
+
+  return { leads, loading, error, truncated };
 }
 
 export interface DealNote {

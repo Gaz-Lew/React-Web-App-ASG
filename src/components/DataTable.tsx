@@ -13,6 +13,7 @@ interface DataTableProps {
   onSelectLead: (lead: Lead) => void;
   onAddCall: (lead: Lead) => void;
   onDeleteLead: (lead: Lead) => void;
+  onBulkDeleteLeads?: (leads: Lead[]) => void;
   onUpdateLead: (lead: Lead) => void;
   onNextAction?: (lead: Lead) => void;
   flashedLeadId?: number | null;
@@ -253,6 +254,7 @@ export function DataTable({
   onSelectLead,
   onAddCall,
   onDeleteLead,
+  onBulkDeleteLeads,
   onUpdateLead,
   onNextAction,
   flashedLeadId,
@@ -428,6 +430,7 @@ export function DataTable({
 
   // ── Feature 2: Undo state ──────────────────────────────────────────────────
   const [undoSnapshot, setUndoSnapshot] = useState<Lead[] | null>(null);
+  const [undoLabel, setUndoLabel] = useState("Bulk change");
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Feature 4: Filter presets ──────────────────────────────────────────────
@@ -513,15 +516,40 @@ export function DataTable({
     return result.sort();
   }, [leads]);
 
-  // Per-tab counts (respects myLeadsOnly filter; other filters like search/suburb intentionally not applied)
+  const tabCountBase = useMemo(() => {
+    let base = leads.filter((l) => l.status !== "_deleted");
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      base = base.filter(
+        (l) =>
+          l.name.toLowerCase().includes(term) ||
+          l.phone.includes(term) ||
+          l.suburb.toLowerCase().includes(term) ||
+          (l.email?.toLowerCase().includes(term) ?? false) ||
+          (l.houseNum?.toLowerCase().includes(term) ?? false) ||
+          (l.street?.toLowerCase().includes(term) ?? false) ||
+          (l.notes?.toLowerCase().includes(term) ?? false) ||
+          [l.houseNum, l.street, l.suburb, l.postcode].filter(Boolean).join(" ").toLowerCase().includes(term),
+      );
+    }
+    if (myLeadsOnly && currentUserId) {
+      base = base.filter((l) => l.dqRep === currentUserId);
+    } else if (!myLeadsOnly && filters.repId) {
+      base = base.filter((l) => l.dqRep === filters.repId);
+    }
+    if (filters.suburb) base = base.filter((l) => l.suburb === filters.suburb);
+    return base;
+  }, [leads, searchTerm, filters, myLeadsOnly, currentUserId]);
+
+  // Per-tab counts reflect the active search/rep/suburb scope, excluding only the tab itself.
   const tabCounts = useMemo(() => {
-    const base = myLeadsOnly && currentUserId ? leads.filter((l) => l.dqRep === currentUserId) : leads;
+    const base = tabCountBase;
     const counts: Record<string, number> = { all: base.length };
     base.forEach((l) => {
       counts[l.status] = (counts[l.status] || 0) + 1;
     });
     return counts;
-  }, [leads, myLeadsOnly, currentUserId]);
+  }, [tabCountBase]);
 
   const filteredLeads = useMemo(() => {
     let result = leads;
@@ -688,6 +716,7 @@ export function DataTable({
     setSelectedLeads(new Set());
     // Set undo snapshot with 5s timeout
     setUndoSnapshot(snapshot);
+    setUndoLabel("Status change");
     if (undoTimer) clearTimeout(undoTimer);
     const t = setTimeout(() => setUndoSnapshot(null), 5000);
     setUndoTimer(t);
@@ -696,12 +725,17 @@ export function DataTable({
   const handleBulkRepUpdate = useCallback(() => {
     if (!bulkRep) return;
     const toUpdate = sortedLeads.filter((l) => selectedLeads.has(l.id));
+    const snapshot = toUpdate.map((l) => ({ ...l }));
     const repName = reps.find((r) => r.id === bulkRep)?.name ?? "";
     toUpdate.forEach((l) => onUpdateLead({ ...l, dqRep: bulkRep as number }));
     showToast(`✅ Reassigned ${toUpdate.length} lead${toUpdate.length !== 1 ? "s" : ""} to ${repName}`, "success");
     setSelectedLeads(new Set());
     setBulkRep("");
-  }, [sortedLeads, selectedLeads, bulkRep, reps, onUpdateLead, showToast]);
+    setUndoSnapshot(snapshot);
+    setUndoLabel("Rep reassignment");
+    if (undoTimer) clearTimeout(undoTimer);
+    setUndoTimer(setTimeout(() => setUndoSnapshot(null), 5000));
+  }, [sortedLeads, selectedLeads, bulkRep, reps, onUpdateLead, showToast, undoTimer]);
 
   const handleBulkDelete = useCallback(() => {
     if (!confirmingDelete) {
@@ -709,30 +743,41 @@ export function DataTable({
       return;
     }
     const toDelete = sortedLeads.filter((l) => selectedLeads.has(l.id));
-    toDelete.forEach((l) => onDeleteLead(l));
+    if (onBulkDeleteLeads && toDelete.length > 1) onBulkDeleteLeads(toDelete);
+    else toDelete.forEach((l) => onDeleteLead(l));
     setSelectedLeads(new Set());
     setConfirmingDelete(false);
-  }, [confirmingDelete, sortedLeads, selectedLeads, onDeleteLead]);
+  }, [confirmingDelete, sortedLeads, selectedLeads, onDeleteLead, onBulkDeleteLeads]);
 
   // Feature 5: Bulk date update
   const handleBulkDateUpdate = useCallback(() => {
     if (!bulkDate) return;
     const toUpdate = sortedLeads.filter((l) => selectedLeads.has(l.id));
+    const snapshot = toUpdate.map((l) => ({ ...l }));
     toUpdate.forEach((l) => onUpdateLead({ ...l, leadDate: bulkDate }));
     showToast(`✅ Set date for ${toUpdate.length} lead(s)`, "success");
     setSelectedLeads(new Set());
     setBulkDate("");
-  }, [sortedLeads, selectedLeads, bulkDate, onUpdateLead, showToast]);
+    setUndoSnapshot(snapshot);
+    setUndoLabel("Date change");
+    if (undoTimer) clearTimeout(undoTimer);
+    setUndoTimer(setTimeout(() => setUndoSnapshot(null), 5000));
+  }, [sortedLeads, selectedLeads, bulkDate, onUpdateLead, showToast, undoTimer]);
 
   // Feature 5: Bulk suburb update
   const handleBulkSuburbUpdate = useCallback(() => {
     if (!bulkSuburb) return;
     const toUpdate = sortedLeads.filter((l) => selectedLeads.has(l.id));
+    const snapshot = toUpdate.map((l) => ({ ...l }));
     toUpdate.forEach((l) => onUpdateLead({ ...l, suburb: bulkSuburb }));
     showToast(`✅ Set suburb for ${toUpdate.length} lead(s)`, "success");
     setSelectedLeads(new Set());
     setBulkSuburb("");
-  }, [sortedLeads, selectedLeads, bulkSuburb, onUpdateLead, showToast]);
+    setUndoSnapshot(snapshot);
+    setUndoLabel("Suburb change");
+    if (undoTimer) clearTimeout(undoTimer);
+    setUndoTimer(setTimeout(() => setUndoSnapshot(null), 5000));
+  }, [sortedLeads, selectedLeads, bulkSuburb, onUpdateLead, showToast, undoTimer]);
 
   // ── Derived field helpers ─────────────────────────────────────────────────
   const getRepName = (repId: number | undefined) => {
@@ -1744,7 +1789,7 @@ export function DataTable({
           <p className="text-sm text-[var(--text-muted)]">
             {selectedLeads.size > 0
               ? `${selectedLeads.size} of ${sortedLeads.length} selected`
-              : `Showing ${sortedLeads.length} of ${leads.length} leads`}
+              : `Showing ${sortedLeads.length} of ${leads.length} leads in view`}
           </p>
 
           {selectedLeads.size > 0 && (
@@ -1890,7 +1935,7 @@ export function DataTable({
                     undoSnapshot.forEach((l) => onUpdateLead(l));
                     setUndoSnapshot(null);
                     if (undoTimer) clearTimeout(undoTimer);
-                    showToast("↩ Status change undone", "success");
+                    showToast(`${undoLabel} undone`, "success");
                   }}
                   className="px-3 py-1 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition font-medium flex items-center gap-1"
                 >

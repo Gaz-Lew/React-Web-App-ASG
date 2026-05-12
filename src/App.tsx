@@ -11,10 +11,13 @@ import {
   useSaveRep,
   useSaveLead,
   useLeads,
+  useOperationalQueueLeads,
   useAppSettings,
   useSaveSettings,
   useAddAuditEntry,
 } from "./hooks/useFirebase";
+import { getWorkflowState } from "./lib/workflowState";
+import { getRegionIdentity, REGION_IDENTITIES } from "./lib/regionIdentity";
 import {
   LayoutDashboard,
   MessageCircle,
@@ -763,10 +766,10 @@ function SidebarItem({
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-left ${
-        active ? "bg-[#1A1A1D] text-[#b8933a]" : "text-[#c8c8c4] hover:bg-[#222226] hover:text-white"
+        active ? "bg-[#1A1A1D] text-[var(--region-accent)]" : "text-[#c8c8c4] hover:bg-[#222226] hover:text-white"
       }`}
       style={
-        active ? { borderLeft: "2px solid #b8933a", paddingLeft: "10px" } : { borderLeft: "2px solid transparent" }
+        active ? { borderLeft: "2px solid var(--region-accent)", paddingLeft: "10px" } : { borderLeft: "2px solid transparent" }
       }
     >
       {icon}
@@ -774,7 +777,7 @@ function SidebarItem({
       {badge !== undefined && badge > 0 && (
         <span
           className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-          style={{ background: "#b8933a", color: "#fff" }}
+          style={{ background: "var(--region-accent)", color: "var(--region-text-on-accent)" }}
         >
           {badge > 99 ? "99+" : badge}
         </span>
@@ -802,12 +805,22 @@ function AppShell() {
   const { settings: appSettings } = useAppSettings();
   const { save: saveSettings } = useSaveSettings();
   const { leads: allLeads } = useLeads();
+  const { leads: operationalQueueLeads } = useOperationalQueueLeads();
   const { currentUser: firebaseUser, authLoading: firebaseAuthLoading } = useFirebaseAuthUser();
   const { showToast } = useToast();
   useOfflineQueue();
   const { isProbablyOffline } = useNetworkStatus();
   const [dark, toggleDark] = useDarkMode();
   const [uiScale, setUiScale] = useUiScale();
+  const regionIdentity = getRegionIdentity(activeRegion);
+  const [regionSwitchNotice, setRegionSwitchNotice] = useState<string | null>(null);
+  const regionNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const regionShellVars = {
+    "--region-accent": regionIdentity.accent,
+    "--region-accent-soft": regionIdentity.accentSoft,
+    "--region-accent-border": regionIdentity.accentBorder,
+    "--region-text-on-accent": regionIdentity.textOnAccent,
+  } as React.CSSProperties;
 
   const [page, setPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -962,6 +975,10 @@ function AppShell() {
   const handleRegionChange = useCallback(
     (region: Region) => {
       if (region === activeRegion) return;
+      const nextIdentity = getRegionIdentity(region);
+      setRegionSwitchNotice(`Switching to ${nextIdentity.label} workspace...`);
+      if (regionNoticeTimerRef.current) clearTimeout(regionNoticeTimerRef.current);
+      regionNoticeTimerRef.current = setTimeout(() => setRegionSwitchNotice(null), 1800);
       setActiveRegion(region);
       setLeads([]);
       setLeadsFilter(null);
@@ -1252,32 +1269,28 @@ function AppShell() {
   const callbackBadge = useMemo(() => {
     if (!currentUser) return 0;
 
-    const today = new Date().toISOString().split("T")[0];
-
-    return allLeads.filter((l) => {
-      if (l.status !== "Revisit" || !l.callbackDate) return false;
+    return operationalQueueLeads.filter((l) => {
+      if (getWorkflowState(l).queueType !== "callback") return false;
 
       const isMyLead = l.dqRep === currentUser.id;
       if (!isAdmin && !isMyLead) return false;
 
-      return l.callbackDate <= today;
+      return true;
     }).length;
-  }, [allLeads, currentUser, isAdmin]);
+  }, [operationalQueueLeads, currentUser, isAdmin]);
 
   const followUpBadge = useMemo(() => {
     if (!currentUser) return 0;
 
-    const today = new Date().toISOString().split("T")[0];
-
-    return allLeads.filter((l) => {
-      if (!l.nextContactDate) return false;
+    return operationalQueueLeads.filter((l) => {
+      if (getWorkflowState(l).queueType !== "followup") return false;
 
       const isMyLead = l.dqRep === currentUser.id;
       if (!isAdmin && !isMyLead) return false;
 
-      return l.nextContactDate <= today;
+      return true;
     }).length;
-  }, [allLeads, currentUser, isAdmin]);
+  }, [operationalQueueLeads, currentUser, isAdmin]);
 
   // ── NOW it's safe to return early ──────────────────────────────────────────
   if (!currentUser) {
@@ -1347,7 +1360,10 @@ function AppShell() {
               icon={<Users size={15} />}
               label="Leads"
               active={effectivePage === "leads"}
-              onClick={() => onNav("leads")}
+              onClick={() => {
+                if (callbackBadge + followUpBadge > 0) setLeadsFilter("actionable-queue");
+                onNav("leads");
+              }}
               badge={callbackBadge + followUpBadge}
             />
           )}
@@ -1535,32 +1551,73 @@ function AppShell() {
       })()
     : null;
 
-  const sidebarUserCard = (
-    <div className="flex-shrink-0 border-t border-white/[0.06]">
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7a7a74]">Workspace</span>
-          <span className="text-[10px] text-[#7a7a74] capitalize">{activeRegion}</span>
-        </div>
-        <div className="grid grid-cols-2 rounded-lg border border-white/10 overflow-hidden bg-[rgba(255,255,255,0.03)]">
-          {(["brisbane", "perth"] as const).map((region) => (
+  const WorkspaceSwitcher = () => (
+    <div
+      className="mt-3 rounded-xl border px-2.5 py-2"
+      style={{
+        background: "var(--region-accent-soft)",
+        borderColor: "var(--region-accent-border)",
+      }}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8e8e86]">Workspace</span>
+        <span className="text-[10px] font-bold uppercase" style={{ color: "var(--region-accent)" }}>
+          {regionIdentity.shortLabel}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        {(Object.keys(REGION_IDENTITIES) as Region[]).map((region) => {
+          const identity = getRegionIdentity(region);
+          const isActive = activeRegion === region;
+          return (
             <button
               key={region}
               type="button"
               onClick={() => handleRegionChange(region)}
-              className={`px-2 py-1.5 text-[11px] font-semibold transition ${
-                activeRegion === region
-                  ? "bg-[#b8933a] text-white"
-                  : "text-[#9a9a92] hover:bg-white/[0.06] hover:text-[#c8c8c4]"
+              className={`rounded-lg px-2 py-1.5 text-[11px] font-semibold transition ${
+                isActive ? "shadow-sm" : "text-[#9a9a92] hover:bg-white/[0.06] hover:text-[#c8c8c4]"
               }`}
-              aria-pressed={activeRegion === region}
+              style={
+                isActive
+                  ? {
+                      background: identity.accent,
+                      color: identity.textOnAccent,
+                    }
+                  : undefined
+              }
+              aria-pressed={isActive}
+              aria-label={`Switch to ${identity.label} workspace`}
             >
-              {region === "brisbane" ? "Brisbane" : "Perth"}
+              {identity.label}
             </button>
-          ))}
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const sidebarBrand = (
+    <div className="flex-shrink-0 border-b border-white/[0.06] px-4 py-3">
+      <div className="flex items-center gap-3">
+        <img
+          src="/asg-circle.png"
+          alt="ASG"
+          className="h-7 w-7 flex-shrink-0 rounded-full object-cover"
+          style={{ border: "1.5px solid var(--region-accent-border)" }}
+        />
+        <div className="min-w-0">
+          <p className="font-display text-sm font-bold leading-none tracking-tight text-white">ASG CRM</p>
+          <p className="mt-0.5 truncate text-[10px] font-semibold" style={{ color: "var(--region-accent)" }}>
+            {regionIdentity.label} workspace
+          </p>
         </div>
       </div>
+      <WorkspaceSwitcher />
+    </div>
+  );
 
+  const sidebarUserCard = (
+    <div className="flex-shrink-0 border-t border-white/[0.06]">
       {/* Quick Pull button — shown when sheet is configured */}
       {appSettings?.sheets?.url && (
         <div className="px-3 pt-2">
@@ -1655,7 +1712,11 @@ function AppShell() {
   );
 
   return (
-    <div className={`h-dvh flex overflow-hidden ${isProbablyOffline ? "pt-7" : ""}`}>
+    <div
+      className={`h-dvh flex overflow-hidden ${isProbablyOffline ? "pt-7" : ""}`}
+      style={regionShellVars}
+      data-region={activeRegion}
+    >
       {isProbablyOffline && (
         <div
           style={{
@@ -1677,20 +1738,23 @@ function AppShell() {
         </div>
       )}
       {/* ── Desktop Sidebar ───────────────────────────────────────────────── */}
+      {regionSwitchNotice && (
+        <div
+          className="fixed left-1/2 top-16 z-[9998] -translate-x-1/2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-lg"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--region-accent-border)",
+            color: "var(--region-accent)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {regionSwitchNotice}
+        </div>
+      )}
       <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-[#0B0B0C] border-r border-white/[0.06] overflow-hidden">
         {/* Brand */}
-        <div className="flex items-center gap-3 px-4 h-14 flex-shrink-0 border-b border-white/[0.06]">
-          <img
-            src="/asg-circle.png"
-            alt="ASG"
-            className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-            style={{ border: "1.5px solid rgba(184,147,58,0.35)" }}
-          />
-          <div>
-            <p className="text-sm font-bold font-display text-white leading-none tracking-tight">ASG CRM</p>
-            <p className="text-[10px] text-[#7a7a74] mt-0.5">Live Leads</p>
-          </div>
-        </div>
+        {sidebarBrand}
         {sidebarNav(setPage)}
         {sidebarUserCard}
       </aside>
@@ -1700,20 +1764,12 @@ function AppShell() {
         <>
           <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
           <aside className="fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-[#0B0B0C] border-r border-white/[0.06] overflow-hidden lg:hidden">
-            <div className="flex items-center gap-3 px-4 h-14 flex-shrink-0 border-b border-white/[0.06]">
-              <img
-                src="/asg-circle.png"
-                alt="ASG"
-                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                style={{ border: "1.5px solid rgba(184,147,58,0.35)" }}
-              />
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white leading-none tracking-tight">ASG CRM</p>
-                <p className="text-[10px] text-[#7a7a74] mt-0.5">Live Leads</p>
-              </div>
+            <div className="relative">
+              {sidebarBrand}
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-1.5 text-[#7a7a74] hover:text-white transition"
+                className="absolute right-3 top-3 p-1.5 text-[#7a7a74] hover:text-white transition"
+                aria-label="Close sidebar"
               >
                 <X size={16} />
               </button>
@@ -1744,6 +1800,19 @@ function AppShell() {
             {PAGE_LABELS[effectivePage] ?? ""}
           </h1>
 
+          <span
+            className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold"
+            style={{
+              background: "var(--region-accent-soft)",
+              borderColor: "var(--region-accent-border)",
+              color: "var(--region-accent)",
+            }}
+            title={`${regionIdentity.label} workspace`}
+          >
+            <span className="uppercase">{regionIdentity.shortLabel}</span>
+            <span className="hidden sm:inline">{regionIdentity.label}</span>
+          </span>
+
           {/* Offline badge */}
           {!isOnline && (
             <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-semibold">
@@ -1751,15 +1820,36 @@ function AppShell() {
             </span>
           )}
 
+          {callbackBadge > 0 && (
+            <button
+              onClick={() => {
+                setLeadsFilter("callbacks");
+                setPage("leads");
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition hover:opacity-80"
+              style={{
+                background: "var(--region-accent-soft)",
+                color: "var(--region-accent)",
+                border: "1px solid var(--region-accent-border)",
+              }}
+              title="Callbacks in the actionable queue"
+            >
+              {callbackBadge} Callback{callbackBadge === 1 ? "" : "s"}
+            </button>
+          )}
+
           {/* Follow-ups Today badge */}
           {followUpBadge > 0 && (
             <button
-              onClick={() => setPage("leads")}
+              onClick={() => {
+                setLeadsFilter("followups");
+                setPage("leads");
+              }}
               className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition hover:opacity-80"
               style={{
-                background: "rgba(184,147,58,0.15)",
-                color: "#b8933a",
-                border: "1px solid rgba(184,147,58,0.3)",
+                background: "var(--region-accent-soft)",
+                color: "var(--region-accent)",
+                border: "1px solid var(--region-accent-border)",
               }}
               title="Follow-ups due today"
             >
@@ -1799,13 +1889,17 @@ function AppShell() {
                   <span className="hidden md:inline">Export</span>
                 </button>
                 {exportMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg z-30">
+                <div
+                  className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-[var(--surface)] rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg z-30"
+                  role="menu"
+                >
                   <button
                     onClick={() => {
                       handleExportLeads();
                       setExportMenuOpen(false);
                     }}
-                    className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-t-xl transition"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-t-xl transition"
+                    role="menuitem"
                   >
                     Export Leads CSV
                   </button>
@@ -1814,7 +1908,8 @@ function AppShell() {
                       handleExportCallHistory();
                       setExportMenuOpen(false);
                     }}
-                    className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-b-xl border-t border-gray-100 dark:border-slate-800 transition"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-b-xl border-t border-gray-100 dark:border-slate-800 transition"
+                    role="menuitem"
                   >
                     Export Call History CSV
                   </button>
@@ -1824,7 +1919,7 @@ function AppShell() {
               <button
                 onClick={() => setAddLeadOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded-lg hover:opacity-90 transition font-medium text-sm"
-                style={{ background: "#b8933a" }}
+                style={{ background: "var(--region-accent)", color: "var(--region-text-on-accent)" }}
               >
                 <Plus size={15} />
                 <span className="hidden sm:inline">Add Lead</span>
